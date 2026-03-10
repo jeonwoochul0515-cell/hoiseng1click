@@ -1,0 +1,43 @@
+import { FileText, List, DollarSign, ClipboardList, Calculator } from 'lucide-react';
+import type { DocType } from '@/types/document';
+import { DOC_LABELS } from '@/types/document';
+
+interface DocSelectorProps {
+  selected: DocType | null;
+  onSelect: (docType: DocType) => void;
+}
+
+const DOC_ICONS: Record<DocType, typeof FileText> = {
+  debt_list: List,
+  asset_list: ClipboardList,
+  income_list: DollarSign,
+  application: FileText,
+  repay_plan: Calculator,
+};
+
+const docTypes: DocType[] = ['debt_list', 'asset_list', 'income_list', 'application', 'repay_plan'];
+
+export default function DocSelector({ selected, onSelect }: DocSelectorProps) {
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {docTypes.map((dt) => {
+        const Icon = DOC_ICONS[dt];
+        const isSelected = selected === dt;
+        return (
+          <button
+            key={dt}
+            onClick={() => onSelect(dt)}
+            className={`flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              isSelected
+                ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
+                : 'border-gray-700 bg-[#111827] text-gray-300 hover:border-gray-500'
+            }`}
+          >
+            <Icon size={16} />
+            {DOC_LABELS[dt]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

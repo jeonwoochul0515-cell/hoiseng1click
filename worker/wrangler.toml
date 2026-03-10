@@ -1,0 +1,19 @@
+name = "lawdocs-worker"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+
+# R2 bucket (DOCX/HWPX file storage)
+[[r2_buckets]]
+binding = "DOCS_BUCKET"
+bucket_name = "lawdocs-docs"
+
+# KV (CODEF token caching)
+[[kv_namespaces]]
+binding = "TOKEN_CACHE"
+id = "placeholder_replace_after_kv_create"
+
+# Secrets (set via: wrangler secret put <NAME>)
+# CODEF_CLIENT_ID
+# CODEF_CLIENT_SECRET
+# FIREBASE_PROJECT_ID
+# PUBLIC_DATA_API_KEY

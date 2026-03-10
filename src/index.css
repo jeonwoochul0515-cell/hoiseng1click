@@ -1,68 +1,34 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@theme {
+  --color-brand-navy: #0D1B2A;
+  --color-brand-gold: #C9A84C;
+  --color-brand-green: #1B5E3B;
+  --color-brand-blue: #1A3A8F;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  --color-status-new: #3B82F6;
+  --color-status-contacted: #8B5CF6;
+  --color-status-collecting: #C9A84C;
+  --color-status-drafting: #8B5CF6;
+  --color-status-submitted: #F59E0B;
+  --color-status-approved: #10B981;
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+  --color-plan-starter: #6B7280;
+  --color-plan-pro: #C9A84C;
+  --color-plan-enterprise: #8B5CF6;
+
+  --color-bg-main: #080D14;
+  --color-bg-card: #111827;
+  --color-bg-sidebar: #111827;
 }
 
 body {
+  background-color: var(--color-bg-main);
+  color: #e5e7eb;
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+* {
+  box-sizing: border-box;
 }
