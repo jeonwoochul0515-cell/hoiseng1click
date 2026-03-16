@@ -23,6 +23,7 @@ export default function DocDownloadButton({
 }: DocDownloadButtonProps) {
   const [loading, setLoading] = useState(false);
   const hasPro = useAuthStore((s) => s.hasPro);
+  const office = useAuthStore((s) => s.office);
   const openUpgradeModal = useUiStore((s) => s.openUpgradeModal);
 
   const isLocked = format === 'hwpx' && !hasPro();
@@ -37,8 +38,10 @@ export default function DocDownloadButton({
       setLoading(true);
       const result = await workerApi.generateDoc({
         clientId: client.id,
+        officeId: office?.id ?? '',
         docType: String(docType),
         format,
+        clientData: client,
       });
       window.open(result.downloadUrl, '_blank');
     } catch (err) {
@@ -55,9 +58,9 @@ export default function DocDownloadButton({
       disabled={disabled || loading}
       className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
         isLocked
-          ? 'border border-gray-600 bg-gray-800 text-gray-500 hover:bg-gray-700'
+          ? 'border border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-100'
           : disabled
-            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
             : 'bg-[#C9A84C] text-black hover:bg-[#b8973e]'
       }`}
     >

@@ -6,7 +6,7 @@ import { PLAN_CONFIGS, type PlanType } from '@/types/subscription';
 const planOrder: PlanType[] = ['starter', 'pro', 'enterprise'];
 
 const cardBorder: Record<PlanType, string> = {
-  starter: 'border-gray-700',
+  starter: 'border-gray-200',
   pro: 'border-[#C9A84C]',
   enterprise: 'border-purple-500',
 };
@@ -32,19 +32,19 @@ export default function UpgradeModal() {
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-4xl rounded-2xl bg-[#1F2937] p-8">
+      <div className="relative z-10 w-full max-w-4xl rounded-2xl bg-white p-8">
         {/* Close button */}
         <button
           onClick={closeUpgradeModal}
-          className="absolute right-4 top-4 text-gray-400 hover:text-white"
+          className="absolute right-4 top-4 text-gray-600 hover:text-gray-900"
         >
           <X size={20} />
         </button>
 
-        <h2 className="mb-2 text-center text-2xl font-bold text-white">
+        <h2 className="mb-2 text-center text-2xl font-bold text-gray-900">
           플랜 선택
         </h2>
-        <p className="mb-8 text-center text-sm text-gray-400">
+        <p className="mb-8 text-center text-sm text-gray-600">
           연간 결제 시 2개월 무료
         </p>
 
@@ -58,7 +58,7 @@ export default function UpgradeModal() {
               <div
                 key={planKey}
                 className={`relative flex flex-col rounded-xl border-2 p-6 ${cardBorder[planKey]} ${
-                  isCurrent ? 'bg-white/5' : 'bg-[#111827]'
+                  isCurrent ? 'bg-gray-50' : 'bg-white'
                 }`}
               >
                 {isCurrent && (
@@ -67,12 +67,12 @@ export default function UpgradeModal() {
                   </span>
                 )}
 
-                <h3 className="mb-1 text-lg font-bold text-white">
+                <h3 className="mb-1 text-lg font-bold text-gray-900">
                   {config.name}
                 </h3>
-                <p className="mb-4 text-2xl font-bold text-white">
+                <p className="mb-4 text-2xl font-bold text-gray-900">
                   {formatPrice(config.price)}
-                  <span className="text-sm font-normal text-gray-400">
+                  <span className="text-sm font-normal text-gray-600">
                     /월
                   </span>
                 </p>
@@ -81,7 +81,7 @@ export default function UpgradeModal() {
                   {config.features.map((feature) => (
                     <li
                       key={feature}
-                      className="flex items-center gap-2 text-sm text-gray-300"
+                      className="flex items-center gap-2 text-sm text-gray-700"
                     >
                       <Check size={14} className="shrink-0 text-[#C9A84C]" />
                       {feature}
@@ -92,7 +92,7 @@ export default function UpgradeModal() {
                 {isCurrent ? (
                   <button
                     disabled
-                    className="w-full rounded-lg bg-gray-600/40 py-2.5 text-sm font-semibold text-gray-400"
+                    className="w-full rounded-lg bg-gray-200 py-2.5 text-sm font-semibold text-gray-600"
                   >
                     현재 플랜
                   </button>

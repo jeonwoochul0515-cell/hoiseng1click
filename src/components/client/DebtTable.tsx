@@ -12,7 +12,7 @@ export function DebtTable({ debts }: DebtTableProps) {
   if (debts.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 py-12">
-        <p className="text-sm text-gray-400">등록된 채무가 없습니다</p>
+        <p className="text-sm text-gray-600">등록된 채무가 없습니다</p>
       </div>
     );
   }
@@ -35,7 +35,7 @@ export function DebtTable({ debts }: DebtTableProps) {
         <tbody className="divide-y divide-gray-100">
           {debts.map((debt, i) => (
             <tr key={debt.id} className="hover:bg-gray-50/50">
-              <td className="px-4 py-3 text-center text-gray-400">{i + 1}</td>
+              <td className="px-4 py-3 text-center text-gray-600">{i + 1}</td>
               <td className="px-4 py-3 font-medium text-gray-900">{debt.name}</td>
               <td className="px-4 py-3 text-gray-600">{debt.creditor}</td>
               <td className="px-4 py-3">

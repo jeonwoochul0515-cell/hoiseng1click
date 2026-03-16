@@ -2,12 +2,12 @@ import { NavLink } from 'react-router-dom';
 import {
   Home,
   Users,
-  Link,
   FileText,
   BarChart3,
   Settings,
   LogOut,
   Scale,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
@@ -19,15 +19,18 @@ interface NavItem {
   label: string;
   to: string;
   proOnly?: boolean;
+  adminOnly?: boolean;
 }
+
+const ADMIN_EMAILS = ['admin@lawdocs.kr'];
 
 const navItems: NavItem[] = [
   { icon: Home, label: '대시보드', to: '/' },
   { icon: Users, label: '의뢰인 관리', to: '/clients' },
-  { icon: Link, label: '데이터 수집', to: '/collection' },
-  { icon: FileText, label: '서류 생성', to: '/documents' },
   { icon: BarChart3, label: '청산가치', to: '/liquidation', proOnly: true },
+  { icon: FileText, label: '서류 생성', to: '/documents' },
   { icon: Settings, label: '설정', to: '/settings' },
+  { icon: ShieldCheck, label: '관리자', to: '/admin', adminOnly: true },
 ];
 
 export default function Sidebar() {
@@ -45,7 +48,7 @@ export default function Sidebar() {
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-center gap-2">
           <Scale size={22} className="text-[#C9A84C]" />
-          <span className="text-lg font-bold text-[#C9A84C]">LawDocs</span>
+          <span className="text-lg font-bold text-[#C9A84C]">회생원클릭</span>
         </div>
         {office && (
           <div className="mt-2">
@@ -61,6 +64,7 @@ export default function Sidebar() {
       <nav className="flex-1 space-y-1 px-3 py-2">
         {navItems
           .filter((item) => !item.proOnly || hasPro())
+          .filter((item) => !item.adminOnly || ADMIN_EMAILS.includes(user?.email ?? ''))
           .map((item) => (
             <NavLink
               key={item.to}

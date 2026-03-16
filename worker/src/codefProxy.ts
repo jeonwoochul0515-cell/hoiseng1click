@@ -2,9 +2,12 @@ import type { Context } from 'hono';
 import type { Env, Debt, Asset } from './types';
 
 const OAUTH_URL = 'https://oauth.codef.io/oauth/token';
-const CODEF_BASE = 'https://api.codef.io';
 
-async function getToken(env: Env): Promise<string> {
+export function getCodefBase(env: Env): string {
+  return env.CODEF_API_HOST || 'https://api.codef.io';
+}
+
+export async function getToken(env: Env): Promise<string> {
   const cached = await env.TOKEN_CACHE.get('codef_token');
   if (cached) return cached;
 
@@ -20,13 +23,105 @@ async function getToken(env: Env): Promise<string> {
 
   const data = await res.json() as { access_token: string };
   const token = data.access_token;
-  await env.TOKEN_CACHE.put('codef_token', token, { expirationTtl: 1500 });
+  // CODEF 토큰은 1주일 유효 → 6일 캐시
+  await env.TOKEN_CACHE.put('codef_token', token, { expirationTtl: 518400 });
   return token;
 }
 
-async function callCodef(token: string, endpoint: string, body: object): Promise<unknown> {
+// ── RSA 암호화 (CODEF publicKey로 비밀번호 암호화) ──
+export async function encryptRSA(publicKeyB64: string, plainText: string): Promise<string> {
+  const binaryDer = Uint8Array.from(atob(publicKeyB64), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey(
+    'spki',
+    binaryDer.buffer,
+    { name: 'RSA-OAEP', hash: 'SHA-1' },
+    false,
+    ['encrypt'],
+  );
+  const encoded = new TextEncoder().encode(plainText);
+  const encrypted = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, encoded);
+  return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+}
+
+// ── 기관코드 매핑 ──
+const ORG_MAP: Record<string, { code: string; businessType: string }> = {
+  '국민은행': { code: '0004', businessType: 'BK' },
+  '신한은행': { code: '0088', businessType: 'BK' },
+  '우리은행': { code: '0020', businessType: 'BK' },
+  '하나은행': { code: '0081', businessType: 'BK' },
+  '농협':     { code: '0011', businessType: 'BK' },
+  'IBK기업은행': { code: '0003', businessType: 'BK' },
+  'SC제일은행': { code: '0023', businessType: 'BK' },
+  '카카오뱅크': { code: '0090', businessType: 'BK' },
+  '토스뱅크': { code: '0092', businessType: 'BK' },
+  '케이뱅크': { code: '0089', businessType: 'BK' },
+  '수협은행': { code: '0007', businessType: 'BK' },
+  '삼성카드': { code: '0303', businessType: 'CD' },
+  '현대카드': { code: '0302', businessType: 'CD' },
+  '롯데카드': { code: '0311', businessType: 'CD' },
+  'BC카드':   { code: '0361', businessType: 'CD' },
+  'KB국민카드': { code: '0301', businessType: 'CD' },
+  '신한카드': { code: '0306', businessType: 'CD' },
+  '우리카드': { code: '0309', businessType: 'CD' },
+  '하나카드': { code: '0313', businessType: 'CD' },
+  'NH카드':   { code: '0304', businessType: 'CD' },
+  '삼성생명': { code: '0032', businessType: 'IN' },
+  '한화생명': { code: '0050', businessType: 'IN' },
+  '교보생명': { code: '0033', businessType: 'IN' },
+  '삼성화재': { code: '0058', businessType: 'IN' },
+  '현대해상': { code: '0059', businessType: 'IN' },
+  'DB손해보험': { code: '0060', businessType: 'IN' },
+  'OK저축은행': { code: '0105', businessType: 'BK' },
+  'SBI저축은행': { code: '0101', businessType: 'BK' },
+};
+
+// loginType 매핑: 프론트 키 → CODEF 코드
+const LOGIN_TYPE_MAP: Record<string, string> = {
+  cert: '0',      // 공동인증서
+  finCert: '0',   // 금융인증서
+  kakao: '1',     // 간편인증(ID/PW)
+  pass: '1',
+};
+
+/** 프론트에서 받은 banks + credentials → CODEF accountList 변환 */
+interface CodefAccount {
+  countryCode: string;
+  businessType: string;
+  clientType: string;
+  organization: string;
+  loginType: string;
+  id: string;
+  password: string;
+}
+
+export async function buildAccountList(
+  env: Env,
+  banks: string[],
+  credentials: { loginType: string; id: string; password: string },
+): Promise<CodefAccount[]> {
+  const encPw = await encryptRSA(env.CODEF_PUBLIC_KEY, credentials.password);
+  const codefLoginType = LOGIN_TYPE_MAP[credentials.loginType] ?? '1';
+
+  const result: CodefAccount[] = [];
+  for (const bankName of banks) {
+    const org = ORG_MAP[bankName];
+    if (!org) continue;
+    result.push({
+      countryCode: 'KR',
+      businessType: org.businessType,
+      clientType: 'P',
+      organization: org.code,
+      loginType: codefLoginType,
+      id: credentials.id,
+      password: encPw,
+    });
+  }
+  return result;
+}
+
+export async function callCodef(env: Env, token: string, endpoint: string, body: object): Promise<unknown> {
   try {
-    const res = await fetch(`${CODEF_BASE}${endpoint}`, {
+    const res = await fetch(`${getCodefBase(env)}${endpoint}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -41,7 +136,7 @@ async function callCodef(token: string, endpoint: string, body: object): Promise
   }
 }
 
-function parseDebts(bankLoans: unknown, cardLoans: unknown): Debt[] {
+export function parseDebts(bankLoans: unknown, cardLoans: unknown): Debt[] {
   const debts: Debt[] = [];
   const bl = (bankLoans as any)?.data?.resList ?? [];
   const cl = (cardLoans as any)?.data?.resList ?? [];
@@ -73,7 +168,7 @@ function parseDebts(bankLoans: unknown, cardLoans: unknown): Debt[] {
   return debts;
 }
 
-function parseAssets(accounts: unknown, insurance: unknown): Asset[] {
+export function parseAssets(accounts: unknown, insurance: unknown): Asset[] {
   const assets: Asset[] = [];
   const ba = (accounts as any)?.data?.resList ?? [];
   const ins = (insurance as any)?.data?.resList ?? [];
@@ -114,29 +209,44 @@ function parseAssets(accounts: unknown, insurance: unknown): Asset[] {
 export async function handleCodefCollect(c: Context<{ Bindings: Env }>) {
   const body = await c.req.json() as {
     connectedId?: string;
-    credentials: Array<{ loginType: string; id: string; password: string }>;
+    clientId?: string;
+    authMethod?: string;
+    credentials: { loginType: string; id: string; password: string };
+    banks?: string[];
   };
 
   const token = await getToken(c.env);
 
   let cid = body.connectedId;
   if (!cid) {
-    const res = await fetch(`${CODEF_BASE}/v1/account/create`, {
+    // 프론트에서 받은 banks + credentials → CODEF 형식으로 변환
+    const accountList = body.banks?.length
+      ? await buildAccountList(c.env, body.banks, body.credentials)
+      : [body.credentials];
+
+    if (accountList.length === 0) {
+      return c.json({ error: '유효한 금융기관이 선택되지 않았습니다' }, 400);
+    }
+
+    const res = await fetch(`${getCodefBase(c.env)}/v1/account/create`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accountList: body.credentials }),
+      body: JSON.stringify({ accountList }),
     });
     const data = await res.json() as any;
     cid = data?.data?.connectedId;
-    if (!cid) return c.json({ error: '금융기관 계정 연결 실패' }, 500);
+    if (!cid) {
+      const errMsg = data?.result?.message ?? '금융기관 계정 연결 실패';
+      return c.json({ error: errMsg, detail: data }, 500);
+    }
   }
 
   const reqBody = { connectedId: cid };
   const [bankAccounts, bankLoans, cardLoans, insurance] = await Promise.allSettled([
-    callCodef(token, '/v1/kr/bank/p/account/account-basic', reqBody),
-    callCodef(token, '/v1/kr/bank/p/loan/loan-list', reqBody),
-    callCodef(token, '/v1/kr/card/p/loan/loan-list', reqBody),
-    callCodef(token, '/v1/kr/insurance/p/common/product-list', reqBody),
+    callCodef(c.env, token, '/v1/kr/bank/p/account/account-basic', reqBody),
+    callCodef(c.env, token, '/v1/kr/bank/p/loan/loan-list', reqBody),
+    callCodef(c.env, token, '/v1/kr/card/p/loan/loan-list', reqBody),
+    callCodef(c.env, token, '/v1/kr/insurance/p/common/product-list', reqBody),
   ]);
 
   const get = (r: PromiseSettledResult<unknown>) => r.status === 'fulfilled' ? r.value : null;

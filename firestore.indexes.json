@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "intakeSubmissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "officeId", "order": "ASCENDING" },
+        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

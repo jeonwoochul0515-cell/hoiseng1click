@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase';
+import { useAuthStore } from '@/store/authStore';
 import { useCollectionStore } from '@/store/collectionStore';
 import ConsentStep from '@/components/collection/ConsentStep';
 import AuthStep from '@/components/collection/AuthStep';
 import CollectStep from '@/components/collection/CollectStep';
 import ResultStep from '@/components/collection/ResultStep';
+import type { Client } from '@/types/client';
 
 const STEPS = [
   { num: 1, label: '동의' },
@@ -15,28 +17,36 @@ const STEPS = [
   { num: 4, label: '결과 확인' },
 ];
 
-interface ClientData {
-  name: string;
-  [key: string]: any;
-}
-
 export default function CollectionPage() {
   const { clientId } = useParams<{ clientId: string }>();
+  const office = useAuthStore((s) => s.office);
   const { step, result, reset } = useCollectionStore();
-  const [client, setClient] = useState<ClientData | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load client from Firestore
+  // Load client from Firestore (offices/{officeId}/clients/{clientId})
   useEffect(() => {
     reset();
 
-    if (!clientId) return;
+    if (!clientId || !office) return;
 
     async function loadClient() {
       try {
-        const snap = await getDoc(doc(db, 'clients', clientId!));
+        const snap = await getDoc(doc(db, 'offices', office!.id, 'clients', clientId!));
         if (snap.exists()) {
-          setClient(snap.data() as ClientData);
+          const data = snap.data() as Client;
+          setClient(data);
+          // 기존 connectedId가 있으면 store에 세팅 (재사용)
+          if (data.connectedId) {
+            useCollectionStore.getState().setConnectedId(data.connectedId);
+          }
+          // 의뢰인 이름을 인증 정보에 자동 세팅
+          if (data.name) {
+            useCollectionStore.getState().setUserName(data.name);
+          }
+          if (data.phone) {
+            useCollectionStore.getState().setPhoneNo(data.phone);
+          }
         }
       } catch (err) {
         console.error('의뢰인 정보 로드 실패:', err);
@@ -47,19 +57,20 @@ export default function CollectionPage() {
 
     loadClient();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId]);
+  }, [clientId, office]);
 
   // Save results to Firestore when collection is complete
   useEffect(() => {
-    if (!result || !clientId) return;
+    if (!result || !clientId || !office) return;
 
     async function saveResults() {
       try {
-        await updateDoc(doc(db, 'clients', clientId!), {
+        await updateDoc(doc(db, 'offices', office!.id, 'clients', clientId!), {
           debts: result!.debts,
           assets: result!.assets,
           collectionDone: true,
           status: 'drafting',
+          connectedId: result!.connectedId,
           updatedAt: Timestamp.now(),
         });
       } catch (err) {
@@ -68,7 +79,7 @@ export default function CollectionPage() {
     }
 
     saveResults();
-  }, [result, clientId]);
+  }, [result, clientId, office]);
 
   if (loading) {
     return (
@@ -90,10 +101,10 @@ export default function CollectionPage() {
     <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       {/* Page Header */}
       <div className="mx-auto max-w-3xl mb-8">
-        <h1 className="text-2xl font-bold text-white mb-1">CODEF 금융데이터 수집</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">CODEF 금융데이터 수집</h1>
         {client && (
-          <p className="text-sm text-gray-400">
-            의뢰인: <span className="text-gray-200">{client.name}</span>
+          <p className="text-sm text-gray-600">
+            의뢰인: <span className="text-gray-900">{client.name}</span>
           </p>
         )}
       </div>
@@ -109,7 +120,7 @@ export default function CollectionPage() {
                   className={`flex items-center justify-center h-10 w-10 rounded-full text-sm font-bold transition-colors ${
                     step >= s.num
                       ? 'bg-[var(--color-brand-gold)] text-[var(--color-brand-navy)]'
-                      : 'bg-gray-800 text-gray-500 border border-gray-700'
+                      : 'bg-gray-100 text-gray-500 border border-gray-200'
                   }`}
                 >
                   {s.num}
@@ -128,7 +139,7 @@ export default function CollectionPage() {
                 <div className="flex-1 mx-3 mt-[-1.25rem]">
                   <div
                     className={`h-0.5 rounded transition-colors ${
-                      step > s.num ? 'bg-[var(--color-brand-gold)]' : 'bg-gray-700'
+                      step > s.num ? 'bg-[var(--color-brand-gold)]' : 'bg-gray-200'
                     }`}
                   />
                 </div>

@@ -17,18 +17,40 @@
   --color-plan-pro: #C9A84C;
   --color-plan-enterprise: #8B5CF6;
 
-  --color-bg-main: #080D14;
-  --color-bg-card: #111827;
-  --color-bg-sidebar: #111827;
+  --color-bg-main: #F3F4F6;
+  --color-bg-card: #FFFFFF;
+  --color-bg-sidebar: #1E293B;
 }
 
 body {
   background-color: var(--color-bg-main);
-  color: #e5e7eb;
+  color: #111827;
   margin: 0;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 * {
   box-sizing: border-box;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* 법원 서류 프리뷰 인쇄 최적화 */
+@media print {
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import UpgradeModal from '@/components/subscription/UpgradeModal';
 import LoginPage from '@/pages/LoginPage';
+import IntakePage from '@/pages/IntakePage';
 import DashboardPage from '@/pages/DashboardPage';
 import ClientsPage from '@/pages/ClientsPage';
 import ClientDetailPage from '@/pages/ClientDetailPage';
@@ -13,6 +14,8 @@ import CollectionPage from '@/pages/CollectionPage';
 import DocumentsPage from '@/pages/DocumentsPage';
 import LiquidationPage from '@/pages/LiquidationPage';
 import SettingsPage from '@/pages/SettingsPage';
+import StatementPage from '@/pages/StatementPage';
+import AdminPage from '@/pages/AdminPage';
 
 function AuthGuard() {
   const { user, loading } = useAuthStore();
@@ -65,16 +68,20 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/intake/:token" element={<IntakePage />} />
         <Route element={<AuthGuard />}>
           <Route index element={<DashboardPage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:id" element={<ClientDetailPage />} />
+          <Route path="clients/:clientId/statement" element={<StatementPage />} />
+          <Route path="collection" element={<Navigate to="/clients" replace />} />
           <Route path="collection/:clientId" element={<CollectionPage />} />
           <Route path="documents" element={<DocumentsPage />} />
           <Route element={<PlanGuard requirePro />}>
             <Route path="liquidation" element={<LiquidationPage />} />
           </Route>
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

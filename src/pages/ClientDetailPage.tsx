@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Database, FileText } from 'lucide-react';
+import { ArrowLeft, Database, FileText, Send, MessageCircle, Copy, Check, LinkIcon, ClipboardList } from 'lucide-react';
+import { sendKakaoLink } from '@/utils/kakao';
 import { getClient } from '@/api/firestore';
 import { useUpdateClient } from '@/hooks/useClients';
 import { useAuthStore } from '@/store/authStore';
+import { createIntakeToken } from '@/api/intake';
 import { DebtTable } from '@/components/client/DebtTable';
 import { AssetPanel } from '@/components/client/AssetPanel';
-import { formatKRW, formatPhone, formatDate } from '@/utils/formatter';
+import { formatKRW, formatPhone, formatDate, maskSSN } from '@/utils/formatter';
 import { calcMonthlyPayment, calcRepayTotal, calcLivingCost } from '@/utils/calculator';
 import type { Client, ClientStatus } from '@/types/client';
 
@@ -19,7 +21,7 @@ const STATUS_OPTIONS: { value: ClientStatus; label: string; color: string }[] = 
   { value: 'approved', label: '인가', color: '#10B981' },
 ];
 
-const TABS = ['기본정보', '채무내역', '재산내역', '소득·변제금', '서류생성', '메모'] as const;
+const TABS = ['기본정보', '채무내역', '재산내역', '소득·변제금', '수임료', '서류생성', '메모'] as const;
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,18 +33,65 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(0);
 
+  // Intake link state
+  const [intakeLink, setIntakeLink] = useState('');
+  const [intakePin, setIntakePin] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [msgCopied, setMsgCopied] = useState(false);
+
   useEffect(() => {
     if (!officeId || !id) return;
+    let cancelled = false;
     setLoading(true);
     getClient(officeId, id)
-      .then(c => setClient(c))
-      .finally(() => setLoading(false));
+      .then(c => { if (!cancelled) setClient(c); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [officeId, id]);
 
   const handleStatusChange = async (newStatus: ClientStatus) => {
     if (!client) return;
     await updateMutation.mutateAsync({ clientId: client.id, data: { status: newStatus } });
     setClient(prev => prev ? { ...prev, status: newStatus } : prev);
+  };
+
+  const office = useAuthStore(s => s.office);
+
+  const handleGenerateIntakeLink = async () => {
+    if (!office || !client) return;
+    setLinkLoading(true);
+    try {
+      const { tokenId, pin } = await createIntakeToken(office.id, office.name, client.name, client.phone);
+      setIntakeLink(`${window.location.origin}/intake/${tokenId}`);
+      setIntakePin(pin);
+    } catch {
+      alert('링크 생성에 실패했습니다.');
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
+  const getMessageTemplate = () =>
+    `[${office?.name}] 개인회생 접수 안내\n\n${client?.name}님 안녕하세요.\n아래 링크를 눌러 정보를 입력해 주세요.\n\n접수 링크: ${intakeLink}\n비밀번호: ${intakePin}\n\n* 비밀번호 4자리를 입력하면 접수가 시작됩니다.\n* 링크는 7일간 유효합니다.`;
+
+  const handleSendKakao = async () => {
+    if (!office || !client) return;
+    await sendKakaoLink({
+      officeName: office.name,
+      clientName: client.name,
+      intakeLink,
+      pin: intakePin,
+    });
+  };
+
+  const handleCopyMessage = async () => {
+    try {
+      await navigator.clipboard.writeText(getMessageTemplate());
+      setMsgCopied(true);
+      setTimeout(() => setMsgCopied(false), 2000);
+    } catch {
+      alert('클립보드 복사에 실패했습니다.');
+    }
   };
 
   if (loading) {
@@ -77,7 +126,7 @@ export default function ClientDetailPage() {
       {/* Top Bar */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/clients')} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+          <button onClick={() => navigate('/clients')} className="rounded-lg p-1 text-gray-600 hover:bg-gray-100 hover:text-gray-600">
             <ArrowLeft className="h-5 w-5" />
           </button>
 
@@ -85,7 +134,7 @@ export default function ClientDetailPage() {
             <h1 className="text-xl font-bold text-gray-900">{client.name}</h1>
             <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
               <span>{formatPhone(client.phone)}</span>
-              <span className="text-gray-300">|</span>
+              <span className="text-gray-700">|</span>
               <span>등록: {formatDate(client.createdAt)}</span>
             </div>
           </div>
@@ -108,6 +157,23 @@ export default function ClientDetailPage() {
             }`}>
               {client.collectionDone ? '수집완료' : '미수집'}
             </span>
+
+            <button
+              onClick={handleGenerateIntakeLink}
+              disabled={linkLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A84C] px-3 py-2 text-sm font-medium text-black hover:bg-[#b8973e] disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" />
+              {linkLoading ? '생성중...' : '접수링크 전송'}
+            </button>
+
+            <button
+              onClick={() => navigate(`/clients/${client.id}/statement`)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+            >
+              <ClipboardList className="h-4 w-4" />
+              진술서 작성
+            </button>
 
             <button
               onClick={() => navigate(`/collection/${client.id}`)}
@@ -137,6 +203,51 @@ export default function ClientDetailPage() {
         </div>
       </div>
 
+      {/* Intake Link Banner */}
+      {intakeLink && (
+        <div className="mx-auto max-w-5xl px-6 pt-4">
+          <div className="rounded-xl bg-[#0D1B2A] px-5 py-4 space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <LinkIcon size={16} className="text-[#C9A84C]" />
+                <span className="text-sm font-semibold text-white">{client.name}님 접수링크</span>
+              </div>
+              <button
+                onClick={() => { setIntakeLink(''); setIntakePin(''); }}
+                className="text-gray-500 hover:text-gray-300 text-lg leading-none"
+              >&times;</button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">비밀번호</p>
+                <div className="flex gap-1.5">
+                  {intakePin.split('').map((d, i) => (
+                    <span key={i} className="flex h-7 w-7 items-center justify-center rounded-md bg-[#C9A84C]/20 text-base font-bold text-[#C9A84C]">{d}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSendKakao}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#FEE500] py-2 text-xs font-bold text-[#191919] hover:bg-[#F0D800] transition-colors"
+              >
+                <MessageCircle size={14} />
+                카카오톡 전송
+              </button>
+              <button
+                onClick={handleCopyMessage}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-white/10 py-2 text-xs font-medium text-white hover:bg-white/20 transition-colors"
+              >
+                {msgCopied ? <><Check size={14} /> 복사됨</> : <><Copy size={14} /> 복사</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="mx-auto max-w-5xl p-6">
         {/* 기본정보 */}
@@ -146,7 +257,7 @@ export default function ClientDetailPage() {
             <div className="grid grid-cols-2 gap-x-8 gap-y-4">
               <InfoRow label="이름" value={client.name} />
               <InfoRow label="연락처" value={formatPhone(client.phone)} />
-              <InfoRow label="주민등록번호" value={client.ssn ? `${client.ssn.slice(0, 6)}-*******` : '-'} />
+              <InfoRow label="주민등록번호" value={client.ssn ? maskSSN(client.ssn) : '-'} />
               <InfoRow label="주소" value={client.address || '-'} />
               <InfoRow label="직업유형" value={client.jobType} />
               <InfoRow label="가구원 수" value={`${client.family}명`} />
@@ -204,8 +315,52 @@ export default function ClientDetailPage() {
           </div>
         )}
 
-        {/* 서류생성 */}
+        {/* 수임료 */}
         {tab === 4 && (
+          <div className="space-y-6">
+            <div className="rounded-xl border border-gray-200 bg-white p-6">
+              <h2 className="mb-4 text-lg font-bold text-gray-900">수임료 정보</h2>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <InfoRow label="수임료 총액" value={formatKRW(client.fee ?? 0)} />
+                <InfoRow label="분할 납부" value={(client.feeInstallment ?? false) ? '예' : '아니오'} />
+                {(client.feeInstallment ?? false) && (
+                  <>
+                    <InfoRow label="분할 개월수" value={`${client.feeInstallmentMonths ?? 0}개월`} />
+                    <InfoRow label="월 납부금" value={formatKRW(client.feeInstallmentMonths ? Math.ceil((client.fee ?? 0) / client.feeInstallmentMonths) : 0)} />
+                  </>
+                )}
+                <InfoRow label="납부 완료 금액" value={formatKRW(client.feePaidAmount ?? 0)} />
+                <InfoRow label="잔여 금액" value={formatKRW(Math.max(0, (client.fee ?? 0) - (client.feePaidAmount ?? 0)))} />
+              </div>
+            </div>
+
+            {/* 납부 진행률 */}
+            {(client.fee ?? 0) > 0 && (
+              <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 p-6">
+                <h3 className="mb-3 text-sm font-bold text-emerald-800">납부 현황</h3>
+                <div className="mb-2 flex items-center justify-between text-sm text-gray-700">
+                  <span>진행률</span>
+                  <span className="font-bold text-emerald-700">
+                    {Math.min(100, Math.round(((client.feePaidAmount ?? 0) / (client.fee ?? 1)) * 100))}%
+                  </span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-emerald-100">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${Math.min(100, ((client.feePaidAmount ?? 0) / (client.fee ?? 1)) * 100)}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span>{formatKRW(client.feePaidAmount ?? 0)} 납부</span>
+                  <span>{formatKRW(client.fee ?? 0)} 총액</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 서류생성 */}
+        {tab === 5 && (
           <div className="rounded-xl border border-gray-200 bg-white p-6">
             <h2 className="mb-4 text-lg font-bold text-gray-900">서류생성</h2>
             <p className="mb-4 text-sm text-gray-500">이 의뢰인의 데이터를 기반으로 법원 제출 서류를 생성합니다.</p>
@@ -220,13 +375,13 @@ export default function ClientDetailPage() {
         )}
 
         {/* 메모 */}
-        {tab === 5 && (
+        {tab === 6 && (
           <div className="rounded-xl border border-gray-200 bg-white p-6">
             <h2 className="mb-4 text-lg font-bold text-gray-900">메모</h2>
             {client.memo ? (
               <p className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{client.memo}</p>
             ) : (
-              <p className="text-sm text-gray-400">작성된 메모가 없습니다</p>
+              <p className="text-sm text-gray-600">작성된 메모가 없습니다</p>
             )}
           </div>
         )}

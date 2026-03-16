@@ -13,9 +13,10 @@ const DOC_ICONS: Record<DocType, typeof FileText> = {
   income_list: DollarSign,
   application: FileText,
   repay_plan: Calculator,
+  statement: FileText,
 };
 
-const docTypes: DocType[] = ['debt_list', 'asset_list', 'income_list', 'application', 'repay_plan'];
+const docTypes: DocType[] = ['debt_list', 'asset_list', 'income_list', 'application', 'repay_plan', 'statement'];
 
 export default function DocSelector({ selected, onSelect }: DocSelectorProps) {
   return (
@@ -30,7 +31,7 @@ export default function DocSelector({ selected, onSelect }: DocSelectorProps) {
             className={`flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               isSelected
                 ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
-                : 'border-gray-700 bg-[#111827] text-gray-300 hover:border-gray-500'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-500'
             }`}
           >
             <Icon size={16} />

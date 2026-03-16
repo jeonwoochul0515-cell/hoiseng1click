@@ -13,7 +13,7 @@ export function AssetPanel({ assets }: AssetPanelProps) {
   if (assets.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 py-12">
-        <p className="text-sm text-gray-400">등록된 재산이 없습니다</p>
+        <p className="text-sm text-gray-600">등록된 재산이 없습니다</p>
       </div>
     );
   }
@@ -36,7 +36,7 @@ export function AssetPanel({ assets }: AssetPanelProps) {
         <tbody className="divide-y divide-gray-100">
           {assets.map((asset, i) => (
             <tr key={asset.id} className="hover:bg-gray-50/50">
-              <td className="px-4 py-3 text-center text-gray-400">{i + 1}</td>
+              <td className="px-4 py-3 text-center text-gray-600">{i + 1}</td>
               <td className="px-4 py-3 font-medium text-gray-900">{asset.name}</td>
               <td className="px-4 py-3">
                 <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">

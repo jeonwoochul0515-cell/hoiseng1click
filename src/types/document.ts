@@ -1,4 +1,4 @@
-export type DocType = 'debt_list' | 'asset_list' | 'income_list' | 'application' | 'repay_plan';
+export type DocType = 'debt_list' | 'asset_list' | 'income_list' | 'application' | 'repay_plan' | 'statement';
 export type DocFormat = 'docx' | 'hwpx';
 
 export interface DocGenerateRequest {
@@ -20,4 +20,5 @@ export const DOC_LABELS: Record<DocType, string> = {
   income_list: '수입지출 목록',
   application: '개인회생 신청서',
   repay_plan: '변제계획안',
+  statement: '진술서',
 };

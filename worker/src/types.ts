@@ -3,6 +3,8 @@ export interface Env {
   TOKEN_CACHE: KVNamespace;
   CODEF_CLIENT_ID: string;
   CODEF_CLIENT_SECRET: string;
+  CODEF_PUBLIC_KEY: string;
+  CODEF_API_HOST?: string;
   FIREBASE_PROJECT_ID: string;
   PUBLIC_DATA_API_KEY: string;
 }

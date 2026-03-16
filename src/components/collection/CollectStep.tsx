@@ -9,10 +9,11 @@ interface CollectStepProps {
 
 export default function CollectStep({ clientId }: CollectStepProps) {
   const {
-    selectedBanks, authMethod, credentials,
+    selectedBanks, credentials, connectedId, provider,
     progress, setProgress,
     bankStatuses, setBankStatus,
     setResult, setError, setStep, error,
+    setAuthStatus,
   } = useCollectionStore();
 
   const startedRef = useRef(false);
@@ -29,29 +30,66 @@ export default function CollectStep({ clientId }: CollectStepProps) {
   }, []);
 
   async function startCollection() {
+    // connectedId가 없으면 인증 단계로 돌아가기
+    if (!connectedId) {
+      setError('인증이 완료되지 않았습니다. 인증을 먼저 진행해주세요.');
+      selectedBanks.forEach((bank) => setBankStatus(bank, 'error'));
+      return;
+    }
+
     try {
       // Simulate per-bank progress while the actual API call runs
       const simulationHandle = simulateProgress();
 
-      const result = await workerApi.codefCollect({
+      // provider 매핑: store의 provider 값 사용 (하드코딩 제거)
+      const providerMap: Record<string, string> = {
+        '1': 'kakao', '5': 'pass', '6': 'naver', '8': 'toss',
+        '4': 'kb', '2': 'payco',
+      };
+      const authMethod = providerMap[provider] || 'kakao';
+
+      const raw = await workerApi.codefCollect({
         clientId,
-        authMethod,
+        authMethod: authMethod as any,
         credentials,
         banks: selectedBanks,
-      });
+        connectedId,
+      } as any);
 
       // Stop simulation and finalize
       clearInterval(simulationHandle);
       setProgress(100);
       selectedBanks.forEach((bank) => setBankStatus(bank, 'done'));
-      setResult(result);
+
+      // 서버 응답 필드명 변환 (debtCount→totalDebtCount 등)
+      const summary = raw.summary as any;
+      const normalizedResult = {
+        ...raw,
+        summary: {
+          totalDebt: summary.totalDebt ?? summary.debtTotal ?? 0,
+          totalDebtCount: summary.totalDebtCount ?? summary.debtCount ?? 0,
+          totalAsset: summary.totalAsset ?? summary.assetTotal ?? 0,
+          totalAssetCount: summary.totalAssetCount ?? summary.assetCount ?? 0,
+        },
+      };
+      setResult(normalizedResult);
 
       // Auto-advance after a brief delay
       setTimeout(() => setStep(4), 800);
     } catch (err) {
-      // On real API failure, fall back to simulated demo data
-      console.warn('CODEF API 호출 실패, 시뮬레이션 모드로 전환:', err);
-      await runSimulation();
+      console.error('CODEF API 호출 실패:', err);
+      const msg = err instanceof Error ? err.message : 'CODEF API 호출에 실패했습니다.';
+
+      // 인증 관련 에러인지 판별
+      const isAuthError = msg.includes('인증') || msg.includes('OAuth') || msg.includes('401') || msg.includes('connectedId');
+      if (isAuthError) {
+        setError(`인증이 만료되었거나 유효하지 않습니다.\n인증 단계로 돌아가서 다시 인증해주세요.`);
+      } else {
+        setError(`금융데이터 수집에 실패했습니다. ${msg}`);
+      }
+
+      setProgress(0);
+      selectedBanks.forEach((bank) => setBankStatus(bank, 'error'));
     }
   }
 
@@ -76,73 +114,6 @@ export default function CollectStep({ clientId }: CollectStepProps) {
         }
       }
     }, 400);
-  }
-
-  async function runSimulation() {
-    const total = selectedBanks.length;
-
-    for (let i = 0; i < total; i++) {
-      const bank = selectedBanks[i];
-      setBankStatus(bank, 'collecting');
-
-      // Simulate collecting time
-      await new Promise((r) => setTimeout(r, 600 + Math.random() * 800));
-
-      // Random error for demo (5% chance)
-      if (Math.random() < 0.05) {
-        setBankStatus(bank, 'error');
-      } else {
-        setBankStatus(bank, 'done');
-      }
-
-      setProgress(Math.round(((i + 1) / total) * 100));
-    }
-
-    // Build simulated result
-    const demoDebts = selectedBanks.slice(0, 3).map((bank, idx) => ({
-      id: `d-${idx}`,
-      name: `${bank} 대출`,
-      creditor: bank,
-      type: '무담보' as const,
-      amount: Math.round((5000000 + Math.random() * 30000000) / 10000) * 10000,
-      rate: Math.round((3 + Math.random() * 12) * 10) / 10,
-      monthly: Math.round((100000 + Math.random() * 500000) / 1000) * 1000,
-      source: 'codef' as const,
-    }));
-
-    const demoAssets = [
-      {
-        id: 'a-0',
-        name: '보통예금',
-        type: '예금' as const,
-        rawValue: Math.round(Math.random() * 3000000),
-        liquidationRate: 100,
-        mortgage: 0,
-        value: 0,
-        source: 'codef' as const,
-      },
-    ];
-    demoAssets[0].value = demoAssets[0].rawValue;
-
-    const totalDebt = demoDebts.reduce((s, d) => s + d.amount, 0);
-    const totalAsset = demoAssets.reduce((s, a) => s + a.value, 0);
-
-    const result = {
-      debts: demoDebts,
-      assets: demoAssets,
-      summary: {
-        totalDebt,
-        totalDebtCount: demoDebts.length,
-        totalAsset,
-        totalAssetCount: demoAssets.length,
-      },
-    };
-
-    setResult(result);
-    setError(null);
-
-    // Auto-advance
-    setTimeout(() => setStep(4), 800);
   }
 
   const statusIcon = (status: 'waiting' | 'collecting' | 'done' | 'error') => {
@@ -170,12 +141,12 @@ export default function CollectStep({ clientId }: CollectStepProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Overall Progress */}
-      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-700 p-6 space-y-4">
+      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">금융데이터 수집 중</h2>
+          <h2 className="text-lg font-semibold text-gray-900">금융데이터 수집 중</h2>
           <span className="text-sm font-mono text-[var(--color-brand-gold)]">{progress}%</span>
         </div>
-        <div className="h-3 rounded-full bg-gray-800 overflow-hidden">
+        <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
           <div
             className="h-full rounded-full bg-[var(--color-brand-gold)] transition-all duration-300"
             style={{ width: `${progress}%` }}
@@ -187,19 +158,19 @@ export default function CollectStep({ clientId }: CollectStepProps) {
       </div>
 
       {/* Per-bank status */}
-      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-700 p-6 space-y-3">
-        <h3 className="text-white font-semibold mb-2">기관별 수집 현황</h3>
+      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 p-6 space-y-3">
+        <h3 className="text-gray-900 font-semibold mb-2">기관별 수집 현황</h3>
         <div className="space-y-2">
           {selectedBanks.map((bank) => {
             const status = bankStatuses[bank] ?? 'waiting';
             return (
               <div
                 key={bank}
-                className="flex items-center justify-between rounded-lg bg-gray-800/50 px-4 py-3"
+                className="flex items-center justify-between rounded-lg bg-gray-100/50 px-4 py-3"
               >
                 <div className="flex items-center gap-3">
                   {statusIcon(status)}
-                  <span className="text-sm text-gray-200">{bank}</span>
+                  <span className="text-sm text-gray-700">{bank}</span>
                 </div>
                 <span className={`text-xs font-medium ${
                   status === 'done' ? 'text-emerald-400' :
@@ -217,8 +188,34 @@ export default function CollectStep({ clientId }: CollectStepProps) {
 
       {/* Error display */}
       {error && (
-        <div className="rounded-xl bg-red-900/20 border border-red-800 p-4">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="rounded-xl bg-red-50 border border-red-200 p-4 space-y-3">
+          <p className="text-sm text-red-500 whitespace-pre-line">{error}</p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setError(null);
+                setAuthStatus('idle');
+                setStep(2);
+              }}
+              className="rounded-lg px-4 py-2 text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              인증 단계로
+            </button>
+            {connectedId && (
+              <button
+                onClick={() => {
+                  setError(null);
+                  setProgress(0);
+                  selectedBanks.forEach((bank) => setBankStatus(bank, 'waiting'));
+                  startedRef.current = false;
+                  startCollection();
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium bg-[var(--color-brand-gold)] text-[var(--color-brand-navy)] hover:brightness-110 transition-colors"
+              >
+                다시 시도
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

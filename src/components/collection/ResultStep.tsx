@@ -25,27 +25,27 @@ export default function ResultStep({ clientId }: ResultStepProps) {
     <div className="mx-auto max-w-3xl space-y-6">
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-700 p-6">
-          <p className="text-sm text-gray-400 mb-1">총 채무</p>
+        <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 p-6">
+          <p className="text-sm text-gray-600 mb-1">총 채무</p>
           <p className="text-2xl font-bold text-red-400">{formatKRW(summary.totalDebt)}</p>
           <p className="text-xs text-gray-500 mt-1">{summary.totalDebtCount}건</p>
         </div>
-        <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-700 p-6">
-          <p className="text-sm text-gray-400 mb-1">총 재산</p>
+        <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 p-6">
+          <p className="text-sm text-gray-600 mb-1">총 재산</p>
           <p className="text-2xl font-bold text-emerald-400">{formatKRW(summary.totalAsset)}</p>
           <p className="text-xs text-gray-500 mt-1">{summary.totalAssetCount}건</p>
         </div>
       </div>
 
       {/* Debt Table */}
-      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-700 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700">
-          <h3 className="text-white font-semibold">채무 내역</h3>
+      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-gray-900 font-semibold">채무 내역</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-400 text-xs uppercase border-b border-gray-700/50">
+              <tr className="text-gray-600 text-xs uppercase border-b border-gray-200/50">
                 <th className="text-left px-6 py-3 font-medium">채권자</th>
                 <th className="text-left px-6 py-3 font-medium">유형</th>
                 <th className="text-right px-6 py-3 font-medium">금액</th>
@@ -54,21 +54,21 @@ export default function ResultStep({ clientId }: ResultStepProps) {
             </thead>
             <tbody>
               {debts.map((debt: any, idx: number) => (
-                <tr key={debt.id ?? idx} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
-                  <td className="px-6 py-3 text-gray-200">{debt.creditor}</td>
+                <tr key={debt.id ?? idx} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                  <td className="px-6 py-3 text-gray-700">{debt.creditor}</td>
                   <td className="px-6 py-3">
                     <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
                       debt.type === '담보'
-                        ? 'bg-blue-900/30 text-blue-400'
+                        ? 'bg-blue-50 text-blue-400'
                         : debt.type === '사채'
-                        ? 'bg-red-900/30 text-red-400'
-                        : 'bg-gray-800 text-gray-400'
+                        ? 'bg-red-50 text-red-400'
+                        : 'bg-gray-100 text-gray-600'
                     }`}>
                       {debt.type}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-right text-gray-200 font-mono">{formatKRW(debt.amount)}</td>
-                  <td className="px-6 py-3 text-right text-gray-400 font-mono">{debt.rate}%</td>
+                  <td className="px-6 py-3 text-right text-gray-700 font-mono">{formatKRW(debt.amount)}</td>
+                  <td className="px-6 py-3 text-right text-gray-600 font-mono">{debt.rate}%</td>
                 </tr>
               ))}
               {debts.length === 0 && (
@@ -82,14 +82,14 @@ export default function ResultStep({ clientId }: ResultStepProps) {
       </div>
 
       {/* Asset Table */}
-      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-700 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700">
-          <h3 className="text-white font-semibold">재산 내역</h3>
+      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-gray-900 font-semibold">재산 내역</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-400 text-xs uppercase border-b border-gray-700/50">
+              <tr className="text-gray-600 text-xs uppercase border-b border-gray-200/50">
                 <th className="text-left px-6 py-3 font-medium">재산명</th>
                 <th className="text-left px-6 py-3 font-medium">종류</th>
                 <th className="text-right px-6 py-3 font-medium">청산가치</th>
@@ -97,14 +97,14 @@ export default function ResultStep({ clientId }: ResultStepProps) {
             </thead>
             <tbody>
               {assets.map((asset: any, idx: number) => (
-                <tr key={asset.id ?? idx} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
-                  <td className="px-6 py-3 text-gray-200">{asset.name}</td>
+                <tr key={asset.id ?? idx} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                  <td className="px-6 py-3 text-gray-700">{asset.name}</td>
                   <td className="px-6 py-3">
-                    <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-gray-800 text-gray-400">
+                    <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">
                       {asset.type}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-right text-gray-200 font-mono">{formatKRW(asset.value)}</td>
+                  <td className="px-6 py-3 text-right text-gray-700 font-mono">{formatKRW(asset.value)}</td>
                 </tr>
               ))}
               {assets.length === 0 && (
@@ -122,7 +122,7 @@ export default function ResultStep({ clientId }: ResultStepProps) {
         <button
           onClick={() => navigate(`/clients/${clientId}`)}
           className="flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium
-            bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors"
+            bg-gray-100 text-gray-700 hover:bg-gray-100 transition-colors"
         >
           <PlusCircle className="h-4 w-4" />
           재산 추가 입력

@@ -24,9 +24,9 @@ export default function ConsentStep({ clientName }: ConsentStepProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Info */}
-      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-700 p-6">
-        <h2 className="text-lg font-semibold text-white mb-2">금융데이터 수집 동의</h2>
-        <p className="text-sm text-gray-400 leading-relaxed">
+      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">금융데이터 수집 동의</h2>
+        <p className="text-sm text-gray-600 leading-relaxed">
           의뢰인 <span className="text-[var(--color-brand-gold)] font-medium">{clientName}</span>님의
           개인회생 신청을 위한 금융데이터를 CODEF를 통해 수집합니다.
           아래 동의 항목을 모두 확인해 주세요.
@@ -34,19 +34,19 @@ export default function ConsentStep({ clientName }: ConsentStepProps) {
       </div>
 
       {/* Checkboxes */}
-      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-700 p-6 space-y-4">
+      <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 p-6 space-y-4">
         {/* Select All */}
         <button
           type="button"
           onClick={handleToggleAll}
-          className="flex items-center gap-3 w-full text-left pb-4 border-b border-gray-700"
+          className="flex items-center gap-3 w-full text-left pb-4 border-b border-gray-200"
         >
           {allChecked ? (
             <CheckSquare className="h-5 w-5 text-[var(--color-brand-gold)] shrink-0" />
           ) : (
             <Square className="h-5 w-5 text-gray-500 shrink-0" />
           )}
-          <span className="text-white font-semibold">전체 동의</span>
+          <span className="text-gray-900 font-semibold">전체 동의</span>
         </button>
 
         {/* Individual */}
@@ -62,7 +62,7 @@ export default function ConsentStep({ clientName }: ConsentStepProps) {
             ) : (
               <Square className="h-5 w-5 text-gray-500 shrink-0 mt-0.5" />
             )}
-            <span className={consents[i] ? 'text-gray-200' : 'text-gray-400'}>{label}</span>
+            <span className={consents[i] ? 'text-gray-700' : 'text-gray-600'}>{label}</span>
           </button>
         ))}
       </div>
@@ -75,7 +75,7 @@ export default function ConsentStep({ clientName }: ConsentStepProps) {
           className="rounded-lg px-8 py-3 font-semibold text-sm transition-colors
             enabled:bg-[var(--color-brand-gold)] enabled:text-[var(--color-brand-navy)]
             enabled:hover:brightness-110
-            disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+            disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
         >
           다음
         </button>
