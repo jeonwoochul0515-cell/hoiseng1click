@@ -149,6 +149,21 @@ app.post("/codef/statement-data-v2", statementHelpers_1.handleStatementDataV2);
 app.post("/ai/generate", aiWriter_1.handleAiGenerate);
 // 서류 OCR 처리
 app.post("/doc/ocr", ocrProcessor_1.handleDocOcr);
+// ── 개인회생 서류 자동수집 (정부24/대법원/위택스/홈택스) ──
+app.post("/public/resident-registration", codefPublic_1.handleResidentRegistration);
+app.post("/public/resident-abstract", codefPublic_1.handleResidentAbstract);
+app.post("/public/family-relation", codefPublic_1.handleFamilyRelation);
+app.post("/public/property-registry", codefPublic_1.handlePropertyRegistry);
+app.post("/public/tax-payment-cert", codefPublic_1.handleTaxPaymentCert);
+app.post("/public/wage-statement", codefPublic_1.handleWageStatement);
+app.post("/public/vat-cert", codefPublic_1.handleVatCert);
+app.post("/public/financial-statement", codefPublic_1.handleFinancialStatement);
+app.post("/public/local-tax-assessment", codefPublic_1.handleLocalTaxAssessment);
+app.post("/public/local-tax-payment", codefPublic_1.handleLocalTaxPayment);
+app.post("/public/vehicle-registration", codefPublic_1.handleVehicleRegistration);
+app.post("/public/local-tax-cert", codefPublic_1.handleLocalTaxCert);
+app.post("/public/national-tax-cert", codefPublic_1.handleNationalTaxCert);
+app.post("/public/four-insurance", codefPublic_1.handleFourInsurance);
 // ── SSN 암호화/복호화 (주민등록번호 보호) ──
 app.post("/crypto/encrypt-ssn", (req, res) => {
     try {

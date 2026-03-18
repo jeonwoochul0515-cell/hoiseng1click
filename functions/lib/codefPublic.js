@@ -7,6 +7,20 @@ exports.handleHealthInsurance = handleHealthInsurance;
 exports.handleHealthInsurancePremium = handleHealthInsurancePremium;
 exports.handleNationalPension = handleNationalPension;
 exports.handlePublicDataCollect = handlePublicDataCollect;
+exports.handleResidentRegistration = handleResidentRegistration;
+exports.handleResidentAbstract = handleResidentAbstract;
+exports.handleFamilyRelation = handleFamilyRelation;
+exports.handlePropertyRegistry = handlePropertyRegistry;
+exports.handleTaxPaymentCert = handleTaxPaymentCert;
+exports.handleWageStatement = handleWageStatement;
+exports.handleVatCert = handleVatCert;
+exports.handleFinancialStatement = handleFinancialStatement;
+exports.handleLocalTaxAssessment = handleLocalTaxAssessment;
+exports.handleLocalTaxPayment = handleLocalTaxPayment;
+exports.handleVehicleRegistration = handleVehicleRegistration;
+exports.handleLocalTaxCert = handleLocalTaxCert;
+exports.handleNationalTaxCert = handleNationalTaxCert;
+exports.handleFourInsurance = handleFourInsurance;
 // ---------------------------------------------------------------------------
 // CODEF OAuth & 호출 헬퍼 (codefProxy.ts에서 export되지 않으므로 자체 정의)
 // ---------------------------------------------------------------------------
@@ -450,6 +464,262 @@ async function handlePublicDataCollect(req, res) {
     }
     catch (err) {
         res.status(500).json({ error: err.message ?? "공공기관 데이터 통합 조회 실패" });
+    }
+}
+// ---------------------------------------------------------------------------
+// 정부24 / 대법원 / 위택스 / 홈택스 추가 API (개인회생 서류 자동 수집)
+// ---------------------------------------------------------------------------
+/** 정부24 — 주민등록등본 교부 */
+async function handleResidentRegistration(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/pp/gov24-resident-register", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "주민등록등본 조회 실패" });
+    }
+}
+/** 정부24 — 주민등록초본 교부 */
+async function handleResidentAbstract(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/pp/gov24-resident-abstract", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "주민등록초본 조회 실패" });
+    }
+}
+/** 대법원 — 가족관계등록부 발급 */
+async function handleFamilyRelation(req, res) {
+    try {
+        const { connectedId, identity, certType } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/ef/family-relation-certificate", {
+            connectedId, identity: identity ?? "",
+            certType: certType ?? "1", // 1: 가족관계증명서, 2: 혼인관계증명서
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "가족관계등록부 발급 실패" });
+    }
+}
+/** 대법원 — 부동산등기부등본 열람/발급 */
+async function handlePropertyRegistry(req, res) {
+    try {
+        const { connectedId, address, propertyType } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/ef/real-estate-register", {
+            connectedId, address, propertyType: propertyType ?? "0",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "부동산등기부등본 조회 실패" });
+    }
+}
+/** 홈택스 — 납세증명서 */
+async function handleTaxPaymentCert(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/tax-payment", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "납세증명서 조회 실패" });
+    }
+}
+/** 홈택스 — 근로소득 지급명세서 */
+async function handleWageStatement(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/wage-statement", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "근로소득 지급명세서 조회 실패" });
+    }
+}
+/** 홈택스 — 부가세과세표준증명 */
+async function handleVatCert(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/vat-certificate", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "부가세과세표준증명 조회 실패" });
+    }
+}
+/** 홈택스 — 재무제표 */
+async function handleFinancialStatement(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/financial-statement", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "재무제표 조회 실패" });
+    }
+}
+/** 위택스 — 지방세 부과내역 */
+async function handleLocalTaxAssessment(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/pp/wetax-local-tax-assessment", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "지방세 부과내역 조회 실패" });
+    }
+}
+/** 위택스 — 지방세 납부결과 */
+async function handleLocalTaxPayment(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/pp/wetax-local-tax-payment", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "지방세 납부결과 조회 실패" });
+    }
+}
+/** 정부24 — 자동차등록원부(갑) */
+async function handleVehicleRegistration(req, res) {
+    try {
+        const { connectedId, identity, carNumber } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/pp/gov24-vehicle-registration", {
+            connectedId, identity: identity ?? "", carNumber: carNumber ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "자동차등록원부 조회 실패" });
+    }
+}
+/** 정부24 — 지방세 납세증명 */
+async function handleLocalTaxCert(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/pp/gov24-local-tax-cert", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "지방세 납세증명 조회 실패" });
+    }
+}
+/** 정부24 — 개인 납세증명서 (국세) */
+async function handleNationalTaxCert(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/pp/gov24-national-tax-cert", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "납세증명서 조회 실패" });
+    }
+}
+/** 4대보험 — 사업장 가입자명부 */
+async function handleFourInsurance(req, res) {
+    try {
+        const { connectedId, identity } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId 필요" });
+            return;
+        }
+        const token = await getToken();
+        const result = await callCodef(token, "/v1/kr/public/pp/four-insurance-members", {
+            connectedId, identity: identity ?? "",
+        });
+        res.json({ success: true, data: result });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "4대보험 조회 실패" });
     }
 }
 //# sourceMappingURL=codefPublic.js.map

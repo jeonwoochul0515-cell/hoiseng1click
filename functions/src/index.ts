@@ -4,7 +4,7 @@ import express from "express";
 import { handleCodefCollect, handleIntakeCodefCollect, handleStatementData, handleSimpleAuthStart, handleSimpleAuthComplete } from "./codefProxy";
 import { handlePropertyLookup, handleVehicleLookup } from "./publicDataProxy";
 import { handleDocGenerate } from "./docGenerator";
-import { handleIncomeProof, handleWithholdingTax, handleBusinessRegistration, handleHealthInsurance, handleHealthInsurancePremium, handleNationalPension, handlePublicDataCollect } from "./codefPublic";
+import { handleIncomeProof, handleWithholdingTax, handleBusinessRegistration, handleHealthInsurance, handleHealthInsurancePremium, handleNationalPension, handlePublicDataCollect, handleResidentRegistration, handleResidentAbstract, handleFamilyRelation, handlePropertyRegistry, handleTaxPaymentCert, handleWageStatement, handleVatCert, handleFinancialStatement, handleLocalTaxAssessment, handleLocalTaxPayment, handleVehicleRegistration, handleLocalTaxCert, handleNationalTaxCert, handleFourInsurance } from "./codefPublic";
 import { handleCardApprovals, handleCardBills, handleBankTransactions, handleStockAccounts, handleStockAssets, handleStockTransactions, handleExtendedFinanceCollect } from "./codefFinance";
 import { handleLandRegister, handleBuildingRegister, handleBuildingArea } from "./publicDataRegisters";
 import { handleStatementDataV2 } from "./statementHelpers";
@@ -116,6 +116,22 @@ app.post("/ai/generate", handleAiGenerate);
 
 // 서류 OCR 처리
 app.post("/doc/ocr", handleDocOcr);
+
+// ── 개인회생 서류 자동수집 (정부24/대법원/위택스/홈택스) ──
+app.post("/public/resident-registration", handleResidentRegistration);
+app.post("/public/resident-abstract", handleResidentAbstract);
+app.post("/public/family-relation", handleFamilyRelation);
+app.post("/public/property-registry", handlePropertyRegistry);
+app.post("/public/tax-payment-cert", handleTaxPaymentCert);
+app.post("/public/wage-statement", handleWageStatement);
+app.post("/public/vat-cert", handleVatCert);
+app.post("/public/financial-statement", handleFinancialStatement);
+app.post("/public/local-tax-assessment", handleLocalTaxAssessment);
+app.post("/public/local-tax-payment", handleLocalTaxPayment);
+app.post("/public/vehicle-registration", handleVehicleRegistration);
+app.post("/public/local-tax-cert", handleLocalTaxCert);
+app.post("/public/national-tax-cert", handleNationalTaxCert);
+app.post("/public/four-insurance", handleFourInsurance);
 
 // ── SSN 암호화/복호화 (주민등록번호 보호) ──
 app.post("/crypto/encrypt-ssn", (req, res) => {

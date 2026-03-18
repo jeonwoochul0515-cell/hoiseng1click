@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCollectionStore } from '@/store/collectionStore';
-import { CheckSquare, Square, Smartphone, Loader2, CheckCircle2, RefreshCw, AlertCircle, KeyRound, Shield } from 'lucide-react';
+import { CheckSquare, Square, Smartphone, Loader2, CheckCircle2, RefreshCw, AlertCircle, KeyRound, Shield, FileText } from 'lucide-react';
 import { workerApi } from '@/api/worker';
 
 /** 인증 방법 */
@@ -53,8 +53,11 @@ export default function AuthStep() {
 
   const [authError, setAuthError] = useState('');
   const [authMethod, setAuthMethod] = useState<AuthMethod>('cert');  // 기본: 공동인증서
-  const [certId, setCertId] = useState('');       // 공동인증서 ID
-  const [certPw, setCertPw] = useState('');       // 공동인증서 비밀번호
+  const [certPw, setCertPw] = useState('');           // 인증서 비밀번호
+  const [derFile, setDerFile] = useState('');         // signCert.der (Base64)
+  const [keyFile, setKeyFile] = useState('');         // signPri.key (Base64)
+  const [derFileName, setDerFileName] = useState('');
+  const [keyFileName, setKeyFileName] = useState('');
   const [remainingSec, setRemainingSec] = useState(0);
   const [loading, setLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -180,8 +183,24 @@ export default function AuthStep() {
   }
 
   // 공동인증서 인증 요청
+  // 파일을 Base64로 읽기
+  function readFileAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // data:application/octet-stream;base64,XXXX → XXXX 부분만
+        const base64 = result.split(',')[1] || result;
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function handleCertAuth() {
-    if (!certId.trim()) { setAuthError('인증서 ID를 입력해주세요.'); return; }
+    if (!derFile) { setAuthError('인증서 파일(signCert.der)을 선택해주세요.'); return; }
+    if (!keyFile) { setAuthError('개인키 파일(signPri.key)을 선택해주세요.'); return; }
     if (!certPw.trim()) { setAuthError('인증서 비밀번호를 입력해주세요.'); return; }
     if (selectedBanks.length === 0) { setAuthError('금융기관을 1개 이상 선택해주세요.'); return; }
 
@@ -190,13 +209,18 @@ export default function AuthStep() {
     setAuthStatus('requesting');
 
     try {
-      console.log('[AuthStep] 공동인증서 인증 요청');
+      console.log('[AuthStep] 공동인증서 인증 요청 (파일 업로드 방식)');
 
-      // 공동인증서는 CODEF /v1/account/create에 loginType "0"으로 직접 호출
       const result = await workerApi.codefCollect({
         clientId: '',
         authMethod: 'cert',
-        credentials: { loginType: 'cert', id: certId.trim(), password: certPw.trim() },
+        credentials: {
+          loginType: 'cert',
+          id: '',
+          password: certPw.trim(),
+          derFile,
+          keyFile,
+        },
         banks: selectedBanks,
       } as any);
 
@@ -206,11 +230,10 @@ export default function AuthStep() {
         setConnectedId(result.connectedId);
         useCollectionStore.getState().setCredentials({
           loginType: 'cert',
-          id: certId.trim(),
+          id: '',
           password: certPw.trim(),
         });
         setAuthStatus('done');
-        // 수집 결과도 바로 저장
         if (result.debts || result.assets) {
           useCollectionStore.getState().setResult({
             debts: result.debts || [],
@@ -220,7 +243,7 @@ export default function AuthStep() {
           });
         }
       } else {
-        setAuthError('인증에 실패했습니다. 인증서 정보를 확인해주세요.');
+        setAuthError('인증에 실패했습니다. 인증서 파일과 비밀번호를 확인해주세요.');
         setAuthStatus('error');
       }
     } catch (err: any) {
@@ -308,7 +331,7 @@ export default function AuthStep() {
     }
     useCollectionStore.getState().setCredentials({
       loginType: authMethod === 'cert' ? 'cert' : 'simple',
-      id: authMethod === 'cert' ? certId : phoneNo,
+      id: phoneNo,
       password: authMethod === 'cert' ? certPw : birthDate,
     });
     setStep(3);
@@ -365,34 +388,71 @@ export default function AuthStep() {
             공동인증서 인증
           </h3>
           <p className="text-xs text-gray-500">
-            의뢰인의 공동인증서(구 공인인증서)로 인증합니다. PC에 설치된 인증서를 사용하세요.
+            의뢰인의 공동인증서(구 공인인증서) 파일로 인증합니다. USB 또는 PC에 저장된 인증서 파일을 선택하세요.
           </p>
           <div className="grid grid-cols-1 gap-3">
+            {/* DER 파일 */}
             <div>
-              <label className="block text-sm text-gray-600 mb-1">인증서 ID *</label>
-              <input type="text" value={certId} onChange={e => setCertId(e.target.value)}
-                placeholder="인증서에 등록된 ID" disabled={isLocked}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none disabled:opacity-50 disabled:bg-gray-50" />
+              <label className="block text-sm text-gray-600 mb-1">인증서 파일 (signCert.der) *</label>
+              <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
+                derFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
+              } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                <FileText size={16} />
+                {derFileName || '파일 선택...'}
+                <input type="file" accept=".der,.cer,.crt" className="hidden" disabled={isLocked}
+                  onChange={async e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      const b64 = await readFileAsBase64(f);
+                      setDerFile(b64);
+                      setDerFileName(f.name);
+                    }
+                  }} />
+              </label>
             </div>
+            {/* KEY 파일 */}
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">개인키 파일 (signPri.key) *</label>
+              <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
+                keyFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
+              } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                <KeyRound size={16} />
+                {keyFileName || '파일 선택...'}
+                <input type="file" accept=".key,.pri" className="hidden" disabled={isLocked}
+                  onChange={async e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      const b64 = await readFileAsBase64(f);
+                      setKeyFile(b64);
+                      setKeyFileName(f.name);
+                    }
+                  }} />
+              </label>
+            </div>
+            {/* 비밀번호 */}
             <div>
               <label className="block text-sm text-gray-600 mb-1">인증서 비밀번호 *</label>
               <input type="password" value={certPw} onChange={e => setCertPw(e.target.value)}
-                placeholder="인증서 비밀번호" disabled={isLocked}
+                placeholder="공동인증서 비밀번호" disabled={isLocked}
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none disabled:opacity-50 disabled:bg-gray-50" />
             </div>
           </div>
 
           <div className="rounded-lg bg-blue-50 p-3">
             <p className="text-xs text-blue-700">
-              <strong>안내:</strong> 공동인증서 인증 시 선택된 모든 금융기관의 데이터를 한 번에 수집합니다.
-              인증서는 서버에 저장되지 않으며 1회 인증에만 사용됩니다.
+              <strong>안내:</strong> 인증서 파일은 서버에 저장되지 않으며 1회 인증에만 사용됩니다.
+              인증 완료 후 금융데이터 + 공공서류가 한 번에 수집됩니다.
             </p>
+          </div>
+
+          <div className="text-xs text-gray-400">
+            인증서 위치: <code>C:\Users\이름\AppData\LocalLow\NPKI\...</code> 또는 USB
           </div>
 
           {authStatus !== 'done' && (
             <button
               onClick={handleCertAuth}
-              disabled={loading || !certId.trim() || !certPw.trim() || selectedBanks.length === 0}
+              disabled={loading || !derFile || !keyFile || !certPw.trim() || selectedBanks.length === 0}
               className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (

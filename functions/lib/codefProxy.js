@@ -130,11 +130,20 @@ function buildAccountList(banks, credentials) {
         const org = ORG_MAP[bankName];
         if (!org)
             continue;
-        result.push({
+        const account = {
             countryCode: "KR", businessType: org.businessType, clientType: "P",
             organization: org.code, loginType: codefLoginType,
-            id: credentials.id, password: encPw,
-        });
+            password: encPw,
+        };
+        // 공동인증서 (loginType 0): derFile + keyFile 추가, id 불필요
+        if (codefLoginType === "0" && credentials.derFile && credentials.keyFile) {
+            account.derFile = credentials.derFile;
+            account.keyFile = credentials.keyFile;
+        }
+        else {
+            account.id = credentials.id;
+        }
+        result.push(account);
     }
     return result;
 }

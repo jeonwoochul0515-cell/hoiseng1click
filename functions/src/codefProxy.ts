@@ -102,11 +102,12 @@ interface CodefAccount {
   countryCode: string; businessType: string; clientType: string;
   organization: string; loginType: string; id?: string; password?: string;
   loginTypeLevel?: string; userName?: string; phoneNo?: string; identity?: string;
+  derFile?: string; keyFile?: string;
 }
 
 function buildAccountList(
   banks: string[],
-  credentials: { loginType: string; id: string; password: string },
+  credentials: { loginType: string; id: string; password: string; derFile?: string; keyFile?: string },
 ): CodefAccount[] {
   const encPw = encryptRSA(credentials.password);
   const codefLoginType = LOGIN_TYPE_MAP[credentials.loginType] ?? "1";
@@ -114,11 +115,19 @@ function buildAccountList(
   for (const bankName of banks) {
     const org = ORG_MAP[bankName];
     if (!org) continue;
-    result.push({
+    const account: CodefAccount = {
       countryCode: "KR", businessType: org.businessType, clientType: "P",
       organization: org.code, loginType: codefLoginType,
-      id: credentials.id, password: encPw,
-    });
+      password: encPw,
+    };
+    // 공동인증서 (loginType 0): derFile + keyFile 추가, id 불필요
+    if (codefLoginType === "0" && credentials.derFile && credentials.keyFile) {
+      account.derFile = credentials.derFile;
+      account.keyFile = credentials.keyFile;
+    } else {
+      account.id = credentials.id;
+    }
+    result.push(account);
   }
   return result;
 }
@@ -331,7 +340,7 @@ export async function handleCodefCollect(req: Request, res: Response) {
   try {
     const body = req.body as {
       connectedId?: string; clientId?: string; authMethod?: string;
-      credentials: { loginType: string; id: string; password: string };
+      credentials: { loginType: string; id: string; password: string; derFile?: string; keyFile?: string };
       banks?: string[];
     };
 
