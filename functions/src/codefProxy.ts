@@ -193,17 +193,25 @@ function buildAccountList(
       password: encPw,
     };
     if (codefLoginType === "0") {
-      // 공동인증서 (loginType 0): derFile + keyFile + password(RSA) 전송
-      if (credentials.pfxFile && !(credentials as any)._derKeyCache) {
-        // PFX → der+key 분리 (1회만)
-        (credentials as any)._derKeyCache = pfxToDerKey(credentials.pfxFile, credentials.password);
-      }
-      if ((credentials as any)._derKeyCache) {
-        account.derFile = (credentials as any)._derKeyCache.derFile;
-        account.keyFile = (credentials as any)._derKeyCache.keyFile;
-      } else {
-        if (credentials.derFile) account.derFile = credentials.derFile;
-        if (credentials.keyFile) account.keyFile = credentials.keyFile;
+      // 공동인증서 (loginType 0)
+      // CODEF 공동인증서 API 파라미터:
+      //   certType: "pfx" (PFX모드) 또는 "1" (der+key모드)
+      //   certFile: PFX base64 또는 der base64
+      //   keyFile: key base64 (certType "1"일 때만)
+      //   certPassword: 인증서 비밀번호 (평문, RSA 암호화 아님!)
+      delete account.password; // RSA 암호화된 password 제거
+
+      if (credentials.pfxFile) {
+        // PFX 모드
+        (account as any).certType = "pfx";
+        (account as any).certFile = credentials.pfxFile;
+        (account as any).certPassword = credentials.password; // 평문
+      } else if (credentials.derFile && credentials.keyFile) {
+        // der+key 모드
+        (account as any).certType = "1";
+        (account as any).certFile = credentials.derFile;
+        account.keyFile = credentials.keyFile;
+        (account as any).certPassword = credentials.password; // 평문
       }
     } else {
       account.id = credentials.id;
@@ -241,7 +249,9 @@ async function callCodef(token: string, endpoint: string, body: object): Promise
     });
     clearTimeout(timeout);
     const text = await res.text();
-    console.log(`[CODEF] Response ${endpoint}: ${res.status} ${text.slice(0, 300)}`);
+    const decoded = (() => { try { return decodeURIComponent(text.replace(/\+/g, " ")); } catch { return text; } })();
+    console.log(`[CODEF] Response ${endpoint}: ${res.status}`);
+    console.log(`[CODEF] Body: ${decoded.slice(0, 1000)}`);
     try { return JSON.parse(text); }
     catch { return JSON.parse(decodeURIComponent(text.replace(/\+/g, " "))); }
   } catch (err) {
