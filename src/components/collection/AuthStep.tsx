@@ -211,6 +211,7 @@ export default function AuthStep() {
     try {
       console.log('[AuthStep] 공동인증서 인증 요청 (파일 업로드 방식)');
 
+      // 서버에서 der+key → PFX 변환 후 CODEF API 호출
       const result = await workerApi.codefCollect({
         clientId: '',
         authMethod: 'cert',
@@ -222,6 +223,7 @@ export default function AuthStep() {
           keyFile,
         },
         banks: selectedBanks,
+        certAuth: true,
       } as any);
 
       console.log('[AuthStep] 공동인증서 응답:', result);

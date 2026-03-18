@@ -40,6 +40,7 @@ exports.handleSimpleAuthStart = handleSimpleAuthStart;
 exports.handleSimpleAuthComplete = handleSimpleAuthComplete;
 const crypto = __importStar(require("crypto"));
 const admin = __importStar(require("firebase-admin"));
+const forge = __importStar(require("node-forge"));
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -122,6 +123,37 @@ const ORG_MAP = {
 const LOGIN_TYPE_MAP = {
     cert: "0", finCert: "0", kakao: "1", pass: "1",
 };
+/**
+ * signCert.der + signPri.key → PFX(PKCS#12) Base64 문자열 변환
+ * CODEF API는 PFX 스트링 값으로 공동인증서를 전송합니다.
+ */
+function derKeyToPfx(derBase64, keyBase64, password) {
+    try {
+        const derBuf = Buffer.from(derBase64, "base64");
+        const keyBuf = Buffer.from(keyBase64, "base64");
+        // DER → forge 인증서
+        const derAsn1 = forge.asn1.fromDer(forge.util.createBuffer(derBuf));
+        const cert = forge.pki.certificateFromAsn1(derAsn1);
+        // KEY 파일 → forge 개인키 (한국 공동인증서는 PKCS#8 암호화된 형태)
+        const keyPem = forge.pki.encryptedPrivateKeyToPem(forge.asn1.fromDer(forge.util.createBuffer(keyBuf)));
+        const privateKey = forge.pki.decryptRsaPrivateKey(keyPem, password);
+        if (!privateKey) {
+            throw new Error("인증서 비밀번호가 올바르지 않습니다.");
+        }
+        // PFX(PKCS#12) 생성
+        const p12Asn1 = forge.pkcs12.toPkcs12Asn1(privateKey, [cert], password, {
+            algorithm: "3des",
+        });
+        const p12Der = forge.asn1.toDer(p12Asn1).getBytes();
+        const pfxBase64 = forge.util.encode64(p12Der);
+        console.log(`[CODEF] PFX 변환 성공: ${pfxBase64.length} chars`);
+        return pfxBase64;
+    }
+    catch (err) {
+        console.error("[CODEF] PFX 변환 실패:", err.message);
+        throw new Error(`인증서 변환 실패: ${err.message}`);
+    }
+}
 function buildAccountList(banks, credentials) {
     const encPw = encryptRSA(credentials.password);
     const codefLoginType = LOGIN_TYPE_MAP[credentials.loginType] ?? "1";
@@ -135,10 +167,14 @@ function buildAccountList(banks, credentials) {
             organization: org.code, loginType: codefLoginType,
             password: encPw,
         };
-        // 공동인증서 (loginType 0): derFile + keyFile 추가, id 불필요
+        // 공동인증서 (loginType 0): der+key → PFX 변환 후 전송
         if (codefLoginType === "0" && credentials.derFile && credentials.keyFile) {
+            if (!credentials._pfxCache) {
+                credentials._pfxCache = derKeyToPfx(credentials.derFile, credentials.keyFile, credentials.password);
+            }
             account.derFile = credentials.derFile;
             account.keyFile = credentials.keyFile;
+            account.pfxFile = credentials._pfxCache;
         }
         else {
             account.id = credentials.id;
