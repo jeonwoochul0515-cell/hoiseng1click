@@ -254,88 +254,8 @@ function parseAssets(accounts, insurance) {
     return assets;
 }
 // ---------------------------------------------------------------------------
-// 샌드박스 모드 감지 + 데모 데이터
 // ---------------------------------------------------------------------------
-// 샌드박스 판별: 공동인증서(PFX) 또는 connectedId가 있으면 실제 API 호출
-function isSandbox(req) {
-    // PFX 파일이 있으면 실제 인증 → 샌드박스 아님
-    if (req?.body?.credentials?.pfxFile)
-        return false;
-    if (req?.body?.credentials?.derFile)
-        return false;
-    // connectedId가 있고 sandbox- 접두사가 아니면 실제 데이터
-    if (req?.body?.connectedId && !req.body.connectedId.startsWith('sandbox-'))
-        return false;
-    // 프로덕션 호스트면 샌드박스 아님
-    const host = process.env.CODEF_API_HOST || "https://development.codef.io";
-    if (host === "https://api.codef.io")
-        return false;
-    // 그 외 (데모키 + 간편인증) → 샌드박스
-    return true;
-}
-function generateSandboxData(banks) {
-    const debts = [];
-    const assets = [];
-    // 은행별 대출 데이터 생성
-    const bankNames = banks.filter(b => ["국민은행", "신한은행", "우리은행", "하나은행", "농협", "IBK기업은행", "카카오뱅크", "토스뱅크", "케이뱅크", "SC제일은행", "수협은행", "OK저축은행", "SBI저축은행"].includes(b));
-    const cardNames = banks.filter(b => ["삼성카드", "현대카드", "롯데카드", "BC카드", "KB국민카드", "신한카드", "우리카드", "하나카드", "NH카드"].includes(b));
-    const insuranceNames = banks.filter(b => ["삼성생명", "한화생명", "교보생명", "삼성화재", "현대해상", "DB손해보험"].includes(b));
-    // 은행 대출
-    const loanTemplates = [
-        { suffix: "신용대출", amountRange: [5000000, 50000000], rateRange: [4.5, 12.9] },
-        { suffix: "마이너스통장", amountRange: [3000000, 30000000], rateRange: [5.0, 11.0] },
-        { suffix: "주택담보대출", amountRange: [50000000, 300000000], rateRange: [3.2, 5.8] },
-    ];
-    for (const bank of bankNames) {
-        const tpl = loanTemplates[Math.floor(Math.random() * loanTemplates.length)];
-        const amount = Math.round((tpl.amountRange[0] + Math.random() * (tpl.amountRange[1] - tpl.amountRange[0])) / 10000) * 10000;
-        const rate = Math.round((tpl.rateRange[0] + Math.random() * (tpl.rateRange[1] - tpl.rateRange[0])) * 10) / 10;
-        debts.push({
-            id: crypto.randomUUID(), name: `${bank} ${tpl.suffix}`, creditor: bank,
-            type: tpl.suffix === "주택담보대출" ? "담보" : "무담보",
-            amount, rate, monthly: Math.round(amount * (rate / 100 / 12)), source: "codef",
-        });
-    }
-    // 카드론
-    for (const card of cardNames) {
-        if (Math.random() > 0.6)
-            continue; // 40%는 카드론 없음
-        const amount = Math.round((1000000 + Math.random() * 15000000) / 10000) * 10000;
-        const rate = Math.round((8 + Math.random() * 12) * 10) / 10;
-        debts.push({
-            id: crypto.randomUUID(), name: `${card} 카드론`, creditor: card,
-            type: "무담보", amount, rate, monthly: Math.round(amount * (rate / 100 / 12)), source: "codef",
-        });
-    }
-    // 은행 예금 계좌
-    for (const bank of bankNames.slice(0, 2)) {
-        const balance = Math.round(Math.random() * 5000000 / 100) * 100;
-        if (balance > 0) {
-            assets.push({
-                id: crypto.randomUUID(), name: `${bank} 보통예금`, type: "예금",
-                rawValue: balance, liquidationRate: 1.0, mortgage: 0, value: balance, source: "codef",
-            });
-        }
-    }
-    // 보험 해약환급금
-    for (const ins of insuranceNames) {
-        const refund = Math.round((500000 + Math.random() * 5000000) / 1000) * 1000;
-        assets.push({
-            id: crypto.randomUUID(), name: `${ins} 종신보험 해지환급금`, type: "보험",
-            rawValue: refund, liquidationRate: 1.0, mortgage: 0, value: refund, source: "codef",
-        });
-    }
-    const debtTotal = debts.reduce((s, d) => s + d.amount, 0);
-    const assetTotal = assets.reduce((s, a) => s + a.value, 0);
-    return {
-        connectedId: `sandbox-${crypto.randomUUID().slice(0, 8)}`,
-        debts, assets,
-        summary: {
-            debtCount: debts.length, debtTotal,
-            assetCount: assets.length, assetTotal,
-        },
-    };
-}
+// (샌드박스 데이터 제거됨 — 모든 요청은 실제 CODEF API를 호출합니다)
 // ---------------------------------------------------------------------------
 // 공통: Connected ID 생성 + 기본 수집
 // ---------------------------------------------------------------------------
@@ -370,19 +290,6 @@ async function collectWithCodef(token, accountList) {
 async function handleCodefCollect(req, res) {
     try {
         const body = req.body;
-        // 샌드박스 모드: CODEF API 없이 데모 데이터 반환
-        if (isSandbox(req)) {
-            console.log("[CODEF] 샌드박스 모드 — 데모 데이터 반환");
-            const banks = body.banks ?? [];
-            if (banks.length === 0) {
-                res.status(400).json({ error: "유효한 금융기관이 선택되지 않았습니다" });
-                return;
-            }
-            // 실제 API 호출처럼 약간의 딜레이
-            await new Promise(r => setTimeout(r, 1500));
-            res.json(generateSandboxData(banks));
-            return;
-        }
         const token = await getToken();
         if (body.connectedId) {
             const reqBody = { connectedId: body.connectedId };
@@ -448,18 +355,6 @@ async function handleIntakeCodefCollect(req, res) {
             res.status(403).json({ error: "만료된 토큰입니다" });
             return;
         }
-        // 샌드박스 모드
-        if (isSandbox(req)) {
-            console.log("[CODEF] 샌드박스 모드 (intake) — 데모 데이터 반환");
-            const banks = body.banks ?? [];
-            if (banks.length === 0) {
-                res.status(400).json({ error: "유효한 금융기관이 선택되지 않았습니다" });
-                return;
-            }
-            await new Promise(r => setTimeout(r, 1500));
-            res.json(generateSandboxData(banks));
-            return;
-        }
         // Mark token as used before calling CODEF to prevent reuse
         await tokenRef.update({ used: true, usedAt: admin.firestore.FieldValue.serverTimestamp() });
         const token = await getToken();
@@ -493,23 +388,6 @@ async function handleStatementData(req, res) {
         const { connectedId } = req.body;
         if (!connectedId) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
-            return;
-        }
-        // 샌드박스 모드
-        if (isSandbox(req)) {
-            res.json({
-                newDebts: [
-                    { creditor: "카카오뱅크", type: "신용대출", amount: 10000000, date: "20250801" },
-                ],
-                largeTransfers: [
-                    { account: "110-xxx-1234", date: "20260110", amount: 5000000, recipient: "홍길동", memo: "가족 송금" },
-                ],
-                cashWithdrawals: [],
-                largeCardUsage: [
-                    { cardNo: "1234-xxxx", date: "20260205", amount: 2500000, merchant: "인테리어 업체" },
-                ],
-                cancelledInsurance: [],
-            });
             return;
         }
         const token = await getToken();
@@ -599,7 +477,7 @@ function stmtInsCancel(ins) {
  *
  * CODEF 간편인증을 시작합니다.
  * - 성공 시 2-way 정보 반환 (CF-03002) → 사용자가 폰에서 인증
- * - 샌드박스 시 바로 connectedId 반환
+ * - 인증 완료 시 connectedId 반환
  */
 async function handleSimpleAuthStart(req, res) {
     try {
@@ -610,23 +488,6 @@ async function handleSimpleAuthStart(req, res) {
         }
         if (!banks || banks.length === 0) {
             res.status(400).json({ error: "금융기관을 선택해주세요" });
-            return;
-        }
-        // 샌드박스 모드
-        if (isSandbox(req)) {
-            console.log("[CODEF] 샌드박스 간편인증 — 데모 twoWayInfo 반환");
-            await new Promise(r => setTimeout(r, 1000));
-            res.json({
-                status: "pending",
-                message: "간편인증 요청이 전송되었습니다. 폰에서 인증을 완료해주세요.",
-                twoWayInfo: {
-                    jobIndex: 0,
-                    threadIndex: 0,
-                    jti: `sandbox-jti-${crypto.randomUUID().slice(0, 8)}`,
-                    twoWayTimestamp: Date.now(),
-                },
-                sandbox: true,
-            });
             return;
         }
         const token = await getToken();
@@ -700,15 +561,6 @@ async function handleSimpleAuthComplete(req, res) {
         const { twoWayInfo, banks, phoneNo, birthDate, userName, provider } = req.body;
         if (!twoWayInfo?.jti) {
             res.status(400).json({ error: "인증 정보가 없습니다" });
-            return;
-        }
-        // 샌드박스 모드
-        if (isSandbox(req)) {
-            await new Promise(r => setTimeout(r, 800));
-            res.json({
-                status: "done",
-                connectedId: `sandbox-${crypto.randomUUID().slice(0, 8)}`,
-            });
             return;
         }
         const token = await getToken();
