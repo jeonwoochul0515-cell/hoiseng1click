@@ -4,7 +4,7 @@ import { CheckSquare, Square, Smartphone, Loader2, CheckCircle2, RefreshCw, Aler
 import { workerApi } from '@/api/worker';
 
 /** 인증 방법 */
-type AuthMethod = 'simple' | 'manual' | 'skip';
+type AuthMethod = 'simple' | 'cert' | 'manual' | 'skip';
 
 const PROVIDERS = [
   { value: '1', label: '카카오톡', icon: '💬' },
@@ -52,7 +52,9 @@ export default function AuthStep() {
   } = useCollectionStore();
 
   const [authError, setAuthError] = useState('');
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('simple');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('cert');  // 기본: 공동인증서
+  const [certId, setCertId] = useState('');       // 공동인증서 ID
+  const [certPw, setCertPw] = useState('');       // 공동인증서 비밀번호
   const [remainingSec, setRemainingSec] = useState(0);
   const [loading, setLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -177,6 +179,59 @@ export default function AuthStep() {
     }
   }
 
+  // 공동인증서 인증 요청
+  async function handleCertAuth() {
+    if (!certId.trim()) { setAuthError('인증서 ID를 입력해주세요.'); return; }
+    if (!certPw.trim()) { setAuthError('인증서 비밀번호를 입력해주세요.'); return; }
+    if (selectedBanks.length === 0) { setAuthError('금융기관을 1개 이상 선택해주세요.'); return; }
+
+    setAuthError('');
+    setLoading(true);
+    setAuthStatus('requesting');
+
+    try {
+      console.log('[AuthStep] 공동인증서 인증 요청');
+
+      // 공동인증서는 CODEF /v1/account/create에 loginType "0"으로 직접 호출
+      const result = await workerApi.codefCollect({
+        clientId: '',
+        authMethod: 'cert',
+        credentials: { loginType: 'cert', id: certId.trim(), password: certPw.trim() },
+        banks: selectedBanks,
+      } as any);
+
+      console.log('[AuthStep] 공동인증서 응답:', result);
+
+      if (result.connectedId) {
+        setConnectedId(result.connectedId);
+        useCollectionStore.getState().setCredentials({
+          loginType: 'cert',
+          id: certId.trim(),
+          password: certPw.trim(),
+        });
+        setAuthStatus('done');
+        // 수집 결과도 바로 저장
+        if (result.debts || result.assets) {
+          useCollectionStore.getState().setResult({
+            debts: result.debts || [],
+            assets: result.assets || [],
+            summary: result.summary || {},
+            connectedId: result.connectedId,
+          });
+        }
+      } else {
+        setAuthError('인증에 실패했습니다. 인증서 정보를 확인해주세요.');
+        setAuthStatus('error');
+      }
+    } catch (err: any) {
+      console.error('[AuthStep] 공동인증서 에러:', err);
+      setAuthError(err.message ?? '공동인증서 인증 중 오류가 발생했습니다.');
+      setAuthStatus('error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // 수동 인증 확인
   async function handleAuthComplete() {
     if (!twoWayInfo) return;
@@ -242,10 +297,19 @@ export default function AuthStep() {
       setAuthError('금융기관을 1개 이상 선택해주세요.');
       return;
     }
+    if (authMethod === 'cert') {
+      // 공동인증서는 이미 credentials 설정됨 + 수집 완료일 수 있음
+      const store = useCollectionStore.getState();
+      if (store.result) {
+        // 이미 수집 완료 → Step 4(결과)로 바로 이동
+        setStep(4);
+        return;
+      }
+    }
     useCollectionStore.getState().setCredentials({
-      loginType: 'simple',
-      id: phoneNo,
-      password: birthDate,
+      loginType: authMethod === 'cert' ? 'cert' : 'simple',
+      id: authMethod === 'cert' ? certId : phoneNo,
+      password: authMethod === 'cert' ? certPw : birthDate,
     });
     setStep(3);
   }
@@ -268,15 +332,16 @@ export default function AuthStep() {
           <Shield size={20} className="text-amber-500" />
           인증 방법 선택
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {([
-            { id: 'simple' as AuthMethod, icon: <Smartphone size={20} />, label: '간편인증', desc: '앱으로 본인인증 후 자동 수집' },
-            { id: 'manual' as AuthMethod, icon: <KeyRound size={20} />, label: '수동 입력', desc: '채무·재산 직접 입력 (인증 불필요)' },
-            { id: 'skip' as AuthMethod, icon: <Shield size={20} />, label: '데모 테스트', desc: '데모 데이터로 플로우 테스트' },
+            { id: 'cert' as AuthMethod, icon: <KeyRound size={20} />, label: '공동인증서', desc: 'PC에서 인증서로 인증 (권장)' },
+            { id: 'simple' as AuthMethod, icon: <Smartphone size={20} />, label: '간편인증', desc: '앱으로 본인인증' },
+            { id: 'manual' as AuthMethod, icon: <Shield size={20} />, label: '수동 입력', desc: '직접 입력 (인증 불필요)' },
+            { id: 'skip' as AuthMethod, icon: <Shield size={20} />, label: '데모', desc: '데모 데이터 테스트' },
           ]).map(m => (
             <button
               key={m.id}
-              onClick={() => { setAuthMethod(m.id); if (m.id !== 'simple') handleResetAuth(); }}
+              onClick={() => { setAuthMethod(m.id); if (m.id !== 'simple' && m.id !== 'cert') handleResetAuth(); }}
               disabled={isLocked}
               className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all text-center disabled:opacity-50 ${
                 authMethod === m.id
@@ -291,6 +356,56 @@ export default function AuthStep() {
           ))}
         </div>
       </div>
+
+      {/* 공동인증서 인증 */}
+      {authMethod === 'cert' && (
+        <div className="rounded-xl bg-white border border-gray-200 p-6 space-y-4">
+          <h3 className="text-gray-900 font-semibold flex items-center gap-2">
+            <KeyRound size={18} className="text-blue-500" />
+            공동인증서 인증
+          </h3>
+          <p className="text-xs text-gray-500">
+            의뢰인의 공동인증서(구 공인인증서)로 인증합니다. PC에 설치된 인증서를 사용하세요.
+          </p>
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">인증서 ID *</label>
+              <input type="text" value={certId} onChange={e => setCertId(e.target.value)}
+                placeholder="인증서에 등록된 ID" disabled={isLocked}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none disabled:opacity-50 disabled:bg-gray-50" />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">인증서 비밀번호 *</label>
+              <input type="password" value={certPw} onChange={e => setCertPw(e.target.value)}
+                placeholder="인증서 비밀번호" disabled={isLocked}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none disabled:opacity-50 disabled:bg-gray-50" />
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-blue-50 p-3">
+            <p className="text-xs text-blue-700">
+              <strong>안내:</strong> 공동인증서 인증 시 선택된 모든 금융기관의 데이터를 한 번에 수집합니다.
+              인증서는 서버에 저장되지 않으며 1회 인증에만 사용됩니다.
+            </p>
+          </div>
+
+          {authStatus !== 'done' && (
+            <button
+              onClick={handleCertAuth}
+              disabled={loading || !certId.trim() || !certPw.trim() || selectedBanks.length === 0}
+              className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> 인증 중...</span>
+              ) : selectedBanks.length === 0 ? (
+                '금융기관을 먼저 선택해주세요'
+              ) : (
+                `🔐 공동인증서로 ${selectedBanks.length}개 기관 인증 + 수집`
+              )}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 간편인증 정보 입력 */}
       {authMethod === 'simple' && (
