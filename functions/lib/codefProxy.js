@@ -167,14 +167,16 @@ function buildAccountList(banks, credentials) {
             organization: org.code, loginType: codefLoginType,
             password: encPw,
         };
-        // 공동인증서 (loginType 0): der+key → PFX 변환 후 전송
-        if (codefLoginType === "0" && credentials.derFile && credentials.keyFile) {
-            if (!credentials._pfxCache) {
-                credentials._pfxCache = derKeyToPfx(credentials.derFile, credentials.keyFile, credentials.password);
+        if (codefLoginType === "0") {
+            // 공동인증서 (loginType 0): PFX 직접 전송 또는 der+key → PFX 변환
+            if (credentials.pfxFile) {
+                account.pfxFile = credentials.pfxFile;
             }
-            account.derFile = credentials.derFile;
-            account.keyFile = credentials.keyFile;
-            account.pfxFile = credentials._pfxCache;
+            else if (credentials.derFile && credentials.keyFile) {
+                account.pfxFile = derKeyToPfx(credentials.derFile, credentials.keyFile, credentials.password);
+                account.derFile = credentials.derFile;
+                account.keyFile = credentials.keyFile;
+            }
         }
         else {
             account.id = credentials.id;

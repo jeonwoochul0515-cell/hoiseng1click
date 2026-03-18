@@ -147,7 +147,7 @@ function derKeyToPfx(derBase64: string, keyBase64: string, password: string): st
 
 function buildAccountList(
   banks: string[],
-  credentials: { loginType: string; id: string; password: string; derFile?: string; keyFile?: string },
+  credentials: { loginType: string; id: string; password: string; derFile?: string; keyFile?: string; pfxFile?: string },
 ): CodefAccount[] {
   const encPw = encryptRSA(credentials.password);
   const codefLoginType = LOGIN_TYPE_MAP[credentials.loginType] ?? "1";
@@ -160,14 +160,15 @@ function buildAccountList(
       organization: org.code, loginType: codefLoginType,
       password: encPw,
     };
-    // 공동인증서 (loginType 0): der+key → PFX 변환 후 전송
-    if (codefLoginType === "0" && credentials.derFile && credentials.keyFile) {
-      if (!(credentials as any)._pfxCache) {
-        (credentials as any)._pfxCache = derKeyToPfx(credentials.derFile, credentials.keyFile, credentials.password);
+    if (codefLoginType === "0") {
+      // 공동인증서 (loginType 0): PFX 직접 전송 또는 der+key → PFX 변환
+      if (credentials.pfxFile) {
+        account.pfxFile = credentials.pfxFile;
+      } else if (credentials.derFile && credentials.keyFile) {
+        account.pfxFile = derKeyToPfx(credentials.derFile, credentials.keyFile, credentials.password);
+        account.derFile = credentials.derFile;
+        account.keyFile = credentials.keyFile;
       }
-      account.derFile = credentials.derFile;
-      account.keyFile = credentials.keyFile;
-      account.pfxFile = (credentials as any)._pfxCache;
     } else {
       account.id = credentials.id;
     }
@@ -384,7 +385,7 @@ export async function handleCodefCollect(req: Request, res: Response) {
   try {
     const body = req.body as {
       connectedId?: string; clientId?: string; authMethod?: string;
-      credentials: { loginType: string; id: string; password: string; derFile?: string; keyFile?: string };
+      credentials: { loginType: string; id: string; password: string; derFile?: string; keyFile?: string; pfxFile?: string };
       banks?: string[];
     };
 
