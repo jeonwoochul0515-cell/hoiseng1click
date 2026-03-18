@@ -20,7 +20,7 @@ const STEPS = [
 export default function CollectionPage() {
   const { clientId } = useParams<{ clientId: string }>();
   const office = useAuthStore((s) => s.office);
-  const { step, result, reset } = useCollectionStore();
+  const { step, result, reset, connectedId, authStatus, setStep } = useCollectionStore();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -153,7 +153,11 @@ export default function CollectionPage() {
       <div>
         {step === 1 && <ConsentStep clientName={client?.name ?? '(알 수 없음)'} />}
         {step === 2 && <AuthStep />}
-        {step === 3 && <CollectStep clientId={clientId} />}
+        {step === 3 && (
+          connectedId && authStatus === 'done'
+            ? <CollectStep clientId={clientId} />
+            : (() => { setStep(2); return null; })()
+        )}
         {step === 4 && <ResultStep clientId={clientId} />}
       </div>
     </div>

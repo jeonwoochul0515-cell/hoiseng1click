@@ -205,9 +205,12 @@ function parseAssets(accounts: unknown, insurance: unknown): Asset[] {
 // 샌드박스 모드 감지 + 데모 데이터
 // ---------------------------------------------------------------------------
 function isSandbox(): boolean {
+  // CODEF 데모 키는 간편인증(loginType 5)을 지원하지 않음 (CF-11021)
+  // development.codef.io 환경이면 샌드박스 모드로 동작 (데모 데이터 반환)
+  // 프로덕션 키(api.codef.io)가 설정되면 실제 API 호출
   const host = process.env.CODEF_API_HOST || "https://development.codef.io";
-  const hasCredentials = !!(process.env.CODEF_CLIENT_ID && process.env.CODEF_CLIENT_SECRET);
-  return !hasCredentials || host.includes("sandbox");
+  const isProduction = host === "https://api.codef.io";
+  return !isProduction;
 }
 
 function generateSandboxData(banks: string[]) {

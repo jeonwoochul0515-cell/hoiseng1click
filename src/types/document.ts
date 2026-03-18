@@ -22,3 +22,31 @@ export const DOC_LABELS: Record<DocType, string> = {
   repay_plan: '변제계획안',
   statement: '진술서',
 };
+
+/** 수집 서류 카테고리 */
+export type DocCategory = 'basic' | 'bank' | 'card' | 'insurance' | 'asset' | 'income' | 'etc';
+
+/** 업로드 서류 (Firestore: offices/{officeId}/clients/{clientId}/documents/{docId}) */
+export interface ClientDocument {
+  id: string;
+  category: DocCategory;
+  subCategory: string;
+  institution: string;
+  docType: string;
+  fileName: string;
+  storagePath: string;
+  downloadUrl: string;
+  ocrStatus: 'pending' | 'processing' | 'done' | 'failed';
+  extractedData?: {
+    rawText: string;
+    amounts?: number[];
+    dates?: string[];
+    accountNumbers?: string[];
+    structured?: Record<string, string>;
+  };
+  uploadedAt: Date | { toDate(): Date };
+  uploadedBy: 'client' | 'office';
+  codefAmount?: number;
+  pdfAmount?: number;
+  dataMismatch?: boolean;
+}

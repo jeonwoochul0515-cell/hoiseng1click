@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Database, FileText, Send, MessageCircle, Copy, Check, LinkIcon, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Database, FileText, Send, MessageCircle, Copy, Check, LinkIcon, ClipboardList, Download, ExternalLink, Loader2 } from 'lucide-react';
+import DocCollectPanel from '@/components/client/DocCollectPanel';
 import { sendKakaoLink } from '@/utils/kakao';
 import { getClient } from '@/api/firestore';
 import { useUpdateClient } from '@/hooks/useClients';
@@ -21,7 +22,7 @@ const STATUS_OPTIONS: { value: ClientStatus; label: string; color: string }[] = 
   { value: 'approved', label: '인가', color: '#10B981' },
 ];
 
-const TABS = ['기본정보', '채무내역', '재산내역', '소득·변제금', '수임료', '서류생성', '메모'] as const;
+const TABS = ['기본정보', '채무내역', '재산내역', '소득·변제금', '수임료', '서류생성', '서류수집', '메모'] as const;
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -374,8 +375,13 @@ export default function ClientDetailPage() {
           </div>
         )}
 
-        {/* 메모 */}
+        {/* 서류수집 */}
         {tab === 6 && (
+          <DocCollectPanel officeId={officeId} client={client} />
+        )}
+
+        {/* 메모 */}
+        {tab === 7 && (
           <div className="rounded-xl border border-gray-200 bg-white p-6">
             <h2 className="mb-4 text-lg font-bold text-gray-900">메모</h2>
             {client.memo ? (
@@ -404,6 +410,131 @@ function CalcRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between text-gray-700">
       <span>{label}</span>
       <span className="font-mono">{value}</span>
+    </div>
+  );
+}
+
+/** 의뢰인이 업로드한 제출서류 탭 */
+function UploadedDocsTab({ officeId, client }: { officeId: string; client: Client }) {
+  const [docs, setDocs] = useState<Array<{
+    institution: string; certType: string; fileName: string;
+    downloadUrl: string; storagePath: string; uploadedAt: string;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [docSubmitLink, setDocSubmitLink] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  useEffect(() => {
+    loadDocs();
+  }, [client.id]);
+
+  async function loadDocs() {
+    setLoading(true);
+    try {
+      const { getDocs, query, collection, where } = await import('firebase/firestore');
+
+      // intakeSubmissions에서 이 클라이언트의 업로드 서류 조회
+      if (client.intakeSubmissionId) {
+        const { getDoc, doc } = await import('firebase/firestore');
+        const snap = await getDoc(doc(db, 'intakeSubmissions', client.intakeSubmissionId));
+        if (snap.exists()) {
+          const data = snap.data();
+          setDocs(data.uploadedDocs ?? []);
+
+          // 서류 제출 링크 생성 (기존 tokenId 사용)
+          if (data.tokenId) {
+            setDocSubmitLink(`${window.location.origin}/docs/${data.tokenId}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('제출서류 로드 실패:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleCopyLink = async () => {
+    if (!docSubmitLink) return;
+    try {
+      await navigator.clipboard.writeText(docSubmitLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      alert('클립보드 복사에 실패했습니다.');
+    }
+  };
+
+  // 서류 제출 링크가 없으면 새로 생성
+  const handleCreateDocLink = async () => {
+    try {
+      const { createIntakeToken: createToken } = await import('@/api/intake');
+      const office = useAuthStore.getState().office;
+      if (!office) return;
+      const { tokenId } = await createToken(office.id, office.name, client.name, client.phone);
+      setDocSubmitLink(`${window.location.origin}/docs/${tokenId}`);
+    } catch {
+      alert('링크 생성에 실패했습니다.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-6 flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 서류 제출 링크 */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="mb-3 text-lg font-bold text-gray-900">서류 제출 링크</h2>
+        <p className="mb-3 text-sm text-gray-500">의뢰인에게 이 링크를 보내면 부채증명서 등을 직접 업로드할 수 있습니다.</p>
+        {docSubmitLink ? (
+          <div className="flex items-center gap-2">
+            <input readOnly value={docSubmitLink} className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-600" />
+            <button onClick={handleCopyLink}
+              className="shrink-0 flex items-center gap-1 rounded-lg bg-[#0D1B2A] px-3 py-2 text-xs font-semibold text-white">
+              {linkCopied ? <><Check size={12} /> 복사됨</> : <><Copy size={12} /> 복사</>}
+            </button>
+          </div>
+        ) : (
+          <button onClick={handleCreateDocLink}
+            className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600">
+            <LinkIcon size={14} /> 서류 제출 링크 생성
+          </button>
+        )}
+      </div>
+
+      {/* 업로드된 서류 목록 */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900">업로드된 서류</h2>
+          <button onClick={loadDocs} className="text-xs text-blue-600 hover:text-blue-800 font-medium">새로고침</button>
+        </div>
+
+        {docs.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">아직 업로드된 서류가 없습니다.</p>
+        ) : (
+          <div className="space-y-2">
+            {docs.map((d, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                <FileText size={18} className="text-amber-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{d.institution} — {d.certType}</p>
+                  <p className="text-xs text-gray-500">{d.fileName} · {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString('ko-KR') : ''}</p>
+                </div>
+                <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer"
+                  className="shrink-0 flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+                  <Download size={12} /> 다운로드
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

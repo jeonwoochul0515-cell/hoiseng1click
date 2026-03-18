@@ -1,21 +1,33 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import UpgradeModal from '@/components/subscription/UpgradeModal';
-import LoginPage from '@/pages/LoginPage';
-import IntakePage from '@/pages/IntakePage';
-import DashboardPage from '@/pages/DashboardPage';
-import ClientsPage from '@/pages/ClientsPage';
-import ClientDetailPage from '@/pages/ClientDetailPage';
-import CollectionPage from '@/pages/CollectionPage';
-import DocumentsPage from '@/pages/DocumentsPage';
-import LiquidationPage from '@/pages/LiquidationPage';
-import SettingsPage from '@/pages/SettingsPage';
-import StatementPage from '@/pages/StatementPage';
-import AdminPage from '@/pages/AdminPage';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
+// 라우트 기반 코드 스플리팅
+const LoginPage = lazy(() => import('@/pages/LoginPage'));
+const IntakePage = lazy(() => import('@/pages/IntakePage'));
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const ClientsPage = lazy(() => import('@/pages/ClientsPage'));
+const ClientDetailPage = lazy(() => import('@/pages/ClientDetailPage'));
+const CollectionPage = lazy(() => import('@/pages/CollectionPage'));
+const DocumentsPage = lazy(() => import('@/pages/DocumentsPage'));
+const LiquidationPage = lazy(() => import('@/pages/LiquidationPage'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const StatementPage = lazy(() => import('@/pages/StatementPage'));
+const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const DocumentSubmitPage = lazy(() => import('@/pages/DocumentSubmitPage'));
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[200px]">
+      <div className="animate-spin rounded-full h-10 w-10 border-2 border-amber-400 border-t-transparent" />
+    </div>
+  );
+}
 
 function AuthGuard() {
   const { user, loading } = useAuthStore();
@@ -38,7 +50,9 @@ function AppLayout() {
       <div className="flex-1 flex flex-col ml-[220px]">
         <TopBar />
         <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       {upgradeModalOpen && <UpgradeModal />}
@@ -65,10 +79,13 @@ export default function App() {
   }, [init]);
 
   return (
+    <ErrorBoundary>
     <BrowserRouter>
+      <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/intake/:token" element={<IntakePage />} />
+        <Route path="/docs/:token" element={<DocumentSubmitPage />} />
         <Route element={<AuthGuard />}>
           <Route index element={<DashboardPage />} />
           <Route path="clients" element={<ClientsPage />} />
@@ -84,6 +101,8 @@ export default function App() {
           <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }

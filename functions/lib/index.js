@@ -50,6 +50,7 @@ const statementHelpers_1 = require("./statementHelpers");
 const aiWriter_1 = require("./aiWriter");
 const codefProperty_1 = require("./codefProperty");
 const ssnCrypto_1 = require("./ssnCrypto");
+const ocrProcessor_1 = require("./ocrProcessor");
 admin.initializeApp();
 const allowedOrigins = [
     'http://localhost:5173',
@@ -146,6 +147,8 @@ app.post("/codef/asset-lookup", codefProperty_1.handleAssetLookup);
 app.post("/codef/statement-data-v2", statementHelpers_1.handleStatementDataV2);
 // AI 진술서 작성
 app.post("/ai/generate", aiWriter_1.handleAiGenerate);
+// 서류 OCR 처리
+app.post("/doc/ocr", ocrProcessor_1.handleDocOcr);
 // ── SSN 암호화/복호화 (주민등록번호 보호) ──
 app.post("/crypto/encrypt-ssn", (req, res) => {
     try {

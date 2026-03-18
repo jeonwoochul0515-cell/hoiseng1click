@@ -55,9 +55,12 @@ export async function createClient(officeId: string, data: Omit<Client, 'id' | '
       payload.ssnEncrypted = encrypted;
       payload.ssnMasked = masked;
       payload.ssn = ''; // 평문 제거
-    } catch {
-      // 암호화 서버 미연결 시 경고만 (개발 환경 대비)
-      console.warn('SSN 암호화 실패 — 평문 저장됨');
+    } catch (err) {
+      // 프로덕션에서는 암호화 실패 시 평문 저장 차단
+      if (import.meta.env.PROD) {
+        throw new Error('주민등록번호 암호화에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+      console.warn('SSN 암호화 실패 — 개발 환경에서만 평문 저장 허용', err);
     }
   }
 
@@ -75,8 +78,11 @@ export async function updateClient(officeId: string, clientId: string, data: Par
       payload.ssnEncrypted = encrypted;
       payload.ssnMasked = masked;
       payload.ssn = ''; // 평문 제거
-    } catch {
-      console.warn('SSN 암호화 실패 — 평문 저장됨');
+    } catch (err) {
+      if (import.meta.env.PROD) {
+        throw new Error('주민등록번호 암호화에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+      console.warn('SSN 암호화 실패 — 개발 환경에서만 평문 저장 허용', err);
     }
   }
 

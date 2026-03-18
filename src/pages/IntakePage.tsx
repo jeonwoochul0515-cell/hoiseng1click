@@ -149,6 +149,10 @@ export default function IntakePage() {
   // Auth state
   const [authApp, setAuthApp] = useState('kakao');
   const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
+  const [authStatus, setAuthStatus] = useState<'idle' | 'requesting' | 'pending' | 'done' | 'error'>('idle');
+  const [authError, setAuthError] = useState('');
+  const [twoWayInfo, setTwoWayInfo] = useState<any>(null);
+  const authPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Collect state
   const [collectProgress, setCollectProgress] = useState(0);
@@ -337,7 +341,110 @@ export default function IntakePage() {
     }
   };
 
-  const canStartCollect = selectedBanks.length > 0;
+  // 간편인증 요청 (IntakePage용 — 공개 엔드포인트 사용)
+  const API_BASE = import.meta.env.VITE_WORKER_BASE_URL ?? '';
+
+  const handleStartAuth = async () => {
+    if (!name.trim() || selectedBanks.length === 0) {
+      setAuthError('이름과 금융기관을 먼저 입력/선택해주세요.');
+      return;
+    }
+    setAuthError('');
+    setAuthStatus('requesting');
+
+    // 샌드박스/데모 모드에서는 바로 완료 처리
+    if (isDemo || !API_BASE) {
+      await new Promise(r => setTimeout(r, 1000));
+      setConnectedId(`demo-${Date.now()}`);
+      setAuthStatus('done');
+      return;
+    }
+
+    try {
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      // IntakePage는 비로그인 상태이므로, intake 전용 인증 요청
+      // 서버에서 토큰 없이 처리할 수 있도록 intake 엔드포인트 사용
+      // 또는 샌드박스 모드에서는 서버가 데모 데이터 반환
+      const res = await fetch(`${API_BASE}/intake/codef-collect`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          tokenId: token,
+          mode: 'auth-only',
+          credentials: {
+            loginType: 'simpleAuth',
+            simpleAuthCode: SIMPLE_AUTH_APPS.find(a => a.key === authApp)?.code ?? '1',
+            userName: name.trim(),
+            phoneNo: phone.replace(/-/g, '').trim(),
+            birthDate: ssn.replace(/-/g, '').slice(0, 8),
+          },
+          banks: selectedBanks,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.connectedId) {
+        setConnectedId(data.connectedId);
+        setAuthStatus('done');
+      } else if (data.twoWayInfo) {
+        setTwoWayInfo(data.twoWayInfo);
+        setAuthStatus('pending');
+        // 자동 폴링 시작
+        startAuthPolling(data.twoWayInfo);
+      } else {
+        // 서버가 샌드박스 모드로 데모 데이터를 반환한 경우
+        if (data.debts || data.assets) {
+          setConnectedId(`sandbox-${Date.now()}`);
+          setAuthStatus('done');
+        } else {
+          setAuthError(data.error || data.message || '인증 요청에 실패했습니다.');
+          setAuthStatus('error');
+        }
+      }
+    } catch (err: any) {
+      setAuthError(err.message ?? '인증 요청 중 오류가 발생했습니다.');
+      setAuthStatus('error');
+    }
+  };
+
+  const startAuthPolling = (twInfo: any) => {
+    if (authPollRef.current) clearInterval(authPollRef.current);
+    authPollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/intake/codef-collect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tokenId: token,
+            mode: 'auth-complete',
+            twoWayInfo: twInfo,
+            credentials: {
+              loginType: 'simpleAuth',
+              simpleAuthCode: SIMPLE_AUTH_APPS.find(a => a.key === authApp)?.code ?? '1',
+              userName: name.trim(),
+              phoneNo: phone.replace(/-/g, '').trim(),
+              birthDate: ssn.replace(/-/g, '').slice(0, 8),
+            },
+            banks: selectedBanks,
+          }),
+        });
+        const data = await res.json();
+        if (data.connectedId) {
+          if (authPollRef.current) clearInterval(authPollRef.current);
+          setConnectedId(data.connectedId);
+          setAuthStatus('done');
+          setAuthError('');
+        }
+      } catch { /* 네트워크 에러 무시 */ }
+    }, 3000);
+  };
+
+  // 클린업
+  useEffect(() => {
+    return () => { if (authPollRef.current) clearInterval(authPollRef.current); };
+  }, []);
+
+  const canStartCollect = selectedBanks.length > 0 && authStatus === 'done' && !!connectedId;
 
   // ---------------------------------------------------------------------------
   // CODEF collection
@@ -1079,6 +1186,43 @@ export default function IntakePage() {
               })}
             </div>
 
+            {/* 인증 상태 표시 */}
+            {authStatus === 'requesting' && (
+              <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-200 p-4">
+                <Loader2 size={20} className="text-amber-600 animate-spin" />
+                <p className="text-sm text-amber-800 font-medium">인증 요청 중...</p>
+              </div>
+            )}
+
+            {authStatus === 'pending' && (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 space-y-2">
+                <div className="flex items-center gap-3">
+                  <Loader2 size={20} className="text-amber-600 animate-spin" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">폰에서 인증을 완료해주세요</p>
+                    <p className="text-xs text-amber-600">{SIMPLE_AUTH_APPS.find(a => a.key === authApp)?.label} 앱을 확인해주세요. (자동 확인 중)</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {authStatus === 'done' && connectedId && (
+              <div className="flex items-center gap-3 rounded-xl bg-green-50 border border-green-200 p-4">
+                <CheckCircle size={20} className="text-green-600" />
+                <div>
+                  <p className="text-sm font-semibold text-green-800">인증 완료</p>
+                  <p className="text-xs text-green-600">금융데이터 수집을 시작할 수 있습니다.</p>
+                </div>
+              </div>
+            )}
+
+            {authError && (
+              <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-4">
+                <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-600">{authError}</p>
+              </div>
+            )}
+
             {/* Nav buttons */}
             <div className="flex gap-3">
               <button
@@ -1087,14 +1231,29 @@ export default function IntakePage() {
               >
                 <ChevronLeft size={16} /> 이전
               </button>
-              <button
-                onClick={goNext}
-                disabled={!canStartCollect}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-all disabled:opacity-40 disabled:bg-gray-200 disabled:text-gray-500 enabled:bg-[#0D1B2A] enabled:text-white enabled:active:scale-[0.98]"
-              >
-                <Lock size={14} />
-                {selectedBanks.length > 0 ? `${selectedBanks.length}개 기관 수집 시작` : '금융기관을 선택하세요'}
-              </button>
+
+              {authStatus !== 'done' ? (
+                <button
+                  onClick={handleStartAuth}
+                  disabled={selectedBanks.length === 0 || authStatus === 'requesting' || authStatus === 'pending'}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-all disabled:opacity-40 disabled:bg-gray-200 disabled:text-gray-500 enabled:bg-[#0D1B2A] enabled:text-white enabled:active:scale-[0.98]"
+                >
+                  <Shield size={14} />
+                  {selectedBanks.length === 0
+                    ? '금융기관을 선택하세요'
+                    : authStatus === 'requesting' || authStatus === 'pending'
+                      ? '인증 진행 중...'
+                      : `${SIMPLE_AUTH_APPS.find(a => a.key === authApp)?.label} 인증 요청`}
+                </button>
+              ) : (
+                <button
+                  onClick={goNext}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold bg-[#0D1B2A] text-white active:scale-[0.98] transition-all"
+                >
+                  <Lock size={14} />
+                  {`${selectedBanks.length}개 기관 수집 시작`}
+                </button>
+              )}
             </div>
           </div>
         )}

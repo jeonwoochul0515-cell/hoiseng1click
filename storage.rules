@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 법무사 업로드 서류 (인증 필요)
+    match /offices/{officeId}/clients/{clientId}/docs/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 의뢰인 업로드 (비인증, 토큰 기반 경로 제한)
+    match /docs/{officeId}/{tokenId}/{fileName} {
+      allow write: if true;
+      allow read: if request.auth != null;
+    }
+
+    // 기타 파일은 인증 필요
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

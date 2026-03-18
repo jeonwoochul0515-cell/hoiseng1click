@@ -11,6 +11,7 @@ import { handleStatementDataV2 } from "./statementHelpers";
 import { handleAiGenerate } from "./aiWriter";
 import { handleVehicleInfo, handlePropertyPrice, handleAssetLookup } from "./codefProperty";
 import { encryptSSN, decryptSSN, maskSSN } from "./ssnCrypto";
+import { handleDocOcr } from "./ocrProcessor";
 
 admin.initializeApp();
 
@@ -112,6 +113,9 @@ app.post("/codef/statement-data-v2", handleStatementDataV2);
 
 // AI 진술서 작성
 app.post("/ai/generate", handleAiGenerate);
+
+// 서류 OCR 처리
+app.post("/doc/ocr", handleDocOcr);
 
 // ── SSN 암호화/복호화 (주민등록번호 보호) ──
 app.post("/crypto/encrypt-ssn", (req, res) => {
