@@ -124,9 +124,40 @@ const LOGIN_TYPE_MAP = {
     cert: "0", finCert: "0", kakao: "1", pass: "1",
 };
 /**
- * signCert.der + signPri.key → PFX(PKCS#12) Base64 문자열 변환
- * CODEF API는 PFX 스트링 값으로 공동인증서를 전송합니다.
+ * PFX(PKCS#12) → derFile + keyFile 분리
+ * 사용자가 PFX 파일을 업로드하면 CODEF가 요구하는 derFile/keyFile로 분리합니다.
  */
+function pfxToDerKey(pfxBase64, password) {
+    try {
+        const p12Der = forge.util.decode64(pfxBase64);
+        const p12Asn1 = forge.asn1.fromDer(p12Der);
+        const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password);
+        // 인증서 추출
+        const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
+        const certBag = certBags[forge.pki.oids.certBag]?.[0];
+        if (!certBag?.cert)
+            throw new Error("PFX에서 인증서를 찾을 수 없습니다.");
+        const certAsn1 = forge.pki.certificateToAsn1(certBag.cert);
+        const certDer = forge.asn1.toDer(certAsn1).getBytes();
+        const derFile = forge.util.encode64(certDer);
+        // 개인키 추출 → PKCS#8 암호화 DER
+        const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
+        const keyBag = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0];
+        if (!keyBag?.key)
+            throw new Error("PFX에서 개인키를 찾을 수 없습니다.");
+        const keyAsn1 = forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(keyBag.key));
+        const encKeyAsn1 = forge.pki.encryptPrivateKeyInfo(keyAsn1, password, { algorithm: 'aes256' });
+        const keyDer = forge.asn1.toDer(encKeyAsn1).getBytes();
+        const keyFile = forge.util.encode64(keyDer);
+        console.log(`[CODEF] PFX → DER+KEY 분리 성공: der=${derFile.length}chars, key=${keyFile.length}chars`);
+        return { derFile, keyFile };
+    }
+    catch (err) {
+        console.error("[CODEF] PFX 분리 실패:", err.message);
+        throw new Error(`인증서 처리 실패: ${err.message}`);
+    }
+}
+// 레거시: derKeyToPfx (사용하지 않음)
 function derKeyToPfx(derBase64, keyBase64, password) {
     try {
         const derBuf = Buffer.from(derBase64, "base64");
@@ -168,18 +199,20 @@ function buildAccountList(banks, credentials) {
             password: encPw,
         };
         if (codefLoginType === "0") {
-            // 공동인증서 (loginType 0): PFX 파일 전송
-            // CODEF는 password(RSA암호화) + derFile + keyFile 또는 pfxFile을 받음
-            if (credentials.pfxFile) {
-                // PFX 직접 업로드: pfxFile만 전송
-                account.certFile = credentials.pfxFile;
-                account.pfxFile = credentials.pfxFile;
+            // 공동인증서 (loginType 0): derFile + keyFile + password(RSA) 전송
+            if (credentials.pfxFile && !credentials._derKeyCache) {
+                // PFX → der+key 분리 (1회만)
+                credentials._derKeyCache = pfxToDerKey(credentials.pfxFile, credentials.password);
             }
-            if (credentials.derFile) {
-                account.derFile = credentials.derFile;
+            if (credentials._derKeyCache) {
+                account.derFile = credentials._derKeyCache.derFile;
+                account.keyFile = credentials._derKeyCache.keyFile;
             }
-            if (credentials.keyFile) {
-                account.keyFile = credentials.keyFile;
+            else {
+                if (credentials.derFile)
+                    account.derFile = credentials.derFile;
+                if (credentials.keyFile)
+                    account.keyFile = credentials.keyFile;
             }
         }
         else {
