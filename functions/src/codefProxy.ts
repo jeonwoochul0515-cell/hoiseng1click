@@ -199,19 +199,19 @@ function buildAccountList(
       //   certFile: PFX base64 또는 der base64
       //   keyFile: key base64 (certType "1"일 때만)
       //   certPassword: 인증서 비밀번호 (평문, RSA 암호화 아님!)
-      delete account.password; // RSA 암호화된 password 제거
+      delete account.password; // 공동인증서는 certPassword 사용
 
       if (credentials.pfxFile) {
         // PFX 모드
         (account as any).certType = "pfx";
         (account as any).certFile = credentials.pfxFile;
-        (account as any).certPassword = credentials.password; // 평문
+        (account as any).certPassword = encPw; // RSA 암호화
       } else if (credentials.derFile && credentials.keyFile) {
         // der+key 모드
         (account as any).certType = "1";
         (account as any).certFile = credentials.derFile;
         account.keyFile = credentials.keyFile;
-        (account as any).certPassword = credentials.password; // 평문
+        (account as any).certPassword = encPw; // RSA 암호화
       }
     } else {
       account.id = credentials.id;
@@ -232,7 +232,9 @@ async function callCodef(token: string, endpoint: string, body: object): Promise
   const logBody = JSON.parse(jsonBody);
   if (logBody.accountList) {
     logBody.accountList = logBody.accountList.map((a: any) => ({
-      ...a, password: a.password ? '[ENCRYPTED]' : undefined,
+      ...a,
+      password: a.password ? '[ENCRYPTED]' : undefined,
+      certPassword: a.certPassword ? '[ENCRYPTED]' : undefined,
       derFile: a.derFile ? `[${a.derFile.length}chars]` : undefined,
       keyFile: a.keyFile ? `[${a.keyFile.length}chars]` : undefined,
       pfxFile: a.pfxFile ? `[${a.pfxFile.length}chars]` : undefined,
