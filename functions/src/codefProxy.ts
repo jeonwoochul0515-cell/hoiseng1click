@@ -194,24 +194,23 @@ function buildAccountList(
     };
     if (codefLoginType === "0") {
       // 공동인증서 (loginType 0)
-      // CODEF 공동인증서 API 파라미터:
-      //   certType: "pfx" (PFX모드) 또는 "1" (der+key모드)
-      //   certFile: PFX base64 또는 der base64
-      //   keyFile: key base64 (certType "1"일 때만)
-      //   certPassword: 인증서 비밀번호 (평문, RSA 암호화 아님!)
-      delete account.password; // 공동인증서는 certPassword 사용
+      // CODEF /v1/account/create 공식 SDK 기준:
+      //   derFile: signCert.der Base64
+      //   keyFile: signPri.key Base64
+      //   password: RSA 암호화된 인증서 비밀번호
+      // PFX 입력 → pfxToDerKey()로 der+key 분리 후 전송
+      account.password = encPw; // RSA 암호화된 비밀번호 유지
 
       if (credentials.pfxFile) {
-        // PFX 모드
-        (account as any).certType = "pfx";
-        (account as any).certFile = credentials.pfxFile;
-        (account as any).certPassword = encPw; // RSA 암호화
+        // PFX → der+key 분리 (1회 캐시)
+        if (!(credentials as any)._derKeyCache) {
+          (credentials as any)._derKeyCache = pfxToDerKey(credentials.pfxFile, credentials.password);
+        }
+        account.derFile = (credentials as any)._derKeyCache.derFile;
+        account.keyFile = (credentials as any)._derKeyCache.keyFile;
       } else if (credentials.derFile && credentials.keyFile) {
-        // der+key 모드
-        (account as any).certType = "1";
-        (account as any).certFile = credentials.derFile;
+        account.derFile = credentials.derFile;
         account.keyFile = credentials.keyFile;
-        (account as any).certPassword = encPw; // RSA 암호화
       }
     } else {
       account.id = credentials.id;
