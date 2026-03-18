@@ -161,12 +161,17 @@ function buildAccountList(
       password: encPw,
     };
     if (codefLoginType === "0") {
-      // 공동인증서 (loginType 0): PFX 직접 전송 또는 der+key → PFX 변환
+      // 공동인증서 (loginType 0): PFX 파일 전송
+      // CODEF는 password(RSA암호화) + derFile + keyFile 또는 pfxFile을 받음
       if (credentials.pfxFile) {
-        account.pfxFile = credentials.pfxFile;
-      } else if (credentials.derFile && credentials.keyFile) {
-        account.pfxFile = derKeyToPfx(credentials.derFile, credentials.keyFile, credentials.password);
+        // PFX 직접 업로드: pfxFile만 전송
+        (account as any).certFile = credentials.pfxFile;
+        (account as any).pfxFile = credentials.pfxFile;
+      }
+      if (credentials.derFile) {
         account.derFile = credentials.derFile;
+      }
+      if (credentials.keyFile) {
         account.keyFile = credentials.keyFile;
       }
     } else {
@@ -184,7 +189,18 @@ async function callCodef(token: string, endpoint: string, body: object): Promise
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   const jsonBody = JSON.stringify(body);
-  console.log(`[CODEF] Calling endpoint: ${endpoint}`);
+  // 요청 로깅 (비밀번호/파일 데이터 제외)
+  const logBody = JSON.parse(jsonBody);
+  if (logBody.accountList) {
+    logBody.accountList = logBody.accountList.map((a: any) => ({
+      ...a, password: a.password ? '[ENCRYPTED]' : undefined,
+      derFile: a.derFile ? `[${a.derFile.length}chars]` : undefined,
+      keyFile: a.keyFile ? `[${a.keyFile.length}chars]` : undefined,
+      pfxFile: a.pfxFile ? `[${a.pfxFile.length}chars]` : undefined,
+      certFile: a.certFile ? `[${a.certFile.length}chars]` : undefined,
+    }));
+  }
+  console.log(`[CODEF] Calling ${endpoint}:`, JSON.stringify(logBody).slice(0, 500));
   try {
     const res = await fetch(`${getCodefBase()}${endpoint}`, {
       method: "POST",
@@ -194,6 +210,7 @@ async function callCodef(token: string, endpoint: string, body: object): Promise
     });
     clearTimeout(timeout);
     const text = await res.text();
+    console.log(`[CODEF] Response ${endpoint}: ${res.status} ${text.slice(0, 300)}`);
     try { return JSON.parse(text); }
     catch { return JSON.parse(decodeURIComponent(text.replace(/\+/g, " "))); }
   } catch (err) {
