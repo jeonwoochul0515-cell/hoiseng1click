@@ -256,13 +256,22 @@ function parseAssets(accounts, insurance) {
 // ---------------------------------------------------------------------------
 // 샌드박스 모드 감지 + 데모 데이터
 // ---------------------------------------------------------------------------
-function isSandbox() {
-    // CODEF 데모 키는 간편인증(loginType 5)을 지원하지 않음 (CF-11021)
-    // development.codef.io 환경이면 샌드박스 모드로 동작 (데모 데이터 반환)
-    // 프로덕션 키(api.codef.io)가 설정되면 실제 API 호출
+// 샌드박스 판별: 공동인증서(PFX) 또는 connectedId가 있으면 실제 API 호출
+function isSandbox(req) {
+    // PFX 파일이 있으면 실제 인증 → 샌드박스 아님
+    if (req?.body?.credentials?.pfxFile)
+        return false;
+    if (req?.body?.credentials?.derFile)
+        return false;
+    // connectedId가 있고 sandbox- 접두사가 아니면 실제 데이터
+    if (req?.body?.connectedId && !req.body.connectedId.startsWith('sandbox-'))
+        return false;
+    // 프로덕션 호스트면 샌드박스 아님
     const host = process.env.CODEF_API_HOST || "https://development.codef.io";
-    const isProduction = host === "https://api.codef.io";
-    return !isProduction;
+    if (host === "https://api.codef.io")
+        return false;
+    // 그 외 (데모키 + 간편인증) → 샌드박스
+    return true;
 }
 function generateSandboxData(banks) {
     const debts = [];
@@ -362,7 +371,7 @@ async function handleCodefCollect(req, res) {
     try {
         const body = req.body;
         // 샌드박스 모드: CODEF API 없이 데모 데이터 반환
-        if (isSandbox()) {
+        if (isSandbox(req)) {
             console.log("[CODEF] 샌드박스 모드 — 데모 데이터 반환");
             const banks = body.banks ?? [];
             if (banks.length === 0) {
@@ -440,7 +449,7 @@ async function handleIntakeCodefCollect(req, res) {
             return;
         }
         // 샌드박스 모드
-        if (isSandbox()) {
+        if (isSandbox(req)) {
             console.log("[CODEF] 샌드박스 모드 (intake) — 데모 데이터 반환");
             const banks = body.banks ?? [];
             if (banks.length === 0) {
@@ -487,7 +496,7 @@ async function handleStatementData(req, res) {
             return;
         }
         // 샌드박스 모드
-        if (isSandbox()) {
+        if (isSandbox(req)) {
             res.json({
                 newDebts: [
                     { creditor: "카카오뱅크", type: "신용대출", amount: 10000000, date: "20250801" },
@@ -604,7 +613,7 @@ async function handleSimpleAuthStart(req, res) {
             return;
         }
         // 샌드박스 모드
-        if (isSandbox()) {
+        if (isSandbox(req)) {
             console.log("[CODEF] 샌드박스 간편인증 — 데모 twoWayInfo 반환");
             await new Promise(r => setTimeout(r, 1000));
             res.json({
@@ -694,7 +703,7 @@ async function handleSimpleAuthComplete(req, res) {
             return;
         }
         // 샌드박스 모드
-        if (isSandbox()) {
+        if (isSandbox(req)) {
             await new Promise(r => setTimeout(r, 800));
             res.json({
                 status: "done",
