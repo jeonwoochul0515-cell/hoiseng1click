@@ -148,6 +148,9 @@ export default function IntakePage() {
 
   // Auth state
   const [authApp, setAuthApp] = useState('kakao');
+  const [authMode, setAuthMode] = useState<'simple' | 'cert'>('simple');
+  const [certId, setCertId] = useState('');
+  const [certPw, setCertPw] = useState('');
   const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
   const [authStatus, setAuthStatus] = useState<'idle' | 'requesting' | 'pending' | 'done' | 'error'>('idle');
   const [authError, setAuthError] = useState('');
@@ -345,8 +348,16 @@ export default function IntakePage() {
   const API_BASE = import.meta.env.VITE_WORKER_BASE_URL ?? '';
 
   const handleStartAuth = async () => {
-    if (!name.trim() || selectedBanks.length === 0) {
-      setAuthError('이름과 금융기관을 먼저 입력/선택해주세요.');
+    if (selectedBanks.length === 0) {
+      setAuthError('금융기관을 먼저 선택해주세요.');
+      return;
+    }
+    if (authMode === 'cert' && (!certId.trim() || !certPw.trim())) {
+      setAuthError('인증서 ID와 비밀번호를 입력해주세요.');
+      return;
+    }
+    if (authMode === 'simple' && !name.trim()) {
+      setAuthError('이름을 입력해주세요.');
       return;
     }
     setAuthError('');
@@ -362,22 +373,24 @@ export default function IntakePage() {
 
     try {
       const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-      // IntakePage는 비로그인 상태이므로, intake 전용 인증 요청
-      // 서버에서 토큰 없이 처리할 수 있도록 intake 엔드포인트 사용
-      // 또는 샌드박스 모드에서는 서버가 데모 데이터 반환
-      const res = await fetch(`${API_BASE}/intake/codef-collect`, {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          tokenId: token,
-          mode: 'auth-only',
-          credentials: {
+
+      const credentials = authMode === 'cert'
+        ? { loginType: 'cert', id: certId.trim(), password: certPw.trim() }
+        : {
             loginType: 'simpleAuth',
             simpleAuthCode: SIMPLE_AUTH_APPS.find(a => a.key === authApp)?.code ?? '1',
             userName: name.trim(),
             phoneNo: phone.replace(/-/g, '').trim(),
             birthDate: ssn.replace(/-/g, '').slice(0, 8),
-          },
+          };
+
+      const res = await fetch(`${API_BASE}/intake/codef-collect`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          tokenId: token,
+          mode: authMode === 'cert' ? 'cert-auth' : 'auth-only',
+          credentials,
           banks: selectedBanks,
         }),
       });
@@ -1062,19 +1075,73 @@ export default function IntakePage() {
         {/* ================================================================= */}
         {step === 'auth' && (
           <div className="space-y-4">
-            {/* Security notice */}
-            <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-100 p-4">
-              <Shield size={18} className="text-blue-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-blue-800">간편인증으로 안전하게</p>
-                <p className="text-xs text-blue-600 mt-1 leading-relaxed">
-                  평소 사용하시는 인증 앱으로 본인확인 후 금융데이터를 수집합니다.
-                  비밀번호 입력 없이 앱 승인만으로 완료됩니다.
-                </p>
+            {/* 인증 방법 선택 토글 */}
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAuthMode('cert')}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold transition-all ${
+                    authMode === 'cert'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  🔐 공동인증서
+                </button>
+                <button
+                  onClick={() => setAuthMode('simple')}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold transition-all ${
+                    authMode === 'simple'
+                      ? 'bg-[#0D1B2A] text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  📱 간편인증
+                </button>
               </div>
             </div>
 
-            {/* Simple auth app selection */}
+            {/* 공동인증서 입력 */}
+            {authMode === 'cert' && (
+              <div className="rounded-xl bg-white p-5 shadow-sm space-y-4">
+                <div className="flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-100 p-3">
+                  <Lock size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700">
+                    PC에 설치된 공동인증서(구 공인인증서)로 인증합니다. 인증서 정보는 서버에 저장되지 않습니다.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">인증서 ID</label>
+                    <input type="text" value={certId} onChange={e => setCertId(e.target.value)}
+                      placeholder="인증서에 등록된 ID"
+                      className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">인증서 비밀번호</label>
+                    <input type="password" value={certPw} onChange={e => setCertPw(e.target.value)}
+                      placeholder="인증서 비밀번호"
+                      className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 간편인증 안내 + 앱 선택 */}
+            {authMode === 'simple' && (
+              <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-100 p-4">
+                <Shield size={18} className="text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800">간편인증으로 안전하게</p>
+                  <p className="text-xs text-blue-600 mt-1 leading-relaxed">
+                    평소 사용하시는 인증 앱으로 본인확인 후 금융데이터를 수집합니다.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Simple auth app selection (간편인증 선택 시에만) */}
+            {authMode === 'simple' && (
             <div className="rounded-xl bg-white p-5 shadow-sm space-y-4">
               <h3 className="text-gray-900 font-semibold">인증 앱 선택</h3>
               <p className="text-xs text-gray-500 -mt-2">
@@ -1103,6 +1170,7 @@ export default function IntakePage() {
                 </span>
               </div>
             </div>
+            )}
 
             {/* Bank selection by category */}
             <div className="rounded-xl bg-white p-5 shadow-sm space-y-5">
@@ -1238,12 +1306,14 @@ export default function IntakePage() {
                   disabled={selectedBanks.length === 0 || authStatus === 'requesting' || authStatus === 'pending'}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-all disabled:opacity-40 disabled:bg-gray-200 disabled:text-gray-500 enabled:bg-[#0D1B2A] enabled:text-white enabled:active:scale-[0.98]"
                 >
-                  <Shield size={14} />
+                  {authMode === 'cert' ? <Lock size={14} /> : <Shield size={14} />}
                   {selectedBanks.length === 0
                     ? '금융기관을 선택하세요'
                     : authStatus === 'requesting' || authStatus === 'pending'
                       ? '인증 진행 중...'
-                      : `${SIMPLE_AUTH_APPS.find(a => a.key === authApp)?.label} 인증 요청`}
+                      : authMode === 'cert'
+                        ? `🔐 공동인증서로 ${selectedBanks.length}개 기관 인증`
+                        : `${SIMPLE_AUTH_APPS.find(a => a.key === authApp)?.label} 인증 요청`}
                 </button>
               ) : (
                 <button
