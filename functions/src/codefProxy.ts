@@ -329,9 +329,25 @@ async function collectWithCodef(
 ) {
   const acctData = (await callCodef(token, "/v1/account/create", { accountList })) as any;
   const cid = acctData?.data?.connectedId;
+
+  // 부분 성공 처리: 일부 기관이 실패해도 connectedId가 있으면 계속 진행
+  const successList = acctData?.data?.successList ?? [];
+  const errorList = acctData?.data?.errorList ?? [];
+  if (errorList.length > 0) {
+    const skipped = errorList.map((e: any) => `${e.organization}(${e.code}: ${e.message})`);
+    console.log(`[CODEF] 부분 실패 — 건너뛴 기관: ${skipped.join(", ")}`);
+  }
+  if (successList.length > 0) {
+    console.log(`[CODEF] 성공 기관: ${successList.map((s: any) => s.organization).join(", ")}`);
+  }
+
   if (!cid) {
+    // 모든 기관이 실패한 경우
     const msg = acctData?.result?.message ?? "금융기관 계정 연결 실패";
-    return { error: msg, detail: acctData };
+    const detail = errorList.length > 0
+      ? errorList.map((e: any) => `${e.organization}: ${e.message}`).join("; ")
+      : undefined;
+    return { error: msg, detail: detail ?? acctData };
   }
 
   const reqBody = { connectedId: cid };
@@ -352,6 +368,13 @@ async function collectWithCodef(
       debtCount: debts.length, debtTotal: debts.reduce((s, d) => s + d.amount, 0),
       assetCount: assets.length, assetTotal: assets.reduce((s, a) => s + a.value, 0),
     },
+    ...(errorList.length > 0 && {
+      skippedOrgs: errorList.map((e: any) => ({
+        organization: e.organization,
+        code: e.code,
+        message: e.message,
+      })),
+    }),
   };
 }
 

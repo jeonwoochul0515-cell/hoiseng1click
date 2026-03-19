@@ -206,6 +206,7 @@ function buildAccountList(banks, credentials) {
             //   password: RSA 암호화된 인증서 비밀번호
             // PFX 입력 → pfxToDerKey()로 der+key 분리 후 전송
             account.password = encPw; // RSA 암호화된 비밀번호 유지
+            account.certType = "1"; // DER+KEY 모드 (easycodef-node 기준)
             if (credentials.pfxFile) {
                 // PFX → der+key 분리 (1회 캐시)
                 if (!credentials._derKeyCache) {
@@ -324,9 +325,23 @@ function parseAssets(accounts, insurance) {
 async function collectWithCodef(token, accountList) {
     const acctData = (await callCodef(token, "/v1/account/create", { accountList }));
     const cid = acctData?.data?.connectedId;
+    // 부분 성공 처리: 일부 기관이 실패해도 connectedId가 있으면 계속 진행
+    const successList = acctData?.data?.successList ?? [];
+    const errorList = acctData?.data?.errorList ?? [];
+    if (errorList.length > 0) {
+        const skipped = errorList.map((e) => `${e.organization}(${e.code}: ${e.message})`);
+        console.log(`[CODEF] 부분 실패 — 건너뛴 기관: ${skipped.join(", ")}`);
+    }
+    if (successList.length > 0) {
+        console.log(`[CODEF] 성공 기관: ${successList.map((s) => s.organization).join(", ")}`);
+    }
     if (!cid) {
+        // 모든 기관이 실패한 경우
         const msg = acctData?.result?.message ?? "금융기관 계정 연결 실패";
-        return { error: msg, detail: acctData };
+        const detail = errorList.length > 0
+            ? errorList.map((e) => `${e.organization}: ${e.message}`).join("; ")
+            : undefined;
+        return { error: msg, detail: detail ?? acctData };
     }
     const reqBody = { connectedId: cid };
     const [bankAccounts, bankLoans, cardLoans, insurance] = await Promise.allSettled([
@@ -344,6 +359,13 @@ async function collectWithCodef(token, accountList) {
             debtCount: debts.length, debtTotal: debts.reduce((s, d) => s + d.amount, 0),
             assetCount: assets.length, assetTotal: assets.reduce((s, a) => s + a.value, 0),
         },
+        ...(errorList.length > 0 && {
+            skippedOrgs: errorList.map((e) => ({
+                organization: e.organization,
+                code: e.code,
+                message: e.message,
+            })),
+        }),
     };
 }
 // ---------------------------------------------------------------------------
