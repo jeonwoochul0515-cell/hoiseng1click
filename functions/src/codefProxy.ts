@@ -200,6 +200,7 @@ function buildAccountList(
       //   password: RSA 암호화된 인증서 비밀번호
       // PFX 입력 → pfxToDerKey()로 der+key 분리 후 전송
       account.password = encPw; // RSA 암호화된 비밀번호 유지
+      (account as any).certType = "1"; // DER+KEY 모드 (easycodef-node 기준)
 
       if (credentials.pfxFile) {
         // PFX → der+key 분리 (1회 캐시)
