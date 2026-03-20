@@ -3,7 +3,7 @@
 export interface OrgInfo {
   code: string;
   name: string;
-  businessType: 'BK' | 'CD' | 'IN' | 'SE';
+  businessType: 'BK' | 'CD' | 'IS' | 'SE';
   category: '은행' | '카드' | '보험' | '저축은행' | '증권';
 }
 
@@ -17,7 +17,7 @@ export const ORG_MAP: Record<string, OrgInfo> = {
   'IBK기업은행': { code: '0003', name: 'IBK기업은행', businessType: 'BK', category: '은행' },
   'SC제일은행': { code: '0023', name: 'SC제일은행', businessType: 'BK', category: '은행' },
   '카카오뱅크': { code: '0090', name: '카카오뱅크', businessType: 'BK', category: '은행' },
-  '토스뱅크':   { code: '0092', name: '토스뱅크',   businessType: 'BK', category: '은행' },
+  '토스뱅크':   { code: '0048', name: '토스뱅크',   businessType: 'BK', category: '은행' },
   '케이뱅크':   { code: '0089', name: '케이뱅크',   businessType: 'BK', category: '은행' },
   '수협은행':   { code: '0007', name: '수협은행',   businessType: 'BK', category: '은행' },
 
@@ -25,20 +25,20 @@ export const ORG_MAP: Record<string, OrgInfo> = {
   '삼성카드':   { code: '0303', name: '삼성카드',   businessType: 'CD', category: '카드' },
   '현대카드':   { code: '0302', name: '현대카드',   businessType: 'CD', category: '카드' },
   '롯데카드':   { code: '0311', name: '롯데카드',   businessType: 'CD', category: '카드' },
-  'BC카드':     { code: '0361', name: 'BC카드',     businessType: 'CD', category: '카드' },
+  'BC카드':     { code: '0305', name: 'BC카드',     businessType: 'CD', category: '카드' },
   'KB국민카드': { code: '0301', name: 'KB국민카드', businessType: 'CD', category: '카드' },
   '신한카드':   { code: '0306', name: '신한카드',   businessType: 'CD', category: '카드' },
   '우리카드':   { code: '0309', name: '우리카드',   businessType: 'CD', category: '카드' },
   '하나카드':   { code: '0313', name: '하나카드',   businessType: 'CD', category: '카드' },
   'NH카드':     { code: '0304', name: 'NH카드',     businessType: 'CD', category: '카드' },
 
-  // 보험
-  '삼성생명':   { code: '0032', name: '삼성생명',   businessType: 'IN', category: '보험' },
-  '한화생명':   { code: '0050', name: '한화생명',   businessType: 'IN', category: '보험' },
-  '교보생명':   { code: '0033', name: '교보생명',   businessType: 'IN', category: '보험' },
-  '삼성화재':   { code: '0058', name: '삼성화재',   businessType: 'IN', category: '보험' },
-  '현대해상':   { code: '0059', name: '현대해상',   businessType: 'IN', category: '보험' },
-  'DB손해보험': { code: '0060', name: 'DB손해보험', businessType: 'IN', category: '보험' },
+  // 보험 — CODEF 보험협회 어그리게이터 코드
+  '삼성생명':   { code: '0002', name: '삼성생명',   businessType: 'IS', category: '보험' },
+  '한화생명':   { code: '0002', name: '한화생명',   businessType: 'IS', category: '보험' },
+  '교보생명':   { code: '0002', name: '교보생명',   businessType: 'IS', category: '보험' },
+  '삼성화재':   { code: '0003', name: '삼성화재',   businessType: 'IS', category: '보험' },
+  '현대해상':   { code: '0003', name: '현대해상',   businessType: 'IS', category: '보험' },
+  'DB손해보험': { code: '0003', name: 'DB손해보험', businessType: 'IS', category: '보험' },
 
   // 저축은행
   'OK저축은행':  { code: '0105', name: 'OK저축은행',  businessType: 'BK', category: '저축은행' },

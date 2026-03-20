@@ -56,6 +56,11 @@ export default function AuthStep() {
   const [certPw, setCertPw] = useState('');           // 인증서 비밀번호
   const [pfxFile, setPfxFile] = useState('');         // PFX (Base64)
   const [pfxFileName, setPfxFileName] = useState('');
+  const [derFile, setDerFile] = useState('');         // signCert.der (Base64)
+  const [keyFile, setKeyFile] = useState('');         // signPri.key (Base64)
+  const [derFileName, setDerFileName] = useState('');
+  const [keyFileName, setKeyFileName] = useState('');
+  const [certMode, setCertMode] = useState<'pfx' | 'derkey'>('derkey'); // DER+KEY가 기본 (SDK 권장)
   const [remainingSec, setRemainingSec] = useState(0);
   const [loading, setLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -197,7 +202,11 @@ export default function AuthStep() {
   }
 
   async function handleCertAuth() {
-    if (!pfxFile) { setAuthError('공동인증서 PFX 파일을 선택해주세요.'); return; }
+    if (certMode === 'derkey') {
+      if (!derFile || !keyFile) { setAuthError('signCert.der 파일과 signPri.key 파일을 모두 선택해주세요.'); return; }
+    } else {
+      if (!pfxFile) { setAuthError('공동인증서 PFX 파일을 선택해주세요.'); return; }
+    }
     if (!certPw.trim()) { setAuthError('인증서 비밀번호를 입력해주세요.'); return; }
     if (selectedBanks.length === 0) { setAuthError('금융기관을 1개 이상 선택해주세요.'); return; }
 
@@ -206,17 +215,24 @@ export default function AuthStep() {
     setAuthStatus('requesting');
 
     try {
-      console.log('[AuthStep] 공동인증서 인증 요청 (파일 업로드 방식)');
+      console.log(`[AuthStep] 공동인증서 인증 요청 (${certMode} 방식)`);
+
+      const credentials: any = {
+        loginType: 'cert',
+        id: '',
+        password: certPw.trim(),
+      };
+      if (certMode === 'derkey') {
+        credentials.derFile = derFile;
+        credentials.keyFile = keyFile;
+      } else {
+        credentials.pfxFile = pfxFile;
+      }
 
       const result = await workerApi.codefCollect({
         clientId: '',
         authMethod: 'cert',
-        credentials: {
-          loginType: 'cert',
-          id: '',
-          password: certPw.trim(),
-          pfxFile,
-        },
+        credentials,
         banks: selectedBanks,
       } as any);
 
@@ -383,29 +399,89 @@ export default function AuthStep() {
             <KeyRound size={18} className="text-blue-500" />
             공동인증서 인증
           </h3>
-          <p className="text-xs text-gray-500">
-            의뢰인의 공동인증서 PFX 파일과 비밀번호를 입력합니다.
-          </p>
+
+          {/* 인증서 형식 선택 */}
+          <div className="flex gap-2">
+            <button onClick={() => setCertMode('derkey')} disabled={isLocked}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold border-2 transition-colors ${
+                certMode === 'derkey' ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'
+              }`}>
+              <FileText size={14} className="inline mr-1" />
+              DER + KEY 파일 (권장)
+            </button>
+            <button onClick={() => setCertMode('pfx')} disabled={isLocked}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold border-2 transition-colors ${
+                certMode === 'pfx' ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'
+              }`}>
+              <KeyRound size={14} className="inline mr-1" />
+              PFX 파일
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 gap-3">
-            {/* PFX 파일 */}
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">공동인증서 PFX 파일 *</label>
-              <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
-                pfxFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
-              } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                <KeyRound size={16} />
-                {pfxFileName || 'PFX 파일 선택...'}
-                <input type="file" accept=".pfx,.p12" className="hidden" disabled={isLocked}
-                  onChange={async e => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      const b64 = await readFileAsBase64(f);
-                      setPfxFile(b64);
-                      setPfxFileName(f.name);
-                    }
-                  }} />
-              </label>
-            </div>
+            {certMode === 'derkey' ? (
+              <>
+                {/* signCert.der 파일 */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">signCert.der (인증서) *</label>
+                  <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
+                    derFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
+                  } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <FileText size={16} />
+                    {derFileName || 'signCert.der 파일 선택...'}
+                    <input type="file" accept=".der,.cer" className="hidden" disabled={isLocked}
+                      onChange={async e => {
+                        const f = e.target.files?.[0];
+                        if (f) {
+                          const b64 = await readFileAsBase64(f);
+                          setDerFile(b64);
+                          setDerFileName(f.name);
+                        }
+                      }} />
+                  </label>
+                </div>
+                {/* signPri.key 파일 */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">signPri.key (개인키) *</label>
+                  <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
+                    keyFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
+                  } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <KeyRound size={16} />
+                    {keyFileName || 'signPri.key 파일 선택...'}
+                    <input type="file" accept=".key" className="hidden" disabled={isLocked}
+                      onChange={async e => {
+                        const f = e.target.files?.[0];
+                        if (f) {
+                          const b64 = await readFileAsBase64(f);
+                          setKeyFile(b64);
+                          setKeyFileName(f.name);
+                        }
+                      }} />
+                  </label>
+                </div>
+              </>
+            ) : (
+              /* PFX 파일 */
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">공동인증서 PFX 파일 *</label>
+                <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
+                  pfxFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
+                } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <KeyRound size={16} />
+                  {pfxFileName || 'PFX 파일 선택...'}
+                  <input type="file" accept=".pfx,.p12" className="hidden" disabled={isLocked}
+                    onChange={async e => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        const b64 = await readFileAsBase64(f);
+                        setPfxFile(b64);
+                        setPfxFileName(f.name);
+                      }
+                    }} />
+                </label>
+              </div>
+            )}
+
             {/* 비밀번호 */}
             <div>
               <label className="block text-sm text-gray-600 mb-1">인증서 비밀번호 *</label>
@@ -417,15 +493,16 @@ export default function AuthStep() {
 
           <div className="rounded-lg bg-blue-50 p-3">
             <p className="text-xs text-blue-700">
-              <strong>PFX 파일 만들기:</strong> CODEF 개발자 포탈 → 공동인증서 PFX 추출 도구에서
-              signCert.der + signPri.key + 비밀번호로 PFX 파일을 생성할 수 있습니다.
+              {certMode === 'derkey'
+                ? '공동인증서 폴더(NPKI)에서 signCert.der와 signPri.key 파일을 선택해주세요.'
+                : 'CODEF 개발자 포탈의 PFX 추출 도구로 PFX 파일을 생성할 수 있습니다.'}
             </p>
           </div>
 
           {authStatus !== 'done' && (
             <button
               onClick={handleCertAuth}
-              disabled={loading || !pfxFile || !certPw.trim() || selectedBanks.length === 0}
+              disabled={loading || (certMode === 'derkey' ? (!derFile || !keyFile) : !pfxFile) || !certPw.trim() || selectedBanks.length === 0}
               className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (

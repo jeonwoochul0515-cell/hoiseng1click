@@ -91,6 +91,7 @@ function encryptRSA(plainText) {
 // 기관코드 매핑
 // ---------------------------------------------------------------------------
 const ORG_MAP = {
+    // 은행 (BK)
     "국민은행": { code: "0004", businessType: "BK" },
     "신한은행": { code: "0088", businessType: "BK" },
     "우리은행": { code: "0020", businessType: "BK" },
@@ -99,26 +100,28 @@ const ORG_MAP = {
     "IBK기업은행": { code: "0003", businessType: "BK" },
     "SC제일은행": { code: "0023", businessType: "BK" },
     "카카오뱅크": { code: "0090", businessType: "BK" },
-    "토스뱅크": { code: "0092", businessType: "BK" },
+    "토스뱅크": { code: "0048", businessType: "BK" }, // 수정: 0092→0048
     "케이뱅크": { code: "0089", businessType: "BK" },
     "수협은행": { code: "0007", businessType: "BK" },
+    "OK저축은행": { code: "0105", businessType: "BK" },
+    "SBI저축은행": { code: "0101", businessType: "BK" },
+    // 카드 (CD)
     "삼성카드": { code: "0303", businessType: "CD" },
     "현대카드": { code: "0302", businessType: "CD" },
     "롯데카드": { code: "0311", businessType: "CD" },
-    "BC카드": { code: "0361", businessType: "CD" },
+    "BC카드": { code: "0305", businessType: "CD" }, // dev API 검증: 0305
     "KB국민카드": { code: "0301", businessType: "CD" },
     "신한카드": { code: "0306", businessType: "CD" },
     "우리카드": { code: "0309", businessType: "CD" },
     "하나카드": { code: "0313", businessType: "CD" },
     "NH카드": { code: "0304", businessType: "CD" },
-    "삼성생명": { code: "0032", businessType: "IN" },
-    "한화생명": { code: "0050", businessType: "IN" },
-    "교보생명": { code: "0033", businessType: "IN" },
-    "삼성화재": { code: "0058", businessType: "IN" },
-    "현대해상": { code: "0059", businessType: "IN" },
-    "DB손해보험": { code: "0060", businessType: "IN" },
-    "OK저축은행": { code: "0105", businessType: "BK" },
-    "SBI저축은행": { code: "0101", businessType: "BK" },
+    // 보험 (IS) — CODEF는 보험협회 어그리게이터 코드 사용
+    "삼성생명": { code: "0002", businessType: "IS" }, // 생명보험협회
+    "한화생명": { code: "0002", businessType: "IS" }, // 생명보험협회
+    "교보생명": { code: "0002", businessType: "IS" }, // 생명보험협회
+    "삼성화재": { code: "0003", businessType: "IS" }, // 손해보험협회
+    "현대해상": { code: "0003", businessType: "IS" }, // 손해보험협회
+    "DB손해보험": { code: "0003", businessType: "IS" }, // 손해보험협회
 };
 const LOGIN_TYPE_MAP = {
     cert: "0", finCert: "0", kakao: "1", pass: "1",
@@ -189,10 +192,16 @@ function buildAccountList(banks, credentials) {
     const encPw = encryptRSA(credentials.password);
     const codefLoginType = LOGIN_TYPE_MAP[credentials.loginType] ?? "1";
     const result = [];
+    const seen = new Set(); // 보험 어그리게이터 중복 방지
     for (const bankName of banks) {
         const org = ORG_MAP[bankName];
         if (!org)
             continue;
+        // 동일 기관코드+businessType 중복 스킵 (보험 어그리게이터 등)
+        const key = `${org.code}_${org.businessType}`;
+        if (seen.has(key))
+            continue;
+        seen.add(key);
         const account = {
             countryCode: "KR", businessType: org.businessType, clientType: "P",
             organization: org.code, loginType: codefLoginType,
@@ -200,24 +209,16 @@ function buildAccountList(banks, credentials) {
         };
         if (codefLoginType === "0") {
             // 공동인증서 (loginType 0)
-            // CODEF /v1/account/create 공식 SDK 기준:
-            //   derFile: signCert.der Base64
-            //   keyFile: signPri.key Base64
-            //   password: RSA 암호화된 인증서 비밀번호
-            // PFX 입력 → pfxToDerKey()로 der+key 분리 후 전송
-            account.password = encPw; // RSA 암호화된 비밀번호 유지
-            account.certType = "1"; // DER+KEY 모드 (easycodef-node 기준)
-            if (credentials.pfxFile) {
-                // PFX → der+key 분리 (1회 캐시)
-                if (!credentials._derKeyCache) {
-                    credentials._derKeyCache = pfxToDerKey(credentials.pfxFile, credentials.password);
-                }
-                account.derFile = credentials._derKeyCache.derFile;
-                account.keyFile = credentials._derKeyCache.keyFile;
-            }
-            else if (credentials.derFile && credentials.keyFile) {
+            if (credentials.derFile && credentials.keyFile) {
+                // signCert.der + signPri.key 직접 업로드 (easycodef-node SDK 방식)
+                account.certType = "1";
                 account.derFile = credentials.derFile;
                 account.keyFile = credentials.keyFile;
+            }
+            else if (credentials.pfxFile) {
+                // PFX(PKCS#12) 파일 직접 전송
+                account.certFile = credentials.pfxFile;
+                account.certPassword = encPw;
             }
         }
         else {
@@ -580,10 +581,15 @@ async function handleSimpleAuthStart(req, res) {
         const loginTypeLevel = provider ?? "1"; // 기본: 카카오톡
         // 간편인증용 계정 목록 (loginType "5")
         const accountList = [];
+        const seen = new Set();
         for (const bankName of banks) {
             const org = ORG_MAP[bankName];
             if (!org)
                 continue;
+            const key = `${org.code}_${org.businessType}`;
+            if (seen.has(key))
+                continue;
+            seen.add(key);
             accountList.push({
                 countryCode: "KR",
                 businessType: org.businessType,
@@ -653,10 +659,15 @@ async function handleSimpleAuthComplete(req, res) {
         const loginTypeLevel = provider ?? "1";
         // 2-way 완료 요청 (간편인증 loginType "5")
         const accountList = [];
+        const seen = new Set();
         for (const bankName of banks) {
             const org = ORG_MAP[bankName];
             if (!org)
                 continue;
+            const key = `${org.code}_${org.businessType}`;
+            if (seen.has(key))
+                continue;
+            seen.add(key);
             accountList.push({
                 countryCode: "KR",
                 businessType: org.businessType,

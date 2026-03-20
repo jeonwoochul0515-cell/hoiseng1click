@@ -28,7 +28,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export interface CodefCollectRequest {
   clientId: string;
   authMethod: 'cert' | 'kakao' | 'pass' | 'finCert';
-  credentials: { loginType: string; id: string; password: string };
+  credentials: { loginType: string; id: string; password: string; derFile?: string; keyFile?: string; pfxFile?: string };
   banks: string[];
 }
 

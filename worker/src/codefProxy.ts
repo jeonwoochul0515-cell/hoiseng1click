@@ -45,6 +45,7 @@ export async function encryptRSA(publicKeyB64: string, plainText: string): Promi
 
 // ── 기관코드 매핑 ──
 const ORG_MAP: Record<string, { code: string; businessType: string }> = {
+  // 은행 (BK)
   '국민은행': { code: '0004', businessType: 'BK' },
   '신한은행': { code: '0088', businessType: 'BK' },
   '우리은행': { code: '0020', businessType: 'BK' },
@@ -53,26 +54,28 @@ const ORG_MAP: Record<string, { code: string; businessType: string }> = {
   'IBK기업은행': { code: '0003', businessType: 'BK' },
   'SC제일은행': { code: '0023', businessType: 'BK' },
   '카카오뱅크': { code: '0090', businessType: 'BK' },
-  '토스뱅크': { code: '0092', businessType: 'BK' },
+  '토스뱅크': { code: '0048', businessType: 'BK' },
   '케이뱅크': { code: '0089', businessType: 'BK' },
   '수협은행': { code: '0007', businessType: 'BK' },
+  'OK저축은행': { code: '0105', businessType: 'BK' },
+  'SBI저축은행': { code: '0101', businessType: 'BK' },
+  // 카드 (CD)
   '삼성카드': { code: '0303', businessType: 'CD' },
   '현대카드': { code: '0302', businessType: 'CD' },
   '롯데카드': { code: '0311', businessType: 'CD' },
-  'BC카드':   { code: '0361', businessType: 'CD' },
+  'BC카드':   { code: '0305', businessType: 'CD' },
   'KB국민카드': { code: '0301', businessType: 'CD' },
   '신한카드': { code: '0306', businessType: 'CD' },
   '우리카드': { code: '0309', businessType: 'CD' },
   '하나카드': { code: '0313', businessType: 'CD' },
   'NH카드':   { code: '0304', businessType: 'CD' },
-  '삼성생명': { code: '0032', businessType: 'IN' },
-  '한화생명': { code: '0050', businessType: 'IN' },
-  '교보생명': { code: '0033', businessType: 'IN' },
-  '삼성화재': { code: '0058', businessType: 'IN' },
-  '현대해상': { code: '0059', businessType: 'IN' },
-  'DB손해보험': { code: '0060', businessType: 'IN' },
-  'OK저축은행': { code: '0105', businessType: 'BK' },
-  'SBI저축은행': { code: '0101', businessType: 'BK' },
+  // 보험 (IS) — CODEF 보험협회 어그리게이터 코드
+  '삼성생명': { code: '0002', businessType: 'IS' },
+  '한화생명': { code: '0002', businessType: 'IS' },
+  '교보생명': { code: '0002', businessType: 'IS' },
+  '삼성화재': { code: '0003', businessType: 'IS' },
+  '현대해상': { code: '0003', businessType: 'IS' },
+  'DB손해보험': { code: '0003', businessType: 'IS' },
 };
 
 // loginType 매핑: 프론트 키 → CODEF 코드
