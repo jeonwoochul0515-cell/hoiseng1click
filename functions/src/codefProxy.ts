@@ -226,7 +226,7 @@ function buildAccountList(
 // ---------------------------------------------------------------------------
 async function callCodef(token: string, endpoint: string, body: object): Promise<unknown> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 60000);
   const jsonBody = JSON.stringify(body);
   // 요청 로깅 (비밀번호/파일 데이터 제외)
   const logBody = JSON.parse(jsonBody);
@@ -242,11 +242,13 @@ async function callCodef(token: string, endpoint: string, body: object): Promise
     }));
   }
   console.log(`[CODEF] Calling ${endpoint}:`, JSON.stringify(logBody).slice(0, 500));
+  // CODEF 공식 SDK(easycodef-node) 기준: body를 URL 인코딩해서 전송
+  const encodedBody = encodeURIComponent(jsonBody);
   try {
     const res = await fetch(`${getCodefBase()}${endpoint}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: jsonBody,
+      body: encodedBody,
       signal: controller.signal,
     });
     clearTimeout(timeout);
