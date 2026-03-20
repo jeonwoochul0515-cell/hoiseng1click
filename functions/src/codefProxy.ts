@@ -203,8 +203,7 @@ function buildAccountList(
     if (codefLoginType === "0") {
       // 공동인증서 (loginType 0)
       if (credentials.derFile && credentials.keyFile) {
-        // signCert.der + signPri.key 직접 업로드 (easycodef-node SDK 방식)
-        (account as any).certType = "1";
+        // signCert.der + signPri.key 직접 업로드 (codef-node SDK 방식: derFile + keyFile + password)
         account.derFile = credentials.derFile;
         account.keyFile = credentials.keyFile;
       } else if (credentials.pfxFile) {
@@ -617,6 +616,8 @@ export async function handleSimpleAuthStart(req: Request, res: Response) {
         userName,
         phoneNo: phoneNo.replace(/-/g, ""),
         identity: birthDate,
+        id: "",                   // CODEF 필수 필드
+        password: encryptRSA(""), // CODEF 필수 필드 (RSA 암호화된 빈 문자열)
       });
     }
 
@@ -708,6 +709,8 @@ export async function handleSimpleAuthComplete(req: Request, res: Response) {
         userName: userName ?? "",
         phoneNo: phoneNo.replace(/-/g, ""),
         identity: birthDate,
+        id: "",                   // CODEF 필수 필드
+        password: encryptRSA(""), // CODEF 필수 필드
       });
     }
 

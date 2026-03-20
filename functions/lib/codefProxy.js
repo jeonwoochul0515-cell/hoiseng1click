@@ -210,8 +210,7 @@ function buildAccountList(banks, credentials) {
         if (codefLoginType === "0") {
             // 공동인증서 (loginType 0)
             if (credentials.derFile && credentials.keyFile) {
-                // signCert.der + signPri.key 직접 업로드 (easycodef-node SDK 방식)
-                account.certType = "1";
+                // signCert.der + signPri.key 직접 업로드 (codef-node SDK 방식: derFile + keyFile + password)
                 account.derFile = credentials.derFile;
                 account.keyFile = credentials.keyFile;
             }
@@ -600,6 +599,8 @@ async function handleSimpleAuthStart(req, res) {
                 userName,
                 phoneNo: phoneNo.replace(/-/g, ""),
                 identity: birthDate,
+                id: "", // CODEF 필수 필드
+                password: encryptRSA(""), // CODEF 필수 필드 (RSA 암호화된 빈 문자열)
             });
         }
         if (accountList.length === 0) {
@@ -678,6 +679,8 @@ async function handleSimpleAuthComplete(req, res) {
                 userName: userName ?? "",
                 phoneNo: phoneNo.replace(/-/g, ""),
                 identity: birthDate,
+                id: "", // CODEF 필수 필드
+                password: encryptRSA(""), // CODEF 필수 필드
             });
         }
         console.log(`[CODEF] 간편인증 완료 요청: jti=${twoWayInfo.jti}`);
