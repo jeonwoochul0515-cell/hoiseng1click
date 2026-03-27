@@ -106,7 +106,7 @@ interface CodefAccount {
   organization: string; loginType: string; id?: string; password?: string;
   loginTypeLevel?: string; userName?: string; phoneNo?: string; identity?: string;
   certType?: string;
-  pfxFile?: string;
+  certFile?: string;
 }
 
 function buildAccountList(
@@ -137,10 +137,10 @@ function buildAccountList(
       password: encPw,
     };
     if (codefLoginType === "0") {
-      // 공동인증서 (loginType 0) — PFX 방식
+      // 공동인증서 (loginType 0) — PFX 방식 (certFile)
       account.certType = "0";
       if (credentials.pfxFile) {
-        account.pfxFile = credentials.pfxFile;
+        account.certFile = credentials.pfxFile;
       }
     } else {
       account.id = credentials.id;
@@ -164,7 +164,7 @@ export async function callCodef(token: string, endpoint: string, body: object): 
       logBody.accountList = logBody.accountList.map((a: any) => ({
         ...a,
         password: a.password ? '[ENCRYPTED]' : undefined,
-        pfxFile: a.pfxFile ? `[${a.pfxFile.length}chars]` : undefined,
+        certFile: a.certFile ? `[${a.certFile.length}chars]` : undefined,
       }));
     }
     const startMs = Date.now();

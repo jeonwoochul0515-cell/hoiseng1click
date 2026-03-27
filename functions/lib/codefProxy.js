@@ -157,10 +157,10 @@ function buildAccountList(banks, credentials) {
             password: encPw,
         };
         if (codefLoginType === "0") {
-            // 공동인증서 (loginType 0) — PFX 방식
+            // 공동인증서 (loginType 0) — PFX 방식 (certFile)
             account.certType = "0";
             if (credentials.pfxFile) {
-                account.pfxFile = credentials.pfxFile;
+                account.certFile = credentials.pfxFile;
             }
         }
         else {
@@ -184,7 +184,7 @@ async function callCodef(token, endpoint, body) {
             logBody.accountList = logBody.accountList.map((a) => ({
                 ...a,
                 password: a.password ? '[ENCRYPTED]' : undefined,
-                pfxFile: a.pfxFile ? `[${a.pfxFile.length}chars]` : undefined,
+                certFile: a.certFile ? `[${a.certFile.length}chars]` : undefined,
             }));
         }
         const startMs = Date.now();

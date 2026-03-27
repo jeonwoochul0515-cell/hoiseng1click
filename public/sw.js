@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hoiseng1click-v5';
+const CACHE_NAME = 'hoiseng1click-v6';
 const STATIC_ASSETS = ['/manifest.json', '/icon-192.svg', '/offline.html'];
 
 self.addEventListener('install', (event) => {
