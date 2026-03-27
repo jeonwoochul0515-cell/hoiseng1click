@@ -122,7 +122,7 @@ export default function ResultStep({ clientId }: ResultStepProps) {
         <button
           onClick={() => navigate(`/clients/${clientId}`)}
           className="flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium
-            bg-gray-100 text-gray-700 hover:bg-gray-100 transition-colors"
+            bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
         >
           <PlusCircle className="h-4 w-4" />
           재산 추가 입력

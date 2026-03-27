@@ -77,24 +77,6 @@ app.use(express_1.default.json());
 // ── Public routes (인증 불필요 — 의뢰인 디바이스에서 호출) ──
 app.post("/intake/codef-collect", codefProxy_1.handleIntakeCodefCollect);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
-// 임시: HWPX 템플릿 업로드 (base64 body)
-app.post("/admin/upload-template", async (req, res) => {
-    try {
-        const { name, data } = req.body;
-        if (!name || !data) {
-            res.status(400).json({ error: "name, data required" });
-            return;
-        }
-        const buf = Buffer.from(data, "base64");
-        const bucket = admin.storage().bucket();
-        const file = bucket.file(`templates/hwpx/${name}`);
-        await file.save(buf, { contentType: "application/octet-stream" });
-        res.json({ ok: true, path: `templates/hwpx/${name}`, size: buf.length });
-    }
-    catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 // ── Auth middleware (아래 라우트는 법무사 로그인 필요) ──
 app.use(async (req, res, next) => {
     const auth = req.headers.authorization ?? "";
@@ -112,7 +94,26 @@ app.use(async (req, res, next) => {
         res.status(401).json({ error: "인증 실패" });
     }
 });
+// HWPX 템플릿 업로드 (인증 필요)
+app.post("/admin/upload-template", async (req, res) => {
+    try {
+        const { name, data } = req.body;
+        if (!name || !data) {
+            res.status(400).json({ error: "name, data required" });
+            return;
+        }
+        const buf = Buffer.from(data, "base64");
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(`templates/hwpx/${name}`);
+        await file.save(buf, { contentType: "application/octet-stream" });
+        res.json({ ok: true, path: `templates/hwpx/${name}`, size: buf.length });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 app.post("/codef/collect", codefProxy_1.handleCodefCollect);
+app.post("/codef/test-connection", codefProxy_1.handleCodefTestConnection);
 app.post("/codef/simple-auth/start", codefProxy_1.handleSimpleAuthStart);
 app.post("/codef/simple-auth/complete", codefProxy_1.handleSimpleAuthComplete);
 app.post("/codef/statement-data", codefProxy_1.handleStatementData);
@@ -215,7 +216,7 @@ app.post("/crypto/batch-decrypt-ssn", (req, res) => {
 app.post("/crypto/migrate-ssn", async (req, res) => {
     try {
         const user = req.user;
-        const officeId = req.body.officeId || user.uid;
+        const officeId = user.uid; // 보안: 자신의 사무소만 마이그레이션 가능
         const clientsSnap = await admin.firestore()
             .collection("offices").doc(officeId).collection("clients").get();
         let migrated = 0;

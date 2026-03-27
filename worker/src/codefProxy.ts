@@ -29,7 +29,25 @@ export async function getToken(env: Env): Promise<string> {
 }
 
 // ── RSA 암호화 (CODEF publicKey로 비밀번호 암호화) ──
+// CODEF는 PKCS1 v1.5 패딩만 지원. Web Crypto API는 RSA-OAEP만 지원하므로
+// 순수 JS 구현 사용 (node-forge 등이 없는 Workers 환경용).
+// 주의: Workers에서 nodejs_compat 플래그 활성화 시 crypto.publicEncrypt 사용 가능.
 export async function encryptRSA(publicKeyB64: string, plainText: string): Promise<string> {
+  // Workers nodejs_compat 모드에서는 Node.js crypto 사용 가능
+  try {
+    const nodeCrypto = await import('crypto') as any;
+    if (nodeCrypto.publicEncrypt) {
+      const publicKeyPem = `-----BEGIN PUBLIC KEY-----\n${publicKeyB64}\n-----END PUBLIC KEY-----`;
+      const encrypted = nodeCrypto.publicEncrypt(
+        { key: publicKeyPem, padding: nodeCrypto.constants.RSA_PKCS1_PADDING },
+        Buffer.from(plainText, 'utf-8'),
+      );
+      return encrypted.toString('base64');
+    }
+  } catch { /* nodejs_compat 미활성화 — fallback */ }
+
+  // Fallback: Web Crypto RSA-OAEP (CODEF와 비호환 — 경고 로그)
+  console.warn('[CODEF] RSA-OAEP fallback 사용 — CODEF와 비호환. nodejs_compat 활성화 필요.');
   const binaryDer = Uint8Array.from(atob(publicKeyB64), c => c.charCodeAt(0));
   const key = await crypto.subtle.importKey(
     'spki',
@@ -54,7 +72,7 @@ const ORG_MAP: Record<string, { code: string; businessType: string }> = {
   'IBK기업은행': { code: '0003', businessType: 'BK' },
   'SC제일은행': { code: '0023', businessType: 'BK' },
   '카카오뱅크': { code: '0090', businessType: 'BK' },
-  '토스뱅크': { code: '0048', businessType: 'BK' },
+  '토스뱅크': { code: '0092', businessType: 'BK' },
   '케이뱅크': { code: '0089', businessType: 'BK' },
   '수협은행': { code: '0007', businessType: 'BK' },
   'OK저축은행': { code: '0105', businessType: 'BK' },

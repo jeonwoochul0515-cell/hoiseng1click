@@ -17,6 +17,8 @@ function convertClient(id: string, data: Record<string, unknown>): Client {
     id,
     // ssnMasked가 있으면 ssn 필드에 마스킹값 사용 (목록 표시용)
     ssn: (data.ssnMasked as string) || (data.ssn as string) || '',
+    debts: (data.debts as any[]) ?? [],
+    assets: (data.assets as any[]) ?? [],
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   } as Client;

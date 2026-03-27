@@ -127,7 +127,7 @@ function buildDebtListData(client) {
         overdueInterest: formatKRW(d.overdueInterest ?? 0),
         accelerationDate: d.accelerationDate ?? "",
         totalOwed: formatKRW((d.amount ?? 0) + (d.overdueInterest ?? 0)),
-        securedNote: d.type === "담보" ? (d.securedNote ?? d.collateralDesc ?? "담보설정") : "",
+        securedNote: d.type === "담보" ? (d.securedNote ?? d.collateralDesc ?? d.collateral ?? "담보설정") : "",
     }));
     const allDebts = client.debts ?? [];
     const totalDebt = allDebts.reduce((s, d) => s + (d.amount ?? 0), 0);
@@ -584,19 +584,21 @@ async function handleDocGenerate(req, res) {
             }
             const data = builder(body.clientData);
             let buffer;
+            let actualFormat = body.format;
             if (body.format === "hwpx") {
                 try {
                     buffer = await generateHwpx(typeName, data);
                 }
                 catch {
-                    // HWPX 템플릿 없으면 DOCX로 폴백
+                    // HWPX 템플릿 없으면 DOCX로 폴백 (확장자도 변경)
                     buffer = await generateDocxWithFallback(typeName, data);
+                    actualFormat = "docx";
                 }
             }
             else {
                 buffer = await generateDocxWithFallback(typeName, data);
             }
-            const ext = body.format === "hwpx" ? "hwpx" : "docx";
+            const ext = actualFormat === "hwpx" ? "hwpx" : "docx";
             const fileName = `${typeName}.${ext}`;
             const contentType = ext === "docx"
                 ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -626,18 +628,20 @@ async function handleDocGenerate(req, res) {
                 continue;
             const data = builder(body.clientData);
             let buffer;
+            let fileFormat = body.format;
             if (body.format === "hwpx") {
                 try {
                     buffer = await generateHwpx(typeName, data);
                 }
                 catch {
                     buffer = await generateDocxWithFallback(typeName, data);
+                    fileFormat = "docx";
                 }
             }
             else {
                 buffer = await generateDocxWithFallback(typeName, data);
             }
-            const ext = body.format === "hwpx" ? "hwpx" : "docx";
+            const ext = fileFormat === "hwpx" ? "hwpx" : "docx";
             const fileName = `${typeName}.${ext}`;
             const contentType = ext === "docx"
                 ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

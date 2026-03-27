@@ -10,6 +10,12 @@ import CollectStep from '@/components/collection/CollectStep';
 import ResultStep from '@/components/collection/ResultStep';
 import type { Client } from '@/types/client';
 
+/** 렌더 중 setState 방지를 위한 리다이렉트 컴포넌트 */
+function StepRedirect({ setStep }: { setStep: (n: number) => void }) {
+  useEffect(() => { setStep(2); }, [setStep]);
+  return null;
+}
+
 const STEPS = [
   { num: 1, label: '동의' },
   { num: 2, label: '인증 정보' },
@@ -65,9 +71,17 @@ export default function CollectionPage() {
 
     async function saveResults() {
       try {
+        // 기존 수동 입력 데이터와 병합 (CODEF 수집 결과가 기존 데이터를 덮어쓰지 않도록)
+        const existingSnap = await getDoc(doc(db, 'offices', office!.id, 'clients', clientId!));
+        const existing = existingSnap.data();
+        const existingDebts = (existing?.debts ?? []).filter((d: any) => d.source !== 'codef');
+        const existingAssets = (existing?.assets ?? []).filter((a: any) => a.source !== 'codef');
+        const mergedDebts = [...existingDebts, ...result!.debts];
+        const mergedAssets = [...existingAssets, ...result!.assets];
+
         await updateDoc(doc(db, 'offices', office!.id, 'clients', clientId!), {
-          debts: result!.debts,
-          assets: result!.assets,
+          debts: mergedDebts,
+          assets: mergedAssets,
           collectionDone: true,
           status: 'drafting',
           connectedId: result!.connectedId,
@@ -156,7 +170,7 @@ export default function CollectionPage() {
         {step === 3 && (
           connectedId && authStatus === 'done'
             ? <CollectStep clientId={clientId} />
-            : (() => { setStep(2); return null; })()
+            : <StepRedirect setStep={setStep} />
         )}
         {step === 4 && <ResultStep clientId={clientId} />}
       </div>

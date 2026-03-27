@@ -73,9 +73,9 @@ export default function LiquidationPage() {
   }, [client, updateMutation]);
 
   // Asset breakdown
-  const realEstate = client?.assets.filter((a) => a.type === '부동산') ?? [];
-  const vehicles = client?.assets.filter((a) => a.type === '차량') ?? [];
-  const financial = client?.assets.filter((a) => a.type === '예금' || a.type === '보험' || a.type === '증권') ?? [];
+  const realEstate = client?.assets?.filter((a) => a.type === '부동산') ?? [];
+  const vehicles = client?.assets?.filter((a) => a.type === '차량') ?? [];
+  const financial = client?.assets?.filter((a) => a.type === '예금' || a.type === '보험' || a.type === '증권') ?? [];
 
   const realEstateTotal = realEstate.reduce((s, a) => s + a.value, 0);
   const vehicleTotal = vehicles.reduce((s, a) => s + a.value, 0);
@@ -104,7 +104,8 @@ export default function LiquidationPage() {
         medical: client.medical,
       })
     : 0;
-  const repayTotal = monthlyPayment * 36;
+  const repayPeriod = (client as any)?.repayPeriodMonths ?? 36;
+  const repayTotal = monthlyPayment * repayPeriod;
   const isSufficient = repayTotal >= netLiquidation;
   const deficit = netLiquidation - repayTotal;
 

@@ -220,7 +220,10 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
       status: client?.status ?? 'new' as const,
       collectionDone: client?.collectionDone ?? false,
       debts: debts.filter(d => d.name || d.creditor || d.amount),
-      assets: assets.filter(a => a.name || a.rawValue),
+      assets: assets.filter(a => a.name || a.rawValue).map(a => ({
+        ...a,
+        value: Math.max(0, (a.rawValue ?? 0) * (a.liquidationRate ?? 1) - (a.mortgage ?? 0)),
+      })),
     };
 
     if (isEdit && client) {

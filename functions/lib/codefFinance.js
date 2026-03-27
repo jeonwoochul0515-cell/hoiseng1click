@@ -8,67 +8,7 @@ exports.handleStockAccounts = handleStockAccounts;
 exports.handleStockAssets = handleStockAssets;
 exports.handleStockTransactions = handleStockTransactions;
 exports.handleExtendedFinanceCollect = handleExtendedFinanceCollect;
-// ---------------------------------------------------------------------------
-// Config & Auth helpers (self-contained, mirrors codefProxy.ts)
-// ---------------------------------------------------------------------------
-const OAUTH_URL = "https://oauth.codef.io/oauth/token";
-function getCodefBase() {
-    return process.env.CODEF_API_HOST || "https://development.codef.io";
-}
-let cachedToken = null;
-async function getToken() {
-    if (cachedToken && cachedToken.expiry > Date.now()) {
-        return cachedToken.token;
-    }
-    const creds = Buffer.from(`${process.env.CODEF_CLIENT_ID ?? ""}:${process.env.CODEF_CLIENT_SECRET ?? ""}`).toString("base64");
-    const res = await fetch(OAUTH_URL, {
-        method: "POST",
-        headers: {
-            Authorization: `Basic ${creds}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: "grant_type=client_credentials&scope=read",
-    });
-    if (!res.ok) {
-        throw new Error(`CODEF OAuth failed: ${res.status} ${res.statusText}`);
-    }
-    const data = (await res.json());
-    if (!data.access_token) {
-        throw new Error("CODEF OAuth response missing access_token");
-    }
-    cachedToken = { token: data.access_token, expiry: Date.now() + 6 * 24 * 60 * 60 * 1000 };
-    return cachedToken.token;
-}
-async function callCodef(token, endpoint, body) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    const jsonBody = JSON.stringify(body);
-    console.log(`[CODEF-FINANCE] Calling endpoint: ${endpoint}`);
-    try {
-        const res = await fetch(`${getCodefBase()}${endpoint}`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: jsonBody,
-            signal: controller.signal,
-        });
-        clearTimeout(timeout);
-        const text = await res.text();
-        try {
-            return JSON.parse(text);
-        }
-        catch {
-            return JSON.parse(decodeURIComponent(text.replace(/\+/g, " ")));
-        }
-    }
-    catch (err) {
-        clearTimeout(timeout);
-        const message = err instanceof Error ? err.message : "CODEF API 호출 실패";
-        throw new Error(`CODEF API error on ${endpoint}: ${message}`);
-    }
-}
+const codefProxy_1 = require("./codefProxy");
 // ---------------------------------------------------------------------------
 // 증권사 기관코드
 // ---------------------------------------------------------------------------
@@ -204,8 +144,8 @@ async function handleCardApprovals(req, res) {
         const dates = startDate && endDate
             ? { startDate, endDate }
             : defaultDateRange();
-        const token = await getToken();
-        const raw = await callCodef(token, "/v1/kr/card/p/account/approval-list", {
+        const token = await (0, codefProxy_1.getToken)();
+        const raw = await (0, codefProxy_1.callCodef)(token, "/v1/kr/card/p/account/approval-list", {
             connectedId,
             startDate: dates.startDate,
             endDate: dates.endDate,
@@ -243,8 +183,8 @@ async function handleCardBills(req, res) {
         const dates = startDate && endDate
             ? { startDate, endDate }
             : defaultDateRange();
-        const token = await getToken();
-        const raw = await callCodef(token, "/v1/kr/card/p/account/billing-list", {
+        const token = await (0, codefProxy_1.getToken)();
+        const raw = await (0, codefProxy_1.callCodef)(token, "/v1/kr/card/p/account/billing-list", {
             connectedId,
             startDate: dates.startDate,
             endDate: dates.endDate,
@@ -282,8 +222,8 @@ async function handleBankTransactions(req, res) {
         const dates = startDate && endDate
             ? { startDate, endDate }
             : defaultDateRange();
-        const token = await getToken();
-        const raw = await callCodef(token, "/v1/kr/bank/p/account/transaction-list", {
+        const token = await (0, codefProxy_1.getToken)();
+        const raw = await (0, codefProxy_1.callCodef)(token, "/v1/kr/bank/p/account/transaction-list", {
             connectedId,
             startDate: dates.startDate,
             endDate: dates.endDate,
@@ -329,8 +269,8 @@ async function handleStockAccounts(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        const token = await getToken();
-        const raw = await callCodef(token, "/v1/kr/stock/a/account", {
+        const token = await (0, codefProxy_1.getToken)();
+        const raw = await (0, codefProxy_1.callCodef)(token, "/v1/kr/stock/a/account", {
             connectedId,
         });
         const accounts = parseStockAccounts(raw);
@@ -359,8 +299,8 @@ async function handleStockAssets(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        const token = await getToken();
-        const raw = await callCodef(token, "/v1/kr/stock/a/account/asset", {
+        const token = await (0, codefProxy_1.getToken)();
+        const raw = await (0, codefProxy_1.callCodef)(token, "/v1/kr/stock/a/account/asset", {
             connectedId,
         });
         const { holdings, depositBalance } = parseStockHoldings(raw);
@@ -398,8 +338,8 @@ async function handleStockTransactions(req, res) {
         const dates = startDate && endDate
             ? { startDate, endDate }
             : defaultDateRange();
-        const token = await getToken();
-        const raw = await callCodef(token, "/v1/kr/stock/a/account/transaction-list", {
+        const token = await (0, codefProxy_1.getToken)();
+        const raw = await (0, codefProxy_1.callCodef)(token, "/v1/kr/stock/a/account/transaction-list", {
             connectedId,
             startDate: dates.startDate,
             endDate: dates.endDate,
@@ -449,13 +389,13 @@ async function handleExtendedFinanceCollect(req, res) {
         const dates = startDate && endDate
             ? { startDate, endDate }
             : defaultDateRange();
-        const token = await getToken();
+        const token = await (0, codefProxy_1.getToken)();
         const dateBody = { connectedId, startDate: dates.startDate, endDate: dates.endDate };
         const idBody = { connectedId };
         const [cardResult, bankResult, stockResult] = await Promise.allSettled([
-            callCodef(token, "/v1/kr/card/p/account/approval-list", dateBody),
-            callCodef(token, "/v1/kr/bank/p/account/transaction-list", dateBody),
-            callCodef(token, "/v1/kr/stock/a/account/asset", idBody),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/card/p/account/approval-list", dateBody),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/bank/p/account/transaction-list", dateBody),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/stock/a/account/asset", idBody),
         ]);
         const errors = [];
         const getValue = (r, label) => {

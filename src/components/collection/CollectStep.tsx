@@ -77,6 +77,7 @@ export default function CollectStep({ clientId }: CollectStepProps) {
       // Auto-advance after a brief delay
       setTimeout(() => setStep(4), 800);
     } catch (err) {
+      clearInterval(simulationHandle);
       console.error('CODEF API 호출 실패:', err);
       const msg = err instanceof Error ? err.message : 'CODEF API 호출에 실패했습니다.';
 

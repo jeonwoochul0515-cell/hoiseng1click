@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import { onRequest } from "firebase-functions/v2/https";
 import express from "express";
-import { handleCodefCollect, handleIntakeCodefCollect, handleStatementData, handleSimpleAuthStart, handleSimpleAuthComplete } from "./codefProxy";
+import { handleCodefCollect, handleIntakeCodefCollect, handleStatementData, handleSimpleAuthStart, handleSimpleAuthComplete, handleCodefTestConnection } from "./codefProxy";
 import { handlePropertyLookup, handleVehicleLookup } from "./publicDataProxy";
 import { handleDocGenerate } from "./docGenerator";
 import { handleIncomeProof, handleWithholdingTax, handleBusinessRegistration, handleHealthInsurance, handleHealthInsurancePremium, handleNationalPension, handlePublicDataCollect, handleResidentRegistration, handleResidentAbstract, handleFamilyRelation, handlePropertyRegistry, handleTaxPaymentCert, handleWageStatement, handleVatCert, handleFinancialStatement, handleLocalTaxAssessment, handleLocalTaxPayment, handleVehicleRegistration, handleLocalTaxCert, handleNationalTaxCert, handleFourInsurance } from "./codefPublic";
@@ -40,21 +40,6 @@ app.use(express.json());
 app.post("/intake/codef-collect", handleIntakeCodefCollect);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-// 임시: HWPX 템플릿 업로드 (base64 body)
-app.post("/admin/upload-template", async (req, res) => {
-  try {
-    const { name, data } = req.body as { name: string; data: string };
-    if (!name || !data) { res.status(400).json({ error: "name, data required" }); return; }
-    const buf = Buffer.from(data, "base64");
-    const bucket = admin.storage().bucket();
-    const file = bucket.file(`templates/hwpx/${name}`);
-    await file.save(buf, { contentType: "application/octet-stream" });
-    res.json({ ok: true, path: `templates/hwpx/${name}`, size: buf.length });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ── Auth middleware (아래 라우트는 법무사 로그인 필요) ──
 app.use(async (req, res, next) => {
   const auth = req.headers.authorization ?? "";
@@ -72,7 +57,23 @@ app.use(async (req, res, next) => {
   }
 });
 
+// HWPX 템플릿 업로드 (인증 필요)
+app.post("/admin/upload-template", async (req, res) => {
+  try {
+    const { name, data } = req.body as { name: string; data: string };
+    if (!name || !data) { res.status(400).json({ error: "name, data required" }); return; }
+    const buf = Buffer.from(data, "base64");
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(`templates/hwpx/${name}`);
+    await file.save(buf, { contentType: "application/octet-stream" });
+    res.json({ ok: true, path: `templates/hwpx/${name}`, size: buf.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/codef/collect", handleCodefCollect);
+app.post("/codef/test-connection", handleCodefTestConnection);
 app.post("/codef/simple-auth/start", handleSimpleAuthStart);
 app.post("/codef/simple-auth/complete", handleSimpleAuthComplete);
 app.post("/codef/statement-data", handleStatementData);
@@ -175,7 +176,7 @@ app.post("/crypto/batch-decrypt-ssn", (req, res) => {
 app.post("/crypto/migrate-ssn", async (req, res) => {
   try {
     const user = (req as any).user as { uid: string };
-    const officeId = (req.body as { officeId: string }).officeId || user.uid;
+    const officeId = user.uid; // 보안: 자신의 사무소만 마이그레이션 가능
     const clientsSnap = await admin.firestore()
       .collection("offices").doc(officeId).collection("clients").get();
 

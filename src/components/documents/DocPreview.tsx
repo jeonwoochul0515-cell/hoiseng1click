@@ -31,7 +31,7 @@ function val(v: string | number | undefined | null, fallback = ''): string {
 }
 
 function num(v: number | undefined | null): string {
-  if (!v) return '';
+  if (v == null) return '';
   return new Intl.NumberFormat('ko-KR').format(v);
 }
 

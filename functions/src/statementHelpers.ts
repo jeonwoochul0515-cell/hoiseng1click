@@ -61,59 +61,7 @@ export interface PropertyDisposalItem {
   type: "매매" | "경매" | "기타";
 }
 
-// ---------------------------------------------------------------------------
-// CODEF 헬퍼 (자체 포함)
-// ---------------------------------------------------------------------------
-const OAUTH_URL = "https://oauth.codef.io/oauth/token";
-
-function getCodefBase(): string {
-  return process.env.CODEF_API_HOST || "https://development.codef.io";
-}
-
-async function getToken(): Promise<string> {
-  const clientId = process.env.CODEF_CLIENT_ID ?? "";
-  const clientSecret = process.env.CODEF_CLIENT_SECRET ?? "";
-  const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-
-  const res = await fetch(OAUTH_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${creds}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials&scope=read",
-  });
-
-  if (!res.ok) {
-    throw new Error(`CODEF OAuth failed: ${res.status} ${res.statusText}`);
-  }
-  const data = (await res.json()) as { access_token: string };
-  if (!data.access_token) {
-    throw new Error("CODEF OAuth response missing access_token");
-  }
-  return data.access_token;
-}
-
-async function callCodef(
-  token: string,
-  endpoint: string,
-  body: object,
-): Promise<unknown> {
-  try {
-    const res = await fetch(`${getCodefBase()}${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(12000),
-    });
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
+import { getToken, callCodef } from "./codefProxy";
 
 // ---------------------------------------------------------------------------
 // 파싱 함수들

@@ -115,7 +115,7 @@ export default function AdminPage() {
   ];
 
   // --- 권한 확인 ---
-  const ADMIN_EMAILS = ['admin@lawdocs.kr', user?.email ?? ''];
+  const ADMIN_EMAILS = ['admin@lawdocs.kr'];
   const isAdmin = user && ADMIN_EMAILS.includes(user.email ?? '');
 
   if (!isAdmin) {

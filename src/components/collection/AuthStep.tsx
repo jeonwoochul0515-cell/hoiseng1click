@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCollectionStore } from '@/store/collectionStore';
-import { CheckSquare, Square, Smartphone, Loader2, CheckCircle2, RefreshCw, AlertCircle, KeyRound, Shield, FileText } from 'lucide-react';
+import { CheckSquare, Square, Smartphone, Loader2, CheckCircle2, RefreshCw, AlertCircle, KeyRound, Shield } from 'lucide-react';
 import { workerApi } from '@/api/worker';
 
 /** 인증 방법 */
@@ -34,7 +34,7 @@ const BANK_CATEGORIES: { label: string; items: string[] }[] = [
   },
 ];
 
-const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
+const AUTH_TIMEOUT_MS = 2 * 60 * 1000; // CODEF 간편인증 유효 시간: ~120초
 const POLL_INTERVAL_MS = 3000;
 
 export default function AuthStep() {
@@ -56,11 +56,6 @@ export default function AuthStep() {
   const [certPw, setCertPw] = useState('');           // 인증서 비밀번호
   const [pfxFile, setPfxFile] = useState('');         // PFX (Base64)
   const [pfxFileName, setPfxFileName] = useState('');
-  const [derFile, setDerFile] = useState('');         // signCert.der (Base64)
-  const [keyFile, setKeyFile] = useState('');         // signPri.key (Base64)
-  const [derFileName, setDerFileName] = useState('');
-  const [keyFileName, setKeyFileName] = useState('');
-  const [certMode, setCertMode] = useState<'pfx' | 'derkey'>('derkey'); // DER+KEY가 기본 (SDK 권장)
   const [remainingSec, setRemainingSec] = useState(0);
   const [loading, setLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -116,8 +111,11 @@ export default function AuthStep() {
           setConnectedId(result.connectedId);
           setAuthStatus('done');
           setAuthError('');
+        } else if (result.status === 'pending' && result.twoWayInfo) {
+          // 서버가 새 twoWayInfo를 반환한 경우 갱신
+          setTwoWayInfo(result.twoWayInfo);
         }
-      } catch { /* 네트워크 에러 무시, 계속 폴링 */ }
+      } catch (err) { console.warn('[AuthStep] 폴링 에러 (계속 재시도):', err); }
     }
     pollRef.current = setInterval(pollOnce, POLL_INTERVAL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -202,11 +200,7 @@ export default function AuthStep() {
   }
 
   async function handleCertAuth() {
-    if (certMode === 'derkey') {
-      if (!derFile || !keyFile) { setAuthError('signCert.der 파일과 signPri.key 파일을 모두 선택해주세요.'); return; }
-    } else {
-      if (!pfxFile) { setAuthError('공동인증서 PFX 파일을 선택해주세요.'); return; }
-    }
+    if (!pfxFile) { setAuthError('공동인증서 PFX 파일을 선택해주세요.'); return; }
     if (!certPw.trim()) { setAuthError('인증서 비밀번호를 입력해주세요.'); return; }
     if (selectedBanks.length === 0) { setAuthError('금융기관을 1개 이상 선택해주세요.'); return; }
 
@@ -215,19 +209,14 @@ export default function AuthStep() {
     setAuthStatus('requesting');
 
     try {
-      console.log(`[AuthStep] 공동인증서 인증 요청 (${certMode} 방식)`);
+      console.log('[AuthStep] 공동인증서 인증 요청 (pfx 방식)');
 
       const credentials: any = {
         loginType: 'cert',
         id: '',
         password: certPw.trim(),
+        pfxFile,
       };
-      if (certMode === 'derkey') {
-        credentials.derFile = derFile;
-        credentials.keyFile = keyFile;
-      } else {
-        credentials.pfxFile = pfxFile;
-      }
 
       const result = await workerApi.codefCollect({
         clientId: '',
@@ -260,7 +249,40 @@ export default function AuthStep() {
       }
     } catch (err: any) {
       console.error('[AuthStep] 공동인증서 에러:', err);
-      setAuthError(err.message ?? '공동인증서 인증 중 오류가 발생했습니다.');
+      const msg = err.message ?? '';
+      if (msg.includes('CF-04009') || msg.includes('암호화 도중')) {
+        setAuthError('PFX 파일 처리에 실패했습니다. 인증서 파일을 확인해주세요.');
+      } else if (msg.includes('CF-12304') || msg.includes('전자서명 데이터 오류')) {
+        setAuthError('전자서명 데이터 오류입니다. 인증서 파일과 비밀번호를 확인해주세요.');
+      } else if (msg.includes('CF-12302') || msg.includes('인증서 암호가 틀렸습니다')) {
+        setAuthError('인증서 비밀번호가 올바르지 않습니다. 다시 확인해주세요.');
+      } else if (msg.includes('CF-12806') || msg.includes('만료된 인증서')) {
+        setAuthError('인증서가 만료되었습니다. 인증기관에서 갱신 후 다시 시도해주세요.');
+      } else if (msg.includes('CF-12805') || msg.includes('미등록 인증서')) {
+        setAuthError('해당 기관에 등록되지 않은 인증서입니다. 인증서 등록 후 시도해주세요.');
+      } else if (msg.includes('CF-12301') || msg.includes('인증서가 유효하지')) {
+        setAuthError('인증서가 유효하지 않습니다. 만료 여부를 확인해주세요.');
+      } else if (msg.includes('CF-12100')) {
+        setAuthError('금융기관 오류: ' + (msg.match(/CF-12100.*?(?=;|$)/)?.[0] || '기관에 문의해주세요.'));
+      } else if (msg.includes('CF-11504') || msg.includes('암호화 입력 타입')) {
+        setAuthError('암호화 형식 오류입니다. 인증서 파일을 확인해주세요.');
+      } else if (msg.includes('CF-12050')) {
+        setAuthError('해당 기관에서 인증서 로그인을 지원하지 않습니다. 간편인증을 이용해주세요.');
+      } else if (msg.includes('CF-11021')) {
+        setAuthError('해당 기관에서 이 인증 방식을 지원하지 않습니다. 간편인증을 이용해주세요.');
+      } else if (msg.includes('인증서 처리 실패') || msg.includes('PFX')) {
+        setAuthError('인증서 파일 처리에 실패했습니다. PFX 파일을 확인해주세요.');
+      } else if (msg.includes('CF-04002')) {
+        setAuthError('인증서 비밀번호가 올바르지 않습니다.');
+      } else if (msg.includes('CF-04001')) {
+        setAuthError('인증서가 만료되었습니다. 갱신 후 다시 시도해주세요.');
+      } else if (msg.includes('CF-04000')) {
+        setAuthError('금융기관 계정 등록에 실패했습니다. 인증서와 비밀번호를 확인해주세요.');
+      } else if (msg.includes('CF-12411') || msg.includes('필수 파라미터')) {
+        setAuthError('필수 정보가 누락되었습니다. 인증서 파일과 비밀번호를 모두 입력해주세요.');
+      } else {
+        setAuthError(msg || '공동인증서 인증 중 오류가 발생했습니다.');
+      }
       setAuthStatus('error');
     } finally {
       setLoading(false);
@@ -400,87 +422,26 @@ export default function AuthStep() {
             공동인증서 인증
           </h3>
 
-          {/* 인증서 형식 선택 */}
-          <div className="flex gap-2">
-            <button onClick={() => setCertMode('derkey')} disabled={isLocked}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold border-2 transition-colors ${
-                certMode === 'derkey' ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'
-              }`}>
-              <FileText size={14} className="inline mr-1" />
-              DER + KEY 파일 (권장)
-            </button>
-            <button onClick={() => setCertMode('pfx')} disabled={isLocked}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold border-2 transition-colors ${
-                certMode === 'pfx' ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'
-              }`}>
-              <KeyRound size={14} className="inline mr-1" />
-              PFX 파일
-            </button>
-          </div>
-
           <div className="grid grid-cols-1 gap-3">
-            {certMode === 'derkey' ? (
-              <>
-                {/* signCert.der 파일 */}
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">signCert.der (인증서) *</label>
-                  <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
-                    derFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
-                  } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <FileText size={16} />
-                    {derFileName || 'signCert.der 파일 선택...'}
-                    <input type="file" accept=".der,.cer" className="hidden" disabled={isLocked}
-                      onChange={async e => {
-                        const f = e.target.files?.[0];
-                        if (f) {
-                          const b64 = await readFileAsBase64(f);
-                          setDerFile(b64);
-                          setDerFileName(f.name);
-                        }
-                      }} />
-                  </label>
-                </div>
-                {/* signPri.key 파일 */}
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">signPri.key (개인키) *</label>
-                  <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
-                    keyFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
-                  } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <KeyRound size={16} />
-                    {keyFileName || 'signPri.key 파일 선택...'}
-                    <input type="file" accept=".key" className="hidden" disabled={isLocked}
-                      onChange={async e => {
-                        const f = e.target.files?.[0];
-                        if (f) {
-                          const b64 = await readFileAsBase64(f);
-                          setKeyFile(b64);
-                          setKeyFileName(f.name);
-                        }
-                      }} />
-                  </label>
-                </div>
-              </>
-            ) : (
-              /* PFX 파일 */
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">공동인증서 PFX 파일 *</label>
-                <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
-                  pfxFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
-                } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  <KeyRound size={16} />
-                  {pfxFileName || 'PFX 파일 선택...'}
-                  <input type="file" accept=".pfx,.p12" className="hidden" disabled={isLocked}
-                    onChange={async e => {
-                      const f = e.target.files?.[0];
-                      if (f) {
-                        const b64 = await readFileAsBase64(f);
-                        setPfxFile(b64);
-                        setPfxFileName(f.name);
-                      }
-                    }} />
-                </label>
-              </div>
-            )}
+            {/* PFX 파일 */}
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">공동인증서 PFX 파일 *</label>
+              <label className={`flex items-center gap-2 w-full rounded-lg border-2 border-dashed px-4 py-3 text-sm cursor-pointer transition-colors ${
+                pfxFile ? 'border-green-400 bg-green-50 text-green-700' : 'border-gray-300 text-gray-500 hover:border-blue-400'
+              } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                <KeyRound size={16} />
+                {pfxFileName || 'PFX 파일 선택...'}
+                <input type="file" accept=".pfx,.p12" className="hidden" disabled={isLocked}
+                  onChange={async e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      const b64 = await readFileAsBase64(f);
+                      setPfxFile(b64);
+                      setPfxFileName(f.name);
+                    }
+                  }} />
+              </label>
+            </div>
 
             {/* 비밀번호 */}
             <div>
@@ -493,16 +454,14 @@ export default function AuthStep() {
 
           <div className="rounded-lg bg-blue-50 p-3">
             <p className="text-xs text-blue-700">
-              {certMode === 'derkey'
-                ? '공동인증서 폴더(NPKI)에서 signCert.der와 signPri.key 파일을 선택해주세요.'
-                : 'CODEF 개발자 포탈의 PFX 추출 도구로 PFX 파일을 생성할 수 있습니다.'}
+              공동인증서 PFX 파일(.pfx 또는 .p12)을 선택해주세요.
             </p>
           </div>
 
           {authStatus !== 'done' && (
             <button
               onClick={handleCertAuth}
-              disabled={loading || (certMode === 'derkey' ? (!derFile || !keyFile) : !pfxFile) || !certPw.trim() || selectedBanks.length === 0}
+              disabled={loading || !pfxFile || !certPw.trim() || selectedBanks.length === 0}
               className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (

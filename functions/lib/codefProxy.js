@@ -33,14 +33,16 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getToken = getToken;
+exports.callCodef = callCodef;
 exports.handleCodefCollect = handleCodefCollect;
 exports.handleIntakeCodefCollect = handleIntakeCodefCollect;
 exports.handleStatementData = handleStatementData;
 exports.handleSimpleAuthStart = handleSimpleAuthStart;
 exports.handleSimpleAuthComplete = handleSimpleAuthComplete;
+exports.handleCodefTestConnection = handleCodefTestConnection;
 const crypto = __importStar(require("crypto"));
 const admin = __importStar(require("firebase-admin"));
-const forge = __importStar(require("node-forge"));
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -100,7 +102,7 @@ const ORG_MAP = {
     "IBK기업은행": { code: "0003", businessType: "BK" },
     "SC제일은행": { code: "0023", businessType: "BK" },
     "카카오뱅크": { code: "0090", businessType: "BK" },
-    "토스뱅크": { code: "0048", businessType: "BK" }, // 수정: 0092→0048
+    "토스뱅크": { code: "0092", businessType: "BK" },
     "케이뱅크": { code: "0089", businessType: "BK" },
     "수협은행": { code: "0007", businessType: "BK" },
     "OK저축은행": { code: "0105", businessType: "BK" },
@@ -126,68 +128,6 @@ const ORG_MAP = {
 const LOGIN_TYPE_MAP = {
     cert: "0", finCert: "0", kakao: "1", pass: "1",
 };
-/**
- * PFX(PKCS#12) → derFile + keyFile 분리
- * 사용자가 PFX 파일을 업로드하면 CODEF가 요구하는 derFile/keyFile로 분리합니다.
- */
-function pfxToDerKey(pfxBase64, password) {
-    try {
-        const p12Der = forge.util.decode64(pfxBase64);
-        const p12Asn1 = forge.asn1.fromDer(p12Der);
-        const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password);
-        // 인증서 추출
-        const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
-        const certBag = certBags[forge.pki.oids.certBag]?.[0];
-        if (!certBag?.cert)
-            throw new Error("PFX에서 인증서를 찾을 수 없습니다.");
-        const certAsn1 = forge.pki.certificateToAsn1(certBag.cert);
-        const certDer = forge.asn1.toDer(certAsn1).getBytes();
-        const derFile = forge.util.encode64(certDer);
-        // 개인키 추출 → PKCS#8 암호화 DER
-        const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
-        const keyBag = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0];
-        if (!keyBag?.key)
-            throw new Error("PFX에서 개인키를 찾을 수 없습니다.");
-        const keyAsn1 = forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(keyBag.key));
-        const encKeyAsn1 = forge.pki.encryptPrivateKeyInfo(keyAsn1, password, { algorithm: 'aes256' });
-        const keyDer = forge.asn1.toDer(encKeyAsn1).getBytes();
-        const keyFile = forge.util.encode64(keyDer);
-        console.log(`[CODEF] PFX → DER+KEY 분리 성공: der=${derFile.length}chars, key=${keyFile.length}chars`);
-        return { derFile, keyFile };
-    }
-    catch (err) {
-        console.error("[CODEF] PFX 분리 실패:", err.message);
-        throw new Error(`인증서 처리 실패: ${err.message}`);
-    }
-}
-// 레거시: derKeyToPfx (사용하지 않음)
-function derKeyToPfx(derBase64, keyBase64, password) {
-    try {
-        const derBuf = Buffer.from(derBase64, "base64");
-        const keyBuf = Buffer.from(keyBase64, "base64");
-        // DER → forge 인증서
-        const derAsn1 = forge.asn1.fromDer(forge.util.createBuffer(derBuf));
-        const cert = forge.pki.certificateFromAsn1(derAsn1);
-        // KEY 파일 → forge 개인키 (한국 공동인증서는 PKCS#8 암호화된 형태)
-        const keyPem = forge.pki.encryptedPrivateKeyToPem(forge.asn1.fromDer(forge.util.createBuffer(keyBuf)));
-        const privateKey = forge.pki.decryptRsaPrivateKey(keyPem, password);
-        if (!privateKey) {
-            throw new Error("인증서 비밀번호가 올바르지 않습니다.");
-        }
-        // PFX(PKCS#12) 생성
-        const p12Asn1 = forge.pkcs12.toPkcs12Asn1(privateKey, [cert], password, {
-            algorithm: "3des",
-        });
-        const p12Der = forge.asn1.toDer(p12Asn1).getBytes();
-        const pfxBase64 = forge.util.encode64(p12Der);
-        console.log(`[CODEF] PFX 변환 성공: ${pfxBase64.length} chars`);
-        return pfxBase64;
-    }
-    catch (err) {
-        console.error("[CODEF] PFX 변환 실패:", err.message);
-        throw new Error(`인증서 변환 실패: ${err.message}`);
-    }
-}
 function buildAccountList(banks, credentials) {
     const encPw = encryptRSA(credentials.password);
     const codefLoginType = LOGIN_TYPE_MAP[credentials.loginType] ?? "1";
@@ -197,6 +137,15 @@ function buildAccountList(banks, credentials) {
         const org = ORG_MAP[bankName];
         if (!org)
             continue;
+        // 인증서 로그인(loginType 0) 미지원 기관 스킵
+        if (codefLoginType === "0") {
+            // 보험(IS)은 인증서 로그인 미지원
+            if (org.businessType === "IS")
+                continue;
+            // 인터넷전용은행은 인증서 로그인 미지원 (간편인증만)
+            if (["0090", "0092", "0089"].includes(org.code))
+                continue;
+        }
         // 동일 기관코드+businessType 중복 스킵 (보험 어그리게이터 등)
         const key = `${org.code}_${org.businessType}`;
         if (seen.has(key))
@@ -208,16 +157,10 @@ function buildAccountList(banks, credentials) {
             password: encPw,
         };
         if (codefLoginType === "0") {
-            // 공동인증서 (loginType 0)
-            if (credentials.derFile && credentials.keyFile) {
-                // signCert.der + signPri.key 직접 업로드 (codef-node SDK 방식: derFile + keyFile + password)
-                account.derFile = credentials.derFile;
-                account.keyFile = credentials.keyFile;
-            }
-            else if (credentials.pfxFile) {
-                // PFX(PKCS#12) 파일 직접 전송
-                account.certFile = credentials.pfxFile;
-                account.certPassword = encPw;
+            // 공동인증서 (loginType 0) — PFX 방식
+            account.certType = "0";
+            if (credentials.pfxFile) {
+                account.pfxFile = credentials.pfxFile;
             }
         }
         else {
@@ -231,54 +174,78 @@ function buildAccountList(banks, credentials) {
 // CODEF API 호출
 // ---------------------------------------------------------------------------
 async function callCodef(token, endpoint, body) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
-    const jsonBody = JSON.stringify(body);
-    // 요청 로깅 (비밀번호/파일 데이터 제외)
-    const logBody = JSON.parse(jsonBody);
-    if (logBody.accountList) {
-        logBody.accountList = logBody.accountList.map((a) => ({
-            ...a,
-            password: a.password ? '[ENCRYPTED]' : undefined,
-            certPassword: a.certPassword ? '[ENCRYPTED]' : undefined,
-            derFile: a.derFile ? `[${a.derFile.length}chars]` : undefined,
-            keyFile: a.keyFile ? `[${a.keyFile.length}chars]` : undefined,
-            pfxFile: a.pfxFile ? `[${a.pfxFile.length}chars]` : undefined,
-            certFile: a.certFile ? `[${a.certFile.length}chars]` : undefined,
-        }));
-    }
-    console.log(`[CODEF] Calling ${endpoint}:`, JSON.stringify(logBody).slice(0, 500));
-    // CODEF 공식 SDK(easycodef-node) 기준: body를 URL 인코딩해서 전송
-    const encodedBody = encodeURIComponent(jsonBody);
-    try {
-        const res = await fetch(`${getCodefBase()}${endpoint}`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: encodedBody,
-            signal: controller.signal,
-        });
-        clearTimeout(timeout);
-        const text = await res.text();
-        const decoded = (() => { try {
-            return decodeURIComponent(text.replace(/\+/g, " "));
+    async function doFetch(authToken) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 60000);
+        const jsonBody = JSON.stringify(body);
+        // 요청 로깅 (비밀번호/파일 데이터 제외)
+        const logBody = JSON.parse(jsonBody);
+        if (logBody.accountList) {
+            logBody.accountList = logBody.accountList.map((a) => ({
+                ...a,
+                password: a.password ? '[ENCRYPTED]' : undefined,
+                pfxFile: a.pfxFile ? `[${a.pfxFile.length}chars]` : undefined,
+            }));
         }
-        catch {
-            return text;
-        } })();
-        console.log(`[CODEF] Response ${endpoint}: ${res.status}`);
-        console.log(`[CODEF] Body: ${decoded.slice(0, 1000)}`);
+        const startMs = Date.now();
+        console.log(`[CODEF] → ${endpoint}:`, JSON.stringify(logBody).slice(0, 500));
+        const encodedBody = encodeURIComponent(jsonBody);
         try {
-            return JSON.parse(text);
+            const res = await fetch(`${getCodefBase()}${endpoint}`, {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                    "Content-Type": "application/json",
+                },
+                body: encodedBody,
+                signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            const text = await res.text();
+            const elapsed = Date.now() - startMs;
+            // 항상 URL 디코딩 먼저 (CODEF SDK 방식)
+            let decoded;
+            try {
+                decoded = decodeURIComponent(text.replace(/\+/g, " "));
+            }
+            catch {
+                decoded = text;
+            }
+            console.log(`[CODEF] ← ${endpoint} [${res.status}] ${elapsed}ms: ${decoded.slice(0, 1000)}`);
+            if (!res.ok)
+                console.log(`[CODEF] Full error: ${decoded}`);
+            return { status: res.status, decoded };
         }
-        catch {
-            return JSON.parse(decodeURIComponent(text.replace(/\+/g, " ")));
+        catch (err) {
+            clearTimeout(timeout);
+            throw new Error(`CODEF API error on ${endpoint}: ${err instanceof Error ? err.message : "호출 실패"}`);
         }
     }
-    catch (err) {
-        clearTimeout(timeout);
-        const message = err instanceof Error ? err.message : "CODEF API 호출 실패";
-        throw new Error(`CODEF API error on ${endpoint}: ${message}`);
+    // 1차 시도
+    let result = await doFetch(token);
+    // 401 → 토큰 갱신 후 재시도
+    if (result.status === 401) {
+        console.log("[CODEF] 401 → 토큰 갱신 후 재시도");
+        cachedToken = null;
+        const newToken = await getToken();
+        result = await doFetch(newToken);
     }
+    // URL 디코딩된 문자열을 JSON 파싱
+    let parsed;
+    try {
+        parsed = JSON.parse(result.decoded);
+    }
+    catch {
+        console.error(`[CODEF] JSON 파싱 실패 (${endpoint}): ${result.decoded.slice(0, 500)}`);
+        throw new Error(`CODEF 응답 파싱 실패 (HTTP ${result.status}): 서버가 비정상 응답을 반환했습니다.`);
+    }
+    // CODEF 인증 에러 시 토큰 캐시 무효화
+    const code = parsed?.result?.code;
+    if (code === "CF-00401" || code === "CF-09999") {
+        cachedToken = null;
+    }
+    return parsed;
 }
 function parseDebts(bankLoans, cardLoans) {
     const debts = [];
@@ -325,8 +292,17 @@ function parseAssets(accounts, insurance) {
 // 공통: Connected ID 생성 + 기본 수집
 // ---------------------------------------------------------------------------
 async function collectWithCodef(token, accountList) {
+    // 계정 등록 요청 로깅
+    const acctCount = Array.isArray(accountList) ? accountList.length : 0;
+    const acctOrgs = Array.isArray(accountList)
+        ? accountList.map((a) => `${a.organization}(${a.businessType})`).join(", ")
+        : "unknown";
+    console.log(`[CODEF] account/create 요청: ${acctCount}개 기관 [${acctOrgs}]`);
     const acctData = (await callCodef(token, "/v1/account/create", { accountList }));
+    const codefCode = acctData?.result?.code;
+    const codefMsg = acctData?.result?.message;
     const cid = acctData?.data?.connectedId;
+    console.log(`[CODEF] account/create 응답: code=${codefCode}, msg=${codefMsg}, connectedId=${cid ?? "없음"}`);
     // 부분 성공 처리: 일부 기관이 실패해도 connectedId가 있으면 계속 진행
     const successList = acctData?.data?.successList ?? [];
     const errorList = acctData?.data?.errorList ?? [];
@@ -338,12 +314,13 @@ async function collectWithCodef(token, accountList) {
         console.log(`[CODEF] 성공 기관: ${successList.map((s) => s.organization).join(", ")}`);
     }
     if (!cid) {
-        // 모든 기관이 실패한 경우
-        const msg = acctData?.result?.message ?? "금융기관 계정 연결 실패";
+        // 모든 기관이 실패한 경우 — 상세 에러 로깅
+        console.error(`[CODEF] account/create 실패 전체 응답:`, JSON.stringify(acctData).slice(0, 2000));
+        const msg = codefMsg ?? "금융기관 계정 연결 실패";
         const detail = errorList.length > 0
             ? errorList.map((e) => `${e.organization}: ${e.message}`).join("; ")
             : undefined;
-        return { error: msg, detail: detail ?? acctData };
+        return { error: msg, code: codefCode, detail: detail ?? acctData };
     }
     const reqBody = { connectedId: cid };
     const [bankAccounts, bankLoans, cardLoans, insurance] = await Promise.allSettled([
@@ -402,12 +379,14 @@ async function handleCodefCollect(req, res) {
         }
         const result = await collectWithCodef(token, accountList);
         if ("error" in result) {
-            res.status(500).json(result);
+            console.error(`[CODEF] handleCodefCollect 실패:`, JSON.stringify(result).slice(0, 1000));
+            res.status(502).json(result);
             return;
         }
         res.json(result);
     }
     catch (err) {
+        console.error(`[CODEF] handleCodefCollect 예외:`, err.message, err.stack?.slice(0, 500));
         res.status(500).json({ error: err.message ?? "CODEF 수집 실패" });
     }
 }
@@ -452,12 +431,14 @@ async function handleIntakeCodefCollect(req, res) {
         }
         const result = await collectWithCodef(token, accountList);
         if ("error" in result) {
-            res.status(500).json(result);
+            console.error(`[CODEF] handleIntakeCodefCollect 실패:`, JSON.stringify(result).slice(0, 1000));
+            res.status(502).json(result);
             return;
         }
         res.json(result);
     }
     catch (err) {
+        console.error(`[CODEF] handleIntakeCodefCollect 예외:`, err.message, err.stack?.slice(0, 500));
         res.status(500).json({ error: err.message ?? "CODEF 수집 실패" });
     }
 }
@@ -599,7 +580,6 @@ async function handleSimpleAuthStart(req, res) {
                 userName,
                 phoneNo: phoneNo.replace(/-/g, ""),
                 identity: birthDate,
-                id: "", // CODEF 필수 필드
                 password: encryptRSA(""), // CODEF 필수 필드 (RSA 암호화된 빈 문자열)
             });
         }
@@ -679,7 +659,6 @@ async function handleSimpleAuthComplete(req, res) {
                 userName: userName ?? "",
                 phoneNo: phoneNo.replace(/-/g, ""),
                 identity: birthDate,
-                id: "", // CODEF 필수 필드
                 password: encryptRSA(""), // CODEF 필수 필드
             });
         }
@@ -698,7 +677,18 @@ async function handleSimpleAuthComplete(req, res) {
             return;
         }
         if (code === "CF-03002") {
-            res.json({ status: "pending", message: "아직 인증이 완료되지 않았습니다. 폰에서 인증을 완료해주세요." });
+            // 새로운 twoWayInfo가 포함되어 있으면 갱신하여 반환
+            const newTwoWayInfo = result?.data ? {
+                jobIndex: result.data.jobIndex ?? twoWayInfo.jobIndex,
+                threadIndex: result.data.threadIndex ?? twoWayInfo.threadIndex,
+                jti: result.data.jti ?? twoWayInfo.jti,
+                twoWayTimestamp: result.data.twoWayTimestamp ?? twoWayInfo.twoWayTimestamp,
+            } : undefined;
+            res.json({
+                status: "pending",
+                message: "아직 인증이 완료되지 않았습니다. 폰에서 인증을 완료해주세요.",
+                ...(newTwoWayInfo && { twoWayInfo: newTwoWayInfo }),
+            });
             return;
         }
         // 에러 코드별 상세 메시지
@@ -719,5 +709,37 @@ async function handleSimpleAuthComplete(req, res) {
         console.error("[CODEF] 간편인증 완료 오류:", err);
         res.status(500).json({ error: err.message ?? "간편인증 완료 실패" });
     }
+}
+// ---------------------------------------------------------------------------
+// POST /codef/test-connection — CODEF 연결 진단
+// ---------------------------------------------------------------------------
+async function handleCodefTestConnection(_req, res) {
+    const results = {};
+    // 1) OAuth 토큰 테스트
+    try {
+        const start = Date.now();
+        const token = await getToken();
+        results.oauth = { ok: true, elapsed: Date.now() - start, tokenLength: token.length };
+    }
+    catch (err) {
+        results.oauth = { ok: false, error: err.message };
+    }
+    // 2) API 연결 테스트 (connectedId-list 조회)
+    try {
+        const token = await getToken();
+        const start = Date.now();
+        const resp = await callCodef(token, "/v1/account/connectedId-list", { pageNo: 0 });
+        results.api = { ok: true, elapsed: Date.now() - start, code: resp?.result?.code };
+    }
+    catch (err) {
+        results.api = { ok: false, error: err.message };
+    }
+    results.config = {
+        host: getCodefBase(),
+        hasClientId: !!process.env.CODEF_CLIENT_ID,
+        hasClientSecret: !!process.env.CODEF_CLIENT_SECRET,
+        hasPublicKey: !!CODEF_PUBLIC_KEY,
+    };
+    res.json(results);
 }
 //# sourceMappingURL=codefProxy.js.map

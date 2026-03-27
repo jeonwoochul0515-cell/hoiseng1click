@@ -19,8 +19,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers: { ...headers, ...options.headers },
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error((body as { error?: string }).error ?? `API 에러 ${res.status}`);
+    const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string; code?: string; detail?: string };
+    const parts = [body.error ?? `API 에러 ${res.status}`];
+    if (body.code) parts.push(`[${body.code}]`);
+    if (body.detail) parts.push(body.detail);
+    throw new Error(parts.join(' '));
   }
   return res.json() as Promise<T>;
 }
@@ -28,7 +31,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export interface CodefCollectRequest {
   clientId: string;
   authMethod: 'cert' | 'kakao' | 'pass' | 'finCert';
-  credentials: { loginType: string; id: string; password: string; derFile?: string; keyFile?: string; pfxFile?: string };
+  credentials: { loginType: string; id: string; password: string; pfxFile?: string };
   banks: string[];
 }
 
@@ -63,6 +66,15 @@ export interface CodefCollectResponse {
 }
 
 export const workerApi = {
+  // CODEF 연결 진단
+  testConnection() {
+    return request<{
+      oauth: { ok: boolean; elapsed?: number; error?: string };
+      api: { ok: boolean; elapsed?: number; code?: string; error?: string };
+      config: { host: string; hasClientId: boolean; hasClientSecret: boolean; hasPublicKey: boolean };
+    }>('/codef/test-connection', { method: 'POST' });
+  },
+
   // 간편인증 시작
   simpleAuthStart(data: { userName: string; birthDate: string; phoneNo: string; provider?: string; banks: string[] }) {
     return request<{

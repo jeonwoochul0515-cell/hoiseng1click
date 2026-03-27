@@ -1,4 +1,5 @@
-export function formatKRW(amount: number): string {
+export function formatKRW(amount: number | undefined | null): string {
+  if (amount == null || isNaN(amount)) return '0원';
   return new Intl.NumberFormat('ko-KR').format(amount) + '원';
 }
 

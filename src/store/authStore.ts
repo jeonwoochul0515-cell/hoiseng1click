@@ -67,7 +67,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
 
   login: async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    set({ user: cred.user });
   },
 
   signup: async (email: string, password: string, data: SignupData) => {
@@ -111,7 +112,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     };
 
     await setDoc(doc(db, 'offices', cred.user.uid), officeData);
-    set({ office: { id: cred.user.uid, ...officeData } });
+    set({ user: cred.user, office: { id: cred.user.uid, ...officeData } });
   },
 
   updateOffice: async (data: Partial<Office>) => {
@@ -147,12 +148,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  refreshPlanStatus: () => {
+  refreshPlanStatus: async () => {
     const { office } = get();
     if (!office || !office.planExpiry) return;
     const expired = office.planExpiry.toDate().getTime() < Date.now();
     if (expired && office.plan !== 'starter') {
       set({ office: { ...office, plan: 'starter' } });
+      // Firestore에도 반영
+      try {
+        await updateDoc(doc(db, 'offices', office.id), { plan: 'starter' });
+      } catch (e) {
+        console.error('Failed to persist plan downgrade:', e);
+      }
     }
   },
 

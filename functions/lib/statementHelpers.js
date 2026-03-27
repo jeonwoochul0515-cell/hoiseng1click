@@ -7,51 +7,7 @@ exports.parseLargeCardUsage = parseLargeCardUsage;
 exports.parseCancelledInsurance = parseCancelledInsurance;
 exports.parseStockLosses = parseStockLosses;
 exports.handleStatementDataV2 = handleStatementDataV2;
-// ---------------------------------------------------------------------------
-// CODEF 헬퍼 (자체 포함)
-// ---------------------------------------------------------------------------
-const OAUTH_URL = "https://oauth.codef.io/oauth/token";
-function getCodefBase() {
-    return process.env.CODEF_API_HOST || "https://development.codef.io";
-}
-async function getToken() {
-    const clientId = process.env.CODEF_CLIENT_ID ?? "";
-    const clientSecret = process.env.CODEF_CLIENT_SECRET ?? "";
-    const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const res = await fetch(OAUTH_URL, {
-        method: "POST",
-        headers: {
-            Authorization: `Basic ${creds}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: "grant_type=client_credentials&scope=read",
-    });
-    if (!res.ok) {
-        throw new Error(`CODEF OAuth failed: ${res.status} ${res.statusText}`);
-    }
-    const data = (await res.json());
-    if (!data.access_token) {
-        throw new Error("CODEF OAuth response missing access_token");
-    }
-    return data.access_token;
-}
-async function callCodef(token, endpoint, body) {
-    try {
-        const res = await fetch(`${getCodefBase()}${endpoint}`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(12000),
-        });
-        return await res.json();
-    }
-    catch {
-        return null;
-    }
-}
+const codefProxy_1 = require("./codefProxy");
 // ---------------------------------------------------------------------------
 // 파싱 함수들
 // ---------------------------------------------------------------------------
@@ -250,14 +206,14 @@ async function handleStatementDataV2(req, res) {
         const ago1y = new Date(now);
         ago1y.setFullYear(now.getFullYear() - 1);
         const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, "");
-        const token = await getToken();
+        const token = await (0, codefProxy_1.getToken)();
         const [bankTxns, cardAppr, insList, bLoans, cLoans, stockTxns] = await Promise.allSettled([
-            callCodef(token, "/v1/kr/bank/p/account/transaction-list", { connectedId, startDate: fmt(ago2y), endDate: fmt(now) }),
-            callCodef(token, "/v1/kr/card/p/account/approval-list", { connectedId, startDate: fmt(ago2y), endDate: fmt(now) }),
-            callCodef(token, "/v1/kr/insurance/p/common/product-list", { connectedId }),
-            callCodef(token, "/v1/kr/bank/p/loan/loan-list", { connectedId }),
-            callCodef(token, "/v1/kr/card/p/loan/loan-list", { connectedId }),
-            callCodef(token, "/v1/kr/stock/a/account/transaction-list", { connectedId, startDate: fmt(ago2y), endDate: fmt(now) }),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/bank/p/account/transaction-list", { connectedId, startDate: fmt(ago2y), endDate: fmt(now) }),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/card/p/account/approval-list", { connectedId, startDate: fmt(ago2y), endDate: fmt(now) }),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/insurance/p/common/product-list", { connectedId }),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/bank/p/loan/loan-list", { connectedId }),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/card/p/loan/loan-list", { connectedId }),
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/stock/a/account/transaction-list", { connectedId, startDate: fmt(ago2y), endDate: fmt(now) }),
         ]);
         const g = (r) => r.status === "fulfilled" ? r.value : null;
         res.json({

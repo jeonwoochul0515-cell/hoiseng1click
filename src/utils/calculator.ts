@@ -9,7 +9,11 @@ const MEDIAN_INCOME_2026: Record<number, number> = {
 };
 
 export function getMedianIncome(family: number): number {
-  return MEDIAN_INCOME_2026[Math.min(Math.max(family, 1), 6)] ?? 9000000;
+  const clamped = Math.max(family, 1);
+  if (clamped <= 6) return MEDIAN_INCOME_2026[clamped]!;
+  // 7인 이상: 6인 기준 + 1인당 증가분 (= 6인 - 5인)
+  const perPerson = MEDIAN_INCOME_2026[6]! - MEDIAN_INCOME_2026[5]!;
+  return MEDIAN_INCOME_2026[6]! + perPerson * (clamped - 6);
 }
 
 export function calcLivingCost(family: number): number {

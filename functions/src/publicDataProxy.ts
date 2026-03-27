@@ -103,16 +103,16 @@ async function fetchByPnu(
 
   switch (propertyType) {
     case "apt":
-      apiUrl = "http://apis.data.go.kr/1611000/nsdi/ApartHousingPriceService/attr/getApartHousingPriceAttr";
+      apiUrl = "https://apis.data.go.kr/1611000/nsdi/ApartHousingPriceService/attr/getApartHousingPriceAttr";
       priceField = "pblntfPc";
       break;
     case "house":
-      apiUrl = "http://apis.data.go.kr/1611000/nsdi/IndvdHousingPriceService/attr/getIndvdHousingPriceAttr";
+      apiUrl = "https://apis.data.go.kr/1611000/nsdi/IndvdHousingPriceService/attr/getIndvdHousingPriceAttr";
       priceField = "pblntfPc";
       break;
     case "land":
     default:
-      apiUrl = "http://apis.data.go.kr/1611000/nsdi/IndvdLandPriceService/attr/getIndvdLandPriceAttr";
+      apiUrl = "https://apis.data.go.kr/1611000/nsdi/IndvdLandPriceService/attr/getIndvdLandPriceAttr";
       priceField = "pblntfPclnd";
       break;
   }
@@ -175,7 +175,7 @@ async function fetchAptTradePrice(apiKey: string, address: string, area: number)
       numOfRows: "50",
     });
 
-    const url = `http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?${params}`;
+    const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?${params}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
 

@@ -106,7 +106,7 @@ export default function DashboardPage() {
   const kpiData = useMemo(() => [
     { label: '전체 의뢰인', value: totalClients, icon: Users, color: '#3B82F6' },
     { label: '신규', value: statusCounts.new, icon: UserPlus, color: '#8B5CF6' },
-    { label: '수집 완료', value: statusCounts.collecting, icon: CheckCircle, color: '#C9A84C' },
+    { label: '수집 완료', value: clients.filter(c => c.collectionDone).length, icon: CheckCircle, color: '#C9A84C' },
     { label: '서류 생성', value: docCountThisMonth, icon: FileText, color: '#8B5CF6' },
     { label: '법원 제출', value: statusCounts.submitted, icon: Send, color: '#F59E0B' },
     { label: '인가 완료', value: statusCounts.approved, icon: ShieldCheck, color: '#10B981' },

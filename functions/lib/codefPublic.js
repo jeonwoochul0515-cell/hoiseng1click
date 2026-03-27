@@ -21,67 +21,7 @@ exports.handleVehicleRegistration = handleVehicleRegistration;
 exports.handleLocalTaxCert = handleLocalTaxCert;
 exports.handleNationalTaxCert = handleNationalTaxCert;
 exports.handleFourInsurance = handleFourInsurance;
-// ---------------------------------------------------------------------------
-// CODEF OAuth & 호출 헬퍼 (codefProxy.ts에서 export되지 않으므로 자체 정의)
-// ---------------------------------------------------------------------------
-const OAUTH_URL = "https://oauth.codef.io/oauth/token";
-function getCodefBase() {
-    return process.env.CODEF_API_HOST || "https://development.codef.io";
-}
-let cachedToken = null;
-async function getToken() {
-    if (cachedToken && cachedToken.expiry > Date.now()) {
-        return cachedToken.token;
-    }
-    const clientId = process.env.CODEF_CLIENT_ID ?? "";
-    const clientSecret = process.env.CODEF_CLIENT_SECRET ?? "";
-    const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const res = await fetch(OAUTH_URL, {
-        method: "POST",
-        headers: {
-            Authorization: `Basic ${creds}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: "grant_type=client_credentials&scope=read",
-    });
-    if (!res.ok) {
-        throw new Error(`CODEF OAuth failed: ${res.status} ${res.statusText}`);
-    }
-    const data = (await res.json());
-    if (!data.access_token) {
-        throw new Error("CODEF OAuth response missing access_token");
-    }
-    cachedToken = { token: data.access_token, expiry: Date.now() + 6 * 24 * 60 * 60 * 1000 };
-    return cachedToken.token;
-}
-async function callCodef(token, endpoint, body) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    const jsonBody = JSON.stringify(body);
-    try {
-        const res = await fetch(`${getCodefBase()}${endpoint}`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: jsonBody,
-            signal: controller.signal,
-        });
-        clearTimeout(timeout);
-        const text = await res.text();
-        try {
-            return JSON.parse(text);
-        }
-        catch {
-            return JSON.parse(decodeURIComponent(text.replace(/\+/g, " ")));
-        }
-    }
-    catch (err) {
-        clearTimeout(timeout);
-        throw new Error(`CODEF API error on ${endpoint}: ${err instanceof Error ? err.message : "호출 실패"}`);
-    }
-}
+const codefProxy_1 = require("./codefProxy");
 // ---------------------------------------------------------------------------
 // 응답 파싱 헬퍼
 // ---------------------------------------------------------------------------
@@ -188,8 +128,8 @@ async function handleIncomeProof(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/income-amount", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/income-amount", {
             connectedId,
             identity: identity ?? "",
             issuePurpose: issuePurpose ?? "02", // 02: 금융기관 제출용
@@ -220,8 +160,8 @@ async function handleWithholdingTax(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/paystatement-income", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/paystatement-income", {
             connectedId,
             identity: identity ?? "",
         });
@@ -251,8 +191,8 @@ async function handleBusinessRegistration(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/business-registration", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/business-registration", {
             connectedId,
             identity: identity ?? "",
             businessNo: businessNumber ?? "",
@@ -283,8 +223,8 @@ async function handleHealthInsurance(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/nhis-insurance-identity-confirmation", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/nhis-insurance-identity-confirmation", {
             connectedId,
             identity: identity ?? "",
         });
@@ -320,8 +260,8 @@ async function handleHealthInsurancePremium(req, res) {
         ago12m.setFullYear(now.getFullYear() - 1);
         const defaultStart = ago12m.toISOString().slice(0, 10).replace(/-/g, "");
         const defaultEnd = now.toISOString().slice(0, 10).replace(/-/g, "");
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/nhis-insurance-payment", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/nhis-insurance-payment", {
             connectedId,
             identity: identity ?? "",
             startDate: startDate ?? defaultStart,
@@ -353,8 +293,8 @@ async function handleNationalPension(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/nps-join-issue", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/nps-join-issue", {
             connectedId,
             identity: identity ?? "",
         });
@@ -384,7 +324,7 @@ async function handlePublicDataCollect(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        const token = await getToken();
+        const token = await (0, codefProxy_1.getToken)();
         const id = identity ?? "";
         // 기본 날짜 범위: 최근 12개월
         const now = new Date();
@@ -393,31 +333,31 @@ async function handlePublicDataCollect(req, res) {
         const defaultStart = ago12m.toISOString().slice(0, 10).replace(/-/g, "");
         const defaultEnd = now.toISOString().slice(0, 10).replace(/-/g, "");
         const [incomeProofResult, withholdingTaxResult, businessRegResult, healthInsResult, healthPremiumResult, pensionResult,] = await Promise.allSettled([
-            callCodef(token, "/v1/kr/public/ck/proof-issue/income-amount", {
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/income-amount", {
                 connectedId,
                 identity: id,
                 issuePurpose: "02",
             }),
-            callCodef(token, "/v1/kr/public/ck/proof-issue/paystatement-income", {
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/paystatement-income", {
                 connectedId,
                 identity: id,
             }),
-            callCodef(token, "/v1/kr/public/ck/proof-issue/business-registration", {
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/business-registration", {
                 connectedId,
                 identity: id,
                 businessNo: businessNumber ?? "",
             }),
-            callCodef(token, "/v1/kr/public/pp/nhis-insurance-identity-confirmation", {
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/nhis-insurance-identity-confirmation", {
                 connectedId,
                 identity: id,
             }),
-            callCodef(token, "/v1/kr/public/pp/nhis-insurance-payment", {
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/nhis-insurance-payment", {
                 connectedId,
                 identity: id,
                 startDate: startDate ?? defaultStart,
                 endDate: endDate ?? defaultEnd,
             }),
-            callCodef(token, "/v1/kr/public/pp/nps-join-issue", {
+            (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/nps-join-issue", {
                 connectedId,
                 identity: id,
             }),
@@ -477,8 +417,8 @@ async function handleResidentRegistration(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/gov24-resident-register", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/gov24-resident-register", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -495,8 +435,8 @@ async function handleResidentAbstract(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/gov24-resident-abstract", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/gov24-resident-abstract", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -513,8 +453,8 @@ async function handleFamilyRelation(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ef/family-relation-certificate", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ef/family-relation-certificate", {
             connectedId, identity: identity ?? "",
             certType: certType ?? "1", // 1: 가족관계증명서, 2: 혼인관계증명서
         });
@@ -532,8 +472,8 @@ async function handlePropertyRegistry(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ef/real-estate-register", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ef/real-estate-register", {
             connectedId, address, propertyType: propertyType ?? "0",
         });
         res.json({ success: true, data: result });
@@ -550,8 +490,8 @@ async function handleTaxPaymentCert(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/tax-payment", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/tax-payment", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -568,8 +508,8 @@ async function handleWageStatement(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/wage-statement", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/wage-statement", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -586,8 +526,8 @@ async function handleVatCert(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/vat-certificate", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/vat-certificate", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -604,8 +544,8 @@ async function handleFinancialStatement(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/ck/proof-issue/financial-statement", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ck/proof-issue/financial-statement", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -622,8 +562,8 @@ async function handleLocalTaxAssessment(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/wetax-local-tax-assessment", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/wetax-local-tax-assessment", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -640,8 +580,8 @@ async function handleLocalTaxPayment(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/wetax-local-tax-payment", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/wetax-local-tax-payment", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -658,8 +598,8 @@ async function handleVehicleRegistration(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/gov24-vehicle-registration", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/gov24-vehicle-registration", {
             connectedId, identity: identity ?? "", carNumber: carNumber ?? "",
         });
         res.json({ success: true, data: result });
@@ -676,8 +616,8 @@ async function handleLocalTaxCert(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/gov24-local-tax-cert", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/gov24-local-tax-cert", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -694,8 +634,8 @@ async function handleNationalTaxCert(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/gov24-national-tax-cert", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/gov24-national-tax-cert", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });
@@ -712,8 +652,8 @@ async function handleFourInsurance(req, res) {
             res.status(400).json({ error: "connectedId 필요" });
             return;
         }
-        const token = await getToken();
-        const result = await callCodef(token, "/v1/kr/public/pp/four-insurance-members", {
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/pp/four-insurance-members", {
             connectedId, identity: identity ?? "",
         });
         res.json({ success: true, data: result });

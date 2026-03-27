@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:developer.codef.io)",
+      "Bash(grep -E \"\\\\.\\(ts|js|toml|json\\)$\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx firebase:*)",
+      "Bash(ls -la \"C:/Users/jeonw/.antigravity/hoiseng1click/hoiseng1click/functions/.env\"*)",
+      "Bash(firebase --version)",
+      "Bash(npm install:*)",
+      "Bash(npm list:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(node test-codef.js)",
+      "Bash(node -e \"try { require\\(''node-forge''\\); console.log\\(''node-forge OK''\\); } catch\\(e\\) { console.log\\(''MISSING:'', e.message\\); }\")",
+      "Bash(node:*)",
+      "Bash(npx vite:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(python -c \"import sys,json; [print\\(x[''''path'''']\\) for x in json.loads\\(sys.stdin.read\\(\\)\\)[''''tree'''']]\")",
+      "Bash(ls:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" api repos/codef-io/easycodef-node/git/trees/master?recursive=1 --jq '.tree[].path')",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" api repos/codef-io/easycodef-java/git/trees/master?recursive=1 --jq '.tree[].path')"
+    ]
+  }
+}

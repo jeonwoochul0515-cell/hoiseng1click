@@ -63,11 +63,13 @@ function AppLayout() {
 function PlanGuard({ requirePro }: { requirePro?: boolean }) {
   const hasPro = useAuthStore((s) => s.hasPro);
   const openUpgradeModal = useUiStore((s) => s.openUpgradeModal);
+  const shouldRedirect = requirePro && !hasPro();
 
-  if (requirePro && !hasPro()) {
-    openUpgradeModal();
-    return <Navigate to="/" replace />;
-  }
+  useEffect(() => {
+    if (shouldRedirect) openUpgradeModal();
+  }, [shouldRedirect, openUpgradeModal]);
+
+  if (shouldRedirect) return <Navigate to="/" replace />;
   return <Outlet />;
 }
 
@@ -75,7 +77,8 @@ export default function App() {
   const init = useAuthStore((s) => s.init);
 
   useEffect(() => {
-    init();
+    const unsubscribe = init();
+    return () => { unsubscribe(); };
   }, [init]);
 
   return (
@@ -99,7 +102,9 @@ export default function App() {
           </Route>
           <Route path="settings" element={<SettingsPage />} />
           <Route path="admin" element={<AdminPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
       </Suspense>
     </BrowserRouter>

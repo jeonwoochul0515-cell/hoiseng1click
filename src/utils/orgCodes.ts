@@ -17,7 +17,7 @@ export const ORG_MAP: Record<string, OrgInfo> = {
   'IBK기업은행': { code: '0003', name: 'IBK기업은행', businessType: 'BK', category: '은행' },
   'SC제일은행': { code: '0023', name: 'SC제일은행', businessType: 'BK', category: '은행' },
   '카카오뱅크': { code: '0090', name: '카카오뱅크', businessType: 'BK', category: '은행' },
-  '토스뱅크':   { code: '0048', name: '토스뱅크',   businessType: 'BK', category: '은행' },
+  '토스뱅크':   { code: '0092', name: '토스뱅크',   businessType: 'BK', category: '은행' },
   '케이뱅크':   { code: '0089', name: '케이뱅크',   businessType: 'BK', category: '은행' },
   '수협은행':   { code: '0007', name: '수협은행',   businessType: 'BK', category: '은행' },
 

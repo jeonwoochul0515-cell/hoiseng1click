@@ -4,9 +4,9 @@ exports.handleLandRegister = handleLandRegister;
 exports.handleBuildingRegister = handleBuildingRegister;
 exports.handleBuildingArea = handleBuildingArea;
 // ─── 상수 ──────────────────────────────────────────────────────
-const LAND_USE_BASE_URL = "http://apis.data.go.kr/1611000/nsdi/LandUseService/attr/getLandUseAttr";
-const BUILDING_TITLE_BASE_URL = "http://apis.data.go.kr/1613000/BldRgstService/getBrTitleInfo";
-const BUILDING_AREA_BASE_URL = "http://apis.data.go.kr/1613000/BldRgstService/getBrExposPubuseAreaInfo";
+const LAND_USE_BASE_URL = "https://apis.data.go.kr/1611000/nsdi/LandUseService/attr/getLandUseAttr";
+const BUILDING_TITLE_BASE_URL = "https://apis.data.go.kr/1613000/BldRgstService/getBrTitleInfo";
+const BUILDING_AREA_BASE_URL = "https://apis.data.go.kr/1613000/BldRgstService/getBrExposPubuseAreaInfo";
 const API_TIMEOUT_MS = 8000;
 // ─── 유틸 ──────────────────────────────────────────────────────
 function getApiKey() {
