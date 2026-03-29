@@ -1,19 +1,24 @@
 import { useCollectionStore } from '@/store/collectionStore';
+import { useAuthStore } from '@/store/authStore';
 import { CheckSquare, Square } from 'lucide-react';
+import CreditPdfUpload from './CreditPdfUpload';
 
 const CONSENT_LABELS = [
   '서비스 이용약관 동의',
   '개인정보 수집·이용 동의 (개인회생 서류 작성 목적 한정)',
   '개인신용정보 전송요구권 행사 동의 (신용정보법 제33조의2)',
   'CODEF 중계기관을 통한 금융데이터 수집 동의',
+  '크레딧포유 개인신용정보 조회 동의',
 ];
 
 interface ConsentStepProps {
   clientName: string;
+  clientId?: string;
 }
 
-export default function ConsentStep({ clientName }: ConsentStepProps) {
+export default function ConsentStep({ clientName, clientId }: ConsentStepProps) {
   const { consents, setConsent, setStep } = useCollectionStore();
+  const office = useAuthStore((s) => s.office);
   const allChecked = consents.every(Boolean);
 
   function handleToggleAll() {
@@ -67,19 +72,28 @@ export default function ConsentStep({ clientName }: ConsentStepProps) {
         ))}
       </div>
 
-      {/* Next Button */}
-      <div className="flex justify-end">
-        <button
-          disabled={!allChecked}
-          onClick={() => setStep(2)}
-          className="rounded-lg px-8 py-3 font-semibold text-sm transition-colors
-            enabled:bg-[var(--color-brand-gold)] enabled:text-[var(--color-brand-navy)]
-            enabled:hover:brightness-110
-            disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
-        >
-          다음
-        </button>
-      </div>
+      {/* Credit PDF Upload (동의 완료 후 표시) */}
+      {allChecked && clientId && office && (
+        <CreditPdfUpload
+          clientId={clientId}
+          officeId={office.id}
+          onParsed={() => setStep(2)}
+          onSkip={() => setStep(2)}
+        />
+      )}
+
+      {/* Next Button (PDF 미사용 시) */}
+      {!allChecked && (
+        <div className="flex justify-end">
+          <button
+            disabled
+            className="rounded-lg px-8 py-3 font-semibold text-sm transition-colors
+              disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
+          >
+            동의 항목을 모두 확인해 주세요
+          </button>
+        </div>
+      )}
     </div>
   );
 }

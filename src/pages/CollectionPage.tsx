@@ -166,7 +166,7 @@ export default function CollectionPage() {
 
       {/* Step Content */}
       <div>
-        {step === 1 && <ConsentStep clientName={client?.name ?? '(알 수 없음)'} />}
+        {step === 1 && <ConsentStep clientName={client?.name ?? '(알 수 없음)'} clientId={clientId} />}
         {step === 2 && (
           connectedId && authStatus === 'done'
             ? <CollectStep clientId={clientId} />

@@ -150,6 +150,7 @@ app.post("/codef/statement-data-v2", statementHelpers_1.handleStatementDataV2);
 app.post("/ai/generate", aiWriter_1.handleAiGenerate);
 // 서류 OCR 처리
 app.post("/doc/ocr", ocrProcessor_1.handleDocOcr);
+app.post("/credit-report/parse", ocrProcessor_1.handleCreditReportParse);
 // ── 개인회생 서류 자동수집 (정부24/대법원/위택스/홈택스) ──
 app.post("/public/resident-registration", codefPublic_1.handleResidentRegistration);
 app.post("/public/resident-abstract", codefPublic_1.handleResidentAbstract);

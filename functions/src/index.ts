@@ -11,7 +11,7 @@ import { handleStatementDataV2 } from "./statementHelpers";
 import { handleAiGenerate } from "./aiWriter";
 import { handleVehicleInfo, handlePropertyPrice, handleAssetLookup } from "./codefProperty";
 import { encryptSSN, decryptSSN, maskSSN } from "./ssnCrypto";
-import { handleDocOcr } from "./ocrProcessor";
+import { handleDocOcr, handleCreditReportParse } from "./ocrProcessor";
 
 admin.initializeApp();
 
@@ -117,6 +117,7 @@ app.post("/ai/generate", handleAiGenerate);
 
 // 서류 OCR 처리
 app.post("/doc/ocr", handleDocOcr);
+app.post("/credit-report/parse", handleCreditReportParse);
 
 // ── 개인회생 서류 자동수집 (정부24/대법원/위택스/홈택스) ──
 app.post("/public/resident-registration", handleResidentRegistration);
