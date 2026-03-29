@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Database, FileText, Send, MessageCircle, Copy, Check, LinkIcon, ClipboardList, Download, ExternalLink, Loader2 } from 'lucide-react';
+import { ArrowLeft, Database, FileText, Send, MessageCircle, Copy, Check, LinkIcon, Download, ExternalLink, Loader2 } from 'lucide-react';
 import DocCollectPanel from '@/components/client/DocCollectPanel';
 import { sendKakaoLink } from '@/utils/kakao';
 import { getClient } from '@/api/firestore';
@@ -166,14 +166,6 @@ export default function ClientDetailPage() {
             >
               <Send className="h-4 w-4" />
               {linkLoading ? '생성중...' : '접수링크 전송'}
-            </button>
-
-            <button
-              onClick={() => navigate(`/clients/${client.id}/statement`)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-            >
-              <ClipboardList className="h-4 w-4" />
-              진술서 작성
             </button>
 
             <button
