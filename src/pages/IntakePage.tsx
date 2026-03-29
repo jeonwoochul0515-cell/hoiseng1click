@@ -9,6 +9,7 @@ import { verifyIntakePin, submitIntake, getIntakeToken, type IntakeToken } from 
 import { openAddressSearch } from '@/utils/address';
 import { getCourtByAddress } from '@/utils/courtMap';
 import { findCreditor } from '@/utils/creditorDirectory';
+import CreditPdfUpload from '@/components/collection/CreditPdfUpload';
 
 // ---------------------------------------------------------------------------
 // Types & constants
@@ -73,6 +74,7 @@ const CONSENT_LABELS = [
   '개인정보 수집·이용 동의',
   '개인신용정보 전송요구권 행사 동의',
   'CODEF 중계기관을 통한 금융데이터 수집 동의',
+  '크레딧포유 개인신용정보 조회 동의',
 ];
 
 // CODEF 간편인증(사설인증서) 앱 목록 — ID 코드는 CODEF API simpleAuth 파라미터 값
@@ -144,7 +146,7 @@ export default function IntakePage() {
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
 
   // Consent state
-  const [consents, setConsents] = useState<boolean[]>([false, false, false, false]);
+  const [consents, setConsents] = useState<boolean[]>([false, false, false, false, false]);
 
   // Auth state
   const [authApp, setAuthApp] = useState('kakao');
@@ -1058,6 +1060,27 @@ export default function IntakePage() {
                 ))}
               </div>
             </div>
+
+            {/* CreditPdfUpload — 동의 완료 후 표시 */}
+            {allConsented && (
+              <CreditPdfUpload
+                clientId={token ?? ''}
+                officeId={tokenData?.officeId ?? ''}
+                onParsed={(debts) => {
+                  const parsed = debts.map((d, i) => ({
+                    _key: nextId.current++,
+                    creditor: d.creditor,
+                    type: (d.type === '담보' ? '담보' : d.type === '사채' ? '사채' : '무담보') as DebtType,
+                    amount: d.amount,
+                    rate: 0,
+                    monthly: 0,
+                    source: 'manual' as const,
+                  }));
+                  setDebts(prev => [...prev, ...parsed]);
+                }}
+                onSkip={() => setStep('auth')}
+              />
+            )}
 
             {/* Next */}
             <button
