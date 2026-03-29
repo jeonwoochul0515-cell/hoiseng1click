@@ -8,6 +8,7 @@ import ConsentStep from '@/components/collection/ConsentStep';
 import AuthStep from '@/components/collection/AuthStep';
 import CollectStep from '@/components/collection/CollectStep';
 import ResultStep from '@/components/collection/ResultStep';
+import ChecklistStep from '@/components/collection/ChecklistStep';
 import type { Client } from '@/types/client';
 
 /** 렌더 중 setState 방지를 위한 리다이렉트 컴포넌트 */
@@ -18,9 +19,9 @@ function StepRedirect({ setStep }: { setStep: (n: number) => void }) {
 
 const STEPS = [
   { num: 1, label: '동의' },
-  { num: 2, label: '인증 정보' },
-  { num: 3, label: '수집 진행' },
-  { num: 4, label: '결과 확인' },
+  { num: 2, label: '인증 및 수집' },
+  { num: 3, label: '서류 보완' },
+  { num: 4, label: '확인 및 생성' },
 ];
 
 export default function CollectionPage() {
@@ -115,7 +116,7 @@ export default function CollectionPage() {
     <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       {/* Page Header */}
       <div className="mx-auto max-w-3xl mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">CODEF 금융데이터 수집</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">개인회생 서류 자동수집</h1>
         {client && (
           <p className="text-sm text-gray-600">
             의뢰인: <span className="text-gray-900">{client.name}</span>
@@ -166,11 +167,22 @@ export default function CollectionPage() {
       {/* Step Content */}
       <div>
         {step === 1 && <ConsentStep clientName={client?.name ?? '(알 수 없음)'} />}
-        {step === 2 && <AuthStep />}
-        {step === 3 && (
+        {step === 2 && (
           connectedId && authStatus === 'done'
             ? <CollectStep clientId={clientId} />
-            : <StepRedirect setStep={setStep} />
+            : <AuthStep />
+        )}
+        {step === 3 && (
+          <ChecklistStep
+            debts={result?.debts ?? client?.debts ?? []}
+            assets={result?.assets ?? client?.assets ?? []}
+            clientInfo={{
+              jobType: client?.jobType,
+              hasRealEstate: (result?.assets ?? client?.assets ?? []).some((a: any) => a.type === '부동산'),
+              court: client?.court,
+            }}
+            onComplete={() => setStep(4)}
+          />
         )}
         {step === 4 && <ResultStep clientId={clientId} />}
       </div>

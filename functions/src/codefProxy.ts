@@ -122,8 +122,6 @@ function buildAccountList(
     if (!org) continue;
     // 인증서 로그인(loginType 0) 미지원 기관 스킵
     if (codefLoginType === "0") {
-      // 보험(IS)은 인증서 로그인 미지원
-      if (org.businessType === "IS") continue;
       // 인터넷전용은행은 인증서 로그인 미지원 (간편인증만)
       if (["0090", "0092", "0089"].includes(org.code)) continue;
     }

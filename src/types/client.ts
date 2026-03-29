@@ -11,7 +11,7 @@ export interface Debt {
   amount: number;
   rate: number;
   monthly: number;
-  source: 'codef' | 'manual';
+  source: 'codef' | 'manual' | 'pdf';
   originalDate?: string;
   originalAmount?: number;
   overdueInterest?: number;
@@ -20,6 +20,8 @@ export interface Debt {
   creditorAddress?: string;
   creditorPhone?: string;
   creditorFax?: string;
+  transferredFrom?: string;  // 원 채권자 (채권양도된 경우)
+  transferDate?: string;     // 양도일
 }
 
 export interface Asset {
