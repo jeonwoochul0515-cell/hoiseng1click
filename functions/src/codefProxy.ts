@@ -51,7 +51,7 @@ export async function getToken(): Promise<string> {
 // ---------------------------------------------------------------------------
 // RSA 암호화
 // ---------------------------------------------------------------------------
-function encryptRSA(plainText: string): string {
+export function encryptRSA(plainText: string): string {
   const publicKeyPem = `-----BEGIN PUBLIC KEY-----\n${CODEF_PUBLIC_KEY}\n-----END PUBLIC KEY-----`;
   const encrypted = crypto.publicEncrypt(
     { key: publicKeyPem, padding: crypto.constants.RSA_PKCS1_PADDING },

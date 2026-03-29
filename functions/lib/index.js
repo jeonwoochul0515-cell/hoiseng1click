@@ -51,6 +51,7 @@ const aiWriter_1 = require("./aiWriter");
 const codefProperty_1 = require("./codefProperty");
 const ssnCrypto_1 = require("./ssnCrypto");
 const ocrProcessor_1 = require("./ocrProcessor");
+const codefPublicAuth_1 = require("./codefPublicAuth");
 admin.initializeApp();
 const allowedOrigins = [
     'http://localhost:5173',
@@ -151,6 +152,7 @@ app.post("/ai/generate", aiWriter_1.handleAiGenerate);
 // 서류 OCR 처리
 app.post("/doc/ocr", ocrProcessor_1.handleDocOcr);
 app.post("/credit-report/parse", ocrProcessor_1.handleCreditReportParse);
+app.post("/codef/public-auth/create", codefPublicAuth_1.handlePublicAuthCreate);
 // ── 개인회생 서류 자동수집 (정부24/대법원/위택스/홈택스) ──
 app.post("/public/resident-registration", codefPublic_1.handleResidentRegistration);
 app.post("/public/resident-abstract", codefPublic_1.handleResidentAbstract);

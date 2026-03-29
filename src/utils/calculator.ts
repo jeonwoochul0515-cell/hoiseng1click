@@ -108,3 +108,139 @@ export function getLeibnizTable(): Array<{ years: number; single: number; annuit
   }
   return table;
 }
+
+// ── 변제계획안 자동 계산 ──
+
+/**
+ * 채권자별 배당률 계산
+ * 무담보채권만 대상으로 채무비율에 따라 안분 배당
+ */
+export function calcCreditorShares(
+  debts: Array<{ creditor: string; amount: number; type: string }>,
+  monthlyPayment: number,
+  period: number,
+): Array<{
+  creditor: string;
+  debtAmount: number;
+  shareRate: number;
+  monthlyShare: number;
+  totalShare: number;
+}> {
+  const unsecured = debts.filter((d) => d.type !== '담보');
+  const totalUnsecured = unsecured.reduce((sum, d) => sum + d.amount, 0);
+
+  if (totalUnsecured <= 0) return [];
+
+  return unsecured.map((d) => {
+    const shareRate = d.amount / totalUnsecured;
+    const monthlyShare = Math.floor(monthlyPayment * shareRate);
+    const totalShare = monthlyShare * period;
+    return {
+      creditor: d.creditor,
+      debtAmount: d.amount,
+      shareRate: Math.round(shareRate * 10000) / 10000,
+      monthlyShare,
+      totalShare,
+    };
+  });
+}
+
+/**
+ * 청산가치 계산
+ * 각 자산의 순청산가치 합산: (rawValue × liquidationRate/100) - mortgage
+ * 음수는 0으로 처리
+ */
+export function calcLiquidationValue(
+  assets: Array<{ type: string; rawValue: number; liquidationRate: number; mortgage: number }>,
+): number {
+  return assets.reduce((sum, a) => {
+    const net = Math.floor(a.rawValue * (a.liquidationRate / 100)) - a.mortgage;
+    return sum + Math.max(0, net);
+  }, 0);
+}
+
+/**
+ * 변제계획안 종합 계산
+ *
+ * 1. 생계비 = MEDIAN_INCOME[familySize] × 0.6
+ * 2. 가용소득 = monthlyIncome - 생계비
+ * 3. 변제기간 = 36개월 기본, 청산가치 미충족 시 최대 60개월
+ * 4. 우선채권이 있으면 먼저 공제 후 나머지를 일반채권에 안분
+ * 5. 청산가치 보장 검증: totalRepayment >= liquidationValue
+ */
+export function calcRepaymentPlan(params: {
+  monthlyIncome: number;
+  familySize: number;
+  debts: Array<{ creditor: string; amount: number; type: string }>;
+  assets: Array<{ type: string; rawValue: number; liquidationRate: number; mortgage: number }>;
+  priorityDebts?: number;
+}): {
+  monthlyDisposable: number;
+  livingExpense: number;
+  period: number;
+  totalRepayment: number;
+  repaymentRate: number;
+  liquidationValue: number;
+  meetsLiquidation: boolean;
+  creditorShares: Array<{
+    creditor: string;
+    debtAmount: number;
+    shareRate: number;
+    monthlyShare: number;
+    totalShare: number;
+  }>;
+} {
+  const livingExpense = calcLivingCost(params.familySize);
+  const monthlyDisposable = Math.max(0, Math.floor(params.monthlyIncome - livingExpense));
+  const liquidationValue = calcLiquidationValue(params.assets);
+  const priority = params.priorityDebts ?? 0;
+
+  // 우선채권 월 공제액 (36개월 기준으로 균등 분할)
+  const priorityMonthly36 = priority > 0 ? Math.ceil(priority / 36) : 0;
+  const generalMonthly36 = Math.max(0, monthlyDisposable - priorityMonthly36);
+
+  // 36개월 기본 시도
+  let period = 36;
+  let totalRepayment = monthlyDisposable * period;
+
+  // 청산가치 미충족 시 기간 연장 (최대 60개월)
+  if (totalRepayment < liquidationValue) {
+    if (monthlyDisposable > 0) {
+      const needed = Math.ceil(liquidationValue / monthlyDisposable);
+      period = Math.min(60, Math.max(36, needed));
+    } else {
+      period = 60;
+    }
+    totalRepayment = monthlyDisposable * period;
+  }
+
+  // 우선채권 공제 후 일반채권 배당용 월 금액
+  const priorityMonthly = priority > 0 ? Math.ceil(priority / period) : 0;
+  const generalMonthly = Math.max(0, monthlyDisposable - priorityMonthly);
+
+  // 무담보채무 총액
+  const totalUnsecuredDebt = params.debts
+    .filter((d) => d.type !== '담보')
+    .reduce((sum, d) => sum + d.amount, 0);
+
+  // 변제율 (%)
+  const repaymentRate =
+    totalUnsecuredDebt > 0
+      ? Math.round((totalRepayment / totalUnsecuredDebt) * 10000) / 100
+      : 0;
+
+  const meetsLiquidation = totalRepayment >= liquidationValue;
+
+  const creditorShares = calcCreditorShares(params.debts, generalMonthly, period);
+
+  return {
+    monthlyDisposable,
+    livingExpense,
+    period,
+    totalRepayment,
+    repaymentRate,
+    liquidationValue,
+    meetsLiquidation,
+    creditorShares,
+  };
+}
