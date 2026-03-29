@@ -245,10 +245,11 @@ export async function handleDocOcr(req: Request, res: Response) {
 /** 크레딧포유 신용조회서 PDF 파싱 */
 export async function handleCreditReportParse(req: Request, res: Response) {
   try {
-    const { storagePath, clientId, officeId } = req.body as {
+    const { storagePath, clientId, officeId, fileType } = req.body as {
       storagePath: string;
       clientId: string;
       officeId: string;
+      fileType?: string; // 'pdf' | 'image'
     };
 
     if (!storagePath || !clientId || !officeId) {
@@ -256,30 +257,38 @@ export async function handleCreditReportParse(req: Request, res: Response) {
       return;
     }
 
-    // Firebase Storage에서 PDF 다운로드
+    // Firebase Storage에서 파일 다운로드
     const bucket = admin.storage().bucket();
-    const file = bucket.file(storagePath);
-    const [buffer] = await file.download();
-
-    // PDF를 base64로 변환
+    const gcsFile = bucket.file(storagePath);
+    const [buffer] = await gcsFile.download();
     const base64 = buffer.toString("base64");
 
-    // Claude API 호출 (document type으로 PDF 전송)
+    // 파일 타입 감지 (확장자 또는 프론트에서 전달)
+    const ext = storagePath.split(".").pop()?.toLowerCase() ?? "";
+    const isImage = fileType === "image" || ["jpg", "jpeg", "png", "webp", "heic", "heif"].includes(ext);
+
+    // Claude API 호출
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다.");
 
     const client = new Anthropic({ apiKey });
     const prompt = DOC_TYPE_PROMPTS.credit_report;
 
+    // PDF → document type, 이미지 → image type (OCR)
+    const mediaMap: Record<string, string> = {
+      jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+      webp: "image/webp", heic: "image/jpeg", heif: "image/jpeg",
+    };
+    const contentBlock: any = isImage
+      ? { type: "image", source: { type: "base64", media_type: mediaMap[ext] ?? "image/jpeg", data: base64 } }
+      : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
+
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 4000,
       messages: [{
         role: "user",
-        content: [
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-          { type: "text", text: prompt },
-        ],
+        content: [contentBlock, { type: "text", text: prompt }],
       }],
     });
 

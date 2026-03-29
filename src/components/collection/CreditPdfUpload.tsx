@@ -8,6 +8,7 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Camera,
 } from 'lucide-react';
 
 /* ── 타입 ── */
@@ -53,13 +54,18 @@ export default function CreditPdfUpload({
 
   /* ── 파일 업로드 + 파싱 ── */
 
+  const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+
   const processFile = useCallback(
     async (file: File) => {
-      if (file.type !== 'application/pdf') {
-        setErrorMsg('PDF 파일만 업로드할 수 있습니다.');
+      if (!ALLOWED_TYPES.includes(file.type) && !file.name.match(/\.(pdf|jpe?g|png|webp|heic|heif)$/i)) {
+        setErrorMsg('PDF 또는 이미지 파일(JPG, PNG)만 업로드할 수 있습니다.');
         setStatus('error');
         return;
       }
+
+      const isImage = file.type.startsWith('image/') || file.name.match(/\.(jpe?g|png|webp|heic|heif)$/i);
+      const ext = isImage ? file.name.split('.').pop() ?? 'jpg' : 'pdf';
 
       try {
         // 1) Firebase Storage 업로드
@@ -68,7 +74,7 @@ export default function CreditPdfUpload({
         setErrorMsg('');
 
         const timestamp = Date.now();
-        const storagePath = `offices/${officeId}/clients/${clientId}/credit-report/${timestamp}.pdf`;
+        const storagePath = `offices/${officeId}/clients/${clientId}/credit-report/${timestamp}.${ext}`;
         const storageRef = ref(storage, storagePath);
 
         setProgress(20);
@@ -92,7 +98,7 @@ export default function CreditPdfUpload({
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ storagePath, clientId, officeId }),
+          body: JSON.stringify({ storagePath, clientId, officeId, fileType: isImage ? 'image' : 'pdf' }),
         });
 
         setProgress(80);
@@ -197,8 +203,8 @@ export default function CreditPdfUpload({
       <div className="flex items-center gap-2">
         <FileText className="h-5 w-5 text-[var(--color-brand-gold)]" />
         <h3 className="text-base font-semibold text-gray-900">
-          신용조회서 PDF 업로드
-          <span className="ml-2 text-xs font-normal text-gray-400">(선택사항)</span>
+          신용조회서 업로드
+          <span className="ml-2 text-xs font-normal text-gray-400">(PDF 또는 사진 / 선택사항)</span>
         </h3>
       </div>
 
@@ -246,7 +252,8 @@ export default function CreditPdfUpload({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.heic"
+              capture="environment"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -266,8 +273,12 @@ export default function CreditPdfUpload({
                 ${status === 'uploading' || status === 'parsing' ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
               `}
             >
-              <Upload className="h-6 w-6 text-gray-400" />
-              <span className="text-gray-500">여기에 PDF를 드래그하거나 클릭하여 파일 선택</span>
+              <div className="flex items-center gap-3">
+                <Upload className="h-6 w-6 text-gray-400" />
+                <Camera className="h-6 w-6 text-gray-400" />
+              </div>
+              <span className="text-gray-500">PDF 또는 사진을 드래그하거나 클릭하여 선택</span>
+              <span className="text-xs text-gray-400">카메라로 촬영도 가능합니다</span>
             </button>
           </div>
         </div>
