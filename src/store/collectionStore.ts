@@ -30,6 +30,19 @@ interface CollectionState {
   result: { debts: any[]; assets: any[]; summary: any; connectedId?: string } | null;
   error: string | null;
 
+  // Week 4: 크레딧포유 PDF 관련
+  creditPdfStatus: 'idle' | 'uploading' | 'parsing' | 'done' | 'error';
+  creditPdfDebts: any[];
+  // Week 4: 공공기관 인증
+  publicConnectedIds: Record<string, string>; // org -> connectedId
+  // Week 4: 서류 체크리스트 상태
+  docStatuses: Record<string, 'todo' | 'auto' | 'uploaded' | 'verified'>;
+  // Week 4: 수동 보완
+  manualDebts: any[];     // 사채 등 수동 입력 채무
+  leaseDeposit: number;   // 임차보증금
+  leaseMonthly: number;   // 월세
+  retirementEstimate: number; // 퇴직금 추정액
+
   setStep: (step: number) => void;
   setConsent: (index: number, value: boolean) => void;
   toggleBank: (bank: string) => void;
@@ -47,10 +60,19 @@ interface CollectionState {
   setBankStatus: (bank: string, status: 'waiting' | 'collecting' | 'done' | 'error') => void;
   setResult: (result: CollectionState['result']) => void;
   setError: (error: string | null) => void;
+  // Week 4: 새 액션
+  setCreditPdfStatus: (s: 'idle' | 'uploading' | 'parsing' | 'done' | 'error') => void;
+  setCreditPdfDebts: (debts: any[]) => void;
+  setPublicConnectedId: (org: string, connectedId: string) => void;
+  setDocStatus: (docId: string, status: 'todo' | 'auto' | 'uploaded' | 'verified') => void;
+  addManualDebt: (debt: any) => void;
+  removeManualDebt: (index: number) => void;
+  setLeaseInfo: (deposit: number, monthly: number) => void;
+  setRetirementEstimate: (amount: number) => void;
   reset: () => void;
 }
 
-const INITIAL: Omit<CollectionState, 'setStep' | 'setConsent' | 'toggleBank' | 'setAuthMethod' | 'setUserName' | 'setBirthDate' | 'setPhoneNo' | 'setProvider' | 'setAuthStatus' | 'setTwoWayInfo' | 'setConnectedId' | 'setAuthExpiry' | 'setCredentials' | 'setProgress' | 'setBankStatus' | 'setResult' | 'setError' | 'reset'> = {
+const INITIAL: Omit<CollectionState, 'setStep' | 'setConsent' | 'toggleBank' | 'setAuthMethod' | 'setUserName' | 'setBirthDate' | 'setPhoneNo' | 'setProvider' | 'setAuthStatus' | 'setTwoWayInfo' | 'setConnectedId' | 'setAuthExpiry' | 'setCredentials' | 'setProgress' | 'setBankStatus' | 'setResult' | 'setError' | 'setCreditPdfStatus' | 'setCreditPdfDebts' | 'setPublicConnectedId' | 'setDocStatus' | 'addManualDebt' | 'removeManualDebt' | 'setLeaseInfo' | 'setRetirementEstimate' | 'reset'> = {
   step: 1,
   consents: [false, false, false, false],
   selectedBanks: [],
@@ -68,6 +90,15 @@ const INITIAL: Omit<CollectionState, 'setStep' | 'setConsent' | 'toggleBank' | '
   bankStatuses: {},
   result: null,
   error: null,
+  // Week 4: 초기값
+  creditPdfStatus: 'idle',
+  creditPdfDebts: [],
+  publicConnectedIds: {},
+  docStatuses: {},
+  manualDebts: [],
+  leaseDeposit: 0,
+  leaseMonthly: 0,
+  retirementEstimate: 0,
 };
 
 export const useCollectionStore = create<CollectionState>((set) => ({
@@ -102,5 +133,26 @@ export const useCollectionStore = create<CollectionState>((set) => ({
     })),
   setResult: (result) => set({ result }),
   setError: (error) => set({ error }),
+  // Week 4: 새 액션 구현
+  setCreditPdfStatus: (creditPdfStatus) => set({ creditPdfStatus }),
+  setCreditPdfDebts: (creditPdfDebts) => set({ creditPdfDebts }),
+  setPublicConnectedId: (org, connectedId) =>
+    set((s) => ({
+      publicConnectedIds: { ...s.publicConnectedIds, [org]: connectedId },
+    })),
+  setDocStatus: (docId, status) =>
+    set((s) => ({
+      docStatuses: { ...s.docStatuses, [docId]: status },
+    })),
+  addManualDebt: (debt) =>
+    set((s) => ({
+      manualDebts: [...s.manualDebts, debt],
+    })),
+  removeManualDebt: (index) =>
+    set((s) => ({
+      manualDebts: s.manualDebts.filter((_, i) => i !== index),
+    })),
+  setLeaseInfo: (leaseDeposit, leaseMonthly) => set({ leaseDeposit, leaseMonthly }),
+  setRetirementEstimate: (retirementEstimate) => set({ retirementEstimate }),
   reset: () => set(INITIAL),
 }));

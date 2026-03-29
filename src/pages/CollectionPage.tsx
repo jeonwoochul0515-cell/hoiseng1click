@@ -9,6 +9,7 @@ import AuthStep from '@/components/collection/AuthStep';
 import CollectStep from '@/components/collection/CollectStep';
 import ResultStep from '@/components/collection/ResultStep';
 import ChecklistStep from '@/components/collection/ChecklistStep';
+import SupplementStep from '@/components/collection/SupplementStep';
 import type { Client } from '@/types/client';
 
 /** 렌더 중 setState 방지를 위한 리다이렉트 컴포넌트 */
@@ -173,16 +174,19 @@ export default function CollectionPage() {
             : <AuthStep />
         )}
         {step === 3 && (
-          <ChecklistStep
-            debts={result?.debts ?? client?.debts ?? []}
-            assets={result?.assets ?? client?.assets ?? []}
-            clientInfo={{
-              jobType: client?.jobType,
-              hasRealEstate: (result?.assets ?? client?.assets ?? []).some((a: any) => a.type === '부동산'),
-              court: client?.court,
-            }}
-            onComplete={() => setStep(4)}
-          />
+          <div className="space-y-8">
+            <ChecklistStep
+              debts={result?.debts ?? client?.debts ?? []}
+              assets={result?.assets ?? client?.assets ?? []}
+              clientInfo={{
+                jobType: client?.jobType,
+                hasRealEstate: (result?.assets ?? client?.assets ?? []).some((a: any) => a.type === '부동산'),
+                court: client?.court,
+              }}
+              onComplete={() => {}}
+            />
+            <SupplementStep onComplete={() => setStep(4)} />
+          </div>
         )}
         {step === 4 && <ResultStep clientId={clientId} />}
       </div>
