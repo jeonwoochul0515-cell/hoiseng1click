@@ -36,11 +36,11 @@ function LandingNav() {
         {/* 우측: 전화 + CTA */}
         <div className="flex items-center gap-4">
           <a
-            href="tel:1544-0000"
+            href="tel:1660-4452"
             className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
           >
             <Phone size={18} />
-            <span className="hidden sm:inline text-base font-medium">1544-0000</span>
+            <span className="hidden sm:inline text-base font-medium">1660-4452</span>
             <span className="sm:hidden text-base font-medium">전화</span>
           </a>
           <Link
@@ -374,7 +374,7 @@ function PricingSection() {
                 {/* CTA */}
                 {key === 'enterprise' ? (
                   <a
-                    href="tel:1544-0000"
+                    href="tel:1660-4452"
                     className="mt-8 inline-flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-300 px-6 py-3 text-base font-bold text-gray-700 transition-colors hover:border-brand-gold hover:text-brand-gold"
                   >
                     영업팀에 문의하기
@@ -485,9 +485,9 @@ function FinalCTASection() {
 
         {/* 전화 안내 */}
         <div className="mt-10">
-          <a href="tel:1544-0000" className="inline-flex items-center gap-2 text-lg text-gray-300 hover:text-white transition-colors">
+          <a href="tel:1660-4452" className="inline-flex items-center gap-2 text-lg text-gray-300 hover:text-white transition-colors">
             <Phone size={20} />
-            <span>도움이 필요하시면 전화주세요: 1544-0000</span>
+            <span>도움이 필요하시면 전화주세요: 1660-4452</span>
           </a>
           <p className="mt-2 text-base text-gray-500">평일 09:00 ~ 18:00</p>
         </div>
