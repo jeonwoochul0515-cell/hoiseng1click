@@ -68,10 +68,100 @@ function buildTemplateData(client: any) {
     repayTotal36: formatKRW(monthly * 36),
     repayTotal60: formatKRW(monthly * 60),
     medianIncome: formatKRW(MEDIAN_INCOME_2026[Math.min(family, 6)] ?? 0),
+    // ── statement (진술서) 전용 필드 ──
+    ...buildStatementFields(client),
   };
 }
 
-const DOC_TYPES = ['debt_list', 'asset_list', 'income_list', 'application', 'repay_plan'] as const;
+function buildStatementFields(client: any): Record<string, unknown> {
+  const stmt = client.statement ?? {};
+
+  const newDebts1yr = (stmt.newDebts1yr ?? []).map((d: any, i: number) => ({
+    no: i + 1,
+    creditor: d.creditor ?? '',
+    date: d.date ?? '',
+    amount: formatKRW(d.amount ?? 0),
+    purpose: d.purpose ?? '',
+  }));
+
+  const largeTransfers = (stmt.largeTransfers ?? []).map((t: any, i: number) => ({
+    no: i + 1,
+    date: t.date ?? '',
+    recipient: t.recipient ?? '',
+    amount: formatKRW(t.amount ?? 0),
+    reason: t.reason ?? '',
+  }));
+
+  const cashWithdrawals = (stmt.cashWithdrawals ?? []).map((w: any, i: number) => ({
+    no: i + 1,
+    date: w.date ?? '',
+    amount: formatKRW(w.amount ?? 0),
+    purpose: w.purpose ?? '',
+  }));
+
+  const largeCardUsage = (stmt.largeCardUsage ?? []).map((c: any, i: number) => ({
+    no: i + 1,
+    date: c.date ?? '',
+    merchant: c.merchant ?? '',
+    amount: formatKRW(c.amount ?? 0),
+    category: c.category ?? '',
+  }));
+
+  const cancelledInsurance = (stmt.cancelledInsurance ?? []).map((ins: any, i: number) => ({
+    no: i + 1,
+    insurer: ins.insurer ?? '',
+    cancelDate: ins.cancelDate ?? '',
+    surrenderValue: formatKRW(ins.surrenderValue ?? 0),
+  }));
+
+  const investmentLosses = (stmt.investmentLosses ?? []).map((inv: any, i: number) => ({
+    no: i + 1,
+    type: inv.type ?? '',
+    period: inv.period ?? '',
+    lossAmount: formatKRW(inv.lossAmount ?? 0),
+  }));
+
+  const gamblingLosses = (stmt.gamblingLosses ?? []).map((g: any, i: number) => ({
+    no: i + 1,
+    type: g.type ?? '',
+    period: g.period ?? '',
+    lossAmount: formatKRW(g.lossAmount ?? 0),
+  }));
+
+  return {
+    debtCause: stmt.debtCause ?? '',
+    debtHistory: stmt.debtHistory ?? stmt.debtCause ?? '',
+    debtTimeline: stmt.debtTimeline ?? '',
+    propertyChanges2yr: stmt.propertyChanges2yr ?? stmt.debtTimeline ?? '',
+    repayEfforts: stmt.repayEfforts ?? '',
+    futureIncomePlan: stmt.futureIncomePlan ?? '',
+    hasNewDebts1yr: newDebts1yr.length > 0,
+    newDebts1yr,
+    hasLargeTransfers: largeTransfers.length > 0,
+    largeTransfers,
+    hasCashWithdrawals: cashWithdrawals.length > 0,
+    cashWithdrawals,
+    hasLargeCardUsage: largeCardUsage.length > 0,
+    largeCardUsage,
+    hasCancelledInsurance: cancelledInsurance.length > 0,
+    cancelledInsurance,
+    hasInvestmentLosses: investmentLosses.length > 0,
+    investmentLosses,
+    hasGamblingLosses: gamblingLosses.length > 0,
+    gamblingLosses,
+    divorced2yr: stmt.divorced2yr ?? false,
+    jobChange1yr: stmt.jobChange1yr ?? false,
+    jobChangeDetail: stmt.jobChangeDetail ?? '',
+    garnishment: stmt.garnishment ?? false,
+    garnishmentDetail: stmt.garnishmentDetail ?? '',
+    priorApplication: stmt.priorApplication ?? false,
+    priorApplicationDetail: stmt.priorApplicationDetail ?? '',
+    creditEducation: stmt.creditEducation ?? false,
+    repayWillingness: stmt.repayWillingness ?? stmt.futureIncomePlan ?? '',
+  };
+}
+
+const DOC_TYPES = ['debt_list', 'asset_list', 'income_list', 'application', 'repay_plan', 'statement'] as const;
 
 export async function handleDocGenerate(c: Context<{ Bindings: Env }>) {
   const body = await c.req.json() as {
