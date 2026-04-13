@@ -19,9 +19,5 @@ jobs:
 
       - run: npx vite build
 
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
-          projectId: hoiseng1click
+      - name: Deploy to Firebase Hosting
+        run: npx firebase-tools deploy --only hosting --project hoiseng1click --token "${{ secrets.FIREBASE_TOKEN }}"
