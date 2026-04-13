@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   CheckCircle2,
   Circle,
@@ -241,8 +241,17 @@ interface DocItemProps {
 }
 
 function DocItem({ doc, status, onMarkUploaded }: DocItemProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const isComplete = status === 'auto' || status === 'uploaded' || status === 'verified';
   const bankInfo = BANK_CERT_DIRECTORY[doc.institution];
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onMarkUploaded();
+    }
+  };
 
   // 자동 수집 완료 항목
   if (isComplete) {
@@ -315,15 +324,30 @@ function DocItem({ doc, status, onMarkUploaded }: DocItemProps) {
           </div>
 
           <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.hwp,.hwpx"
+              onChange={handleFileSelected}
+            />
             <button
-              onClick={onMarkUploaded}
+              onClick={() => fileInputRef.current?.click()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors"
             >
               <Upload size={14} />
               파일 업로드
             </button>
+            <input
+              type="file"
+              ref={cameraInputRef}
+              className="hidden"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelected}
+            />
             <button
-              onClick={onMarkUploaded}
+              onClick={() => cameraInputRef.current?.click()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors"
             >
               <Camera size={14} />

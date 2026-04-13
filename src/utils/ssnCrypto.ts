@@ -39,8 +39,8 @@ export async function decryptSSN(encrypted: string): Promise<string> {
     body: JSON.stringify({ encrypted }),
   });
   if (!res.ok) throw new Error('SSN 복호화 실패');
-  const data = await res.json();
-  return data.ssn;
+  const data: { ssn?: string } = await res.json();
+  return data.ssn ?? '';
 }
 
 /** 기존 평문 SSN 데이터를 일괄 암호화 마이그레이션 */

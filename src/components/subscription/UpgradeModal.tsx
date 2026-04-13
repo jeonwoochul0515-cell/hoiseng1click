@@ -7,7 +7,7 @@ const planOrder: PlanType[] = ['starter', 'pro', 'enterprise'];
 
 const cardBorder: Record<PlanType, string> = {
   starter: 'border-gray-200',
-  pro: 'border-[#C9A84C]',
+  pro: 'border-brand-gold',
   enterprise: 'border-purple-500',
 };
 
@@ -49,7 +49,7 @@ export default function UpgradeModal() {
         </p>
 
         {/* Plan cards */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {planOrder.map((planKey) => {
             const config = PLAN_CONFIGS[planKey];
             const isCurrent = planKey === currentPlan;
@@ -62,7 +62,7 @@ export default function UpgradeModal() {
                 }`}
               >
                 {isCurrent && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#C9A84C] px-3 py-0.5 text-xs font-semibold text-black">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-gold px-3 py-0.5 text-xs font-semibold text-black">
                     현재 플랜
                   </span>
                 )}
@@ -83,7 +83,7 @@ export default function UpgradeModal() {
                       key={feature}
                       className="flex items-center gap-2 text-sm text-gray-700"
                     >
-                      <Check size={14} className="shrink-0 text-[#C9A84C]" />
+                      <Check size={14} className="shrink-0 text-brand-gold" />
                       {feature}
                     </li>
                   ))}
@@ -97,7 +97,7 @@ export default function UpgradeModal() {
                     현재 플랜
                   </button>
                 ) : (
-                  <button className="w-full rounded-lg bg-[#C9A84C] py-2.5 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors">
+                  <button className="w-full rounded-lg bg-brand-gold py-2.5 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors">
                     업그레이드
                   </button>
                 )}

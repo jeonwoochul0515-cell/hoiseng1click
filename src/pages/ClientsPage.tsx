@@ -12,24 +12,8 @@ import { createIntakeToken, convertSubmissionToClient, type IntakeSubmission } f
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/firebase';
 import { sendKakaoLink } from '@/utils/kakao';
-
-const STATUS_LABELS: Record<ClientStatus, string> = {
-  new: '신규',
-  contacted: '상담완료',
-  collecting: '수집중',
-  drafting: '작성중',
-  submitted: '접수완료',
-  approved: '인가',
-};
-
-const STATUS_COLORS: Record<ClientStatus, string> = {
-  new: 'bg-blue-500',
-  contacted: 'bg-violet-500',
-  collecting: 'bg-yellow-600',
-  drafting: 'bg-violet-500',
-  submitted: 'bg-amber-500',
-  approved: 'bg-emerald-500',
-};
+import { toast } from '@/utils/toast';
+import { STATUS_LABELS, STATUS_COLORS } from '@/constants/status';
 
 type SortMode = 'latest' | 'debt';
 
@@ -103,7 +87,7 @@ export default function ClientsPage() {
       await loadPendingIntakes();
       navigate(`/clients/${clientId}`);
     } catch (err) {
-      alert('등록 실패: ' + (err instanceof Error ? err.message : String(err)));
+      toast.error('등록 실패: ' + (err instanceof Error ? err.message : String(err)));
     }
     setConvertingId(null);
   };
@@ -138,11 +122,11 @@ export default function ClientsPage() {
 
   const handleQuickAdd = async () => {
     if (!qaName.trim() || !qaPhone.trim()) {
-      alert('이름과 전화번호를 입력해주세요.');
+      toast.warning('이름과 전화번호를 입력해주세요.');
       return;
     }
     if (!office?.id) {
-      alert('사무소 정보가 없습니다. 설정 페이지에서 사무소를 등록해주세요.');
+      toast.error('사무소 정보가 없습니다. 설정 페이지에서 사무소를 등록해주세요.');
       return;
     }
     setQaLoading(true);
@@ -166,7 +150,7 @@ export default function ClientsPage() {
       setQaName(''); setQaPhone('');
     } catch (err) {
       console.error('의뢰인 등록 실패:', err);
-      alert('등록 실패: ' + (err instanceof Error ? err.message : String(err)));
+      toast.error('등록 실패: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setQaLoading(false);
     }
@@ -178,13 +162,13 @@ export default function ClientsPage() {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
-      alert('클립보드 복사에 실패했습니다.');
+      toast.error('클립보드 복사에 실패했습니다.');
     }
   };
 
   const getMessageTemplate = () => {
     const nameStr = qaClientName ? `${qaClientName}님 안녕하세요.` : '안녕하세요.';
-    return `[${office?.name}] 개인회생 접수 안내\n\n${nameStr}\n아래 링크를 눌러 정보를 입력해 주세요.\n\n접수 링크: ${intakeLink}\n비밀번호: ${intakePin}\n\n* 비밀번호 4자리를 입력하면 접수가 시작됩니다.\n* 링크는 7일간 유효합니다.`;
+    return `[${office?.name}] 개인회생 접수 안내\n\n${nameStr}\n아래 링크를 눌러 정보를 입력해 주세요.\n\n접수 링크: ${intakeLink}\n비밀번호: ${intakePin}\n\n* 비밀번호 6자리를 입력하면 접수가 시작됩니다.\n* 링크는 7일간 유효합니다.`;
   };
 
   const handleCopyMessage = async () => {
@@ -193,7 +177,7 @@ export default function ClientsPage() {
       setMsgCopied(true);
       setTimeout(() => setMsgCopied(false), 2000);
     } catch {
-      alert('클립보드 복사에 실패했습니다.');
+      toast.error('클립보드 복사에 실패했습니다.');
     }
   };
 
@@ -209,7 +193,7 @@ export default function ClientsPage() {
 
   const handleAdd = () => {
     if (!office) {
-      alert('사무소 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      toast.warning('사무소 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
     // 플랜 한도 체크 (실제 클라이언트 수 기반)
@@ -251,7 +235,7 @@ export default function ClientsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleAdd}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-medium text-black shadow-sm hover:bg-[#b8973e] transition-colors"
           >
             <Plus className="h-4 w-4" />
             의뢰인 등록
@@ -264,7 +248,7 @@ export default function ClientsPage() {
         <div className="mb-4 rounded-xl bg-[#0D1B2A] px-5 py-4 space-y-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
-              <LinkIcon size={18} className="text-[#C9A84C]" />
+              <LinkIcon size={18} className="text-brand-gold" />
               <span className="text-sm font-semibold text-white">{qaClientName ? `${qaClientName}님 접수 링크` : '접수 링크 생성 완료'}</span>
             </div>
             <button
@@ -291,7 +275,7 @@ export default function ClientsPage() {
               <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">비밀번호</p>
               <div className="flex gap-1.5">
                 {intakePin.split('').map((d, i) => (
-                  <span key={i} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#C9A84C]/20 text-lg font-bold text-[#C9A84C]">{d}</span>
+                  <span key={i} className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/20 text-lg font-bold text-brand-gold">{d}</span>
                 ))}
               </div>
             </div>
@@ -309,7 +293,7 @@ export default function ClientsPage() {
               </button>
               <button
                 onClick={handleCopyMessage}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#C9A84C] py-2.5 text-xs font-bold text-black hover:bg-[#b8973e] transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-brand-gold py-2.5 text-xs font-bold text-black hover:bg-[#b8973e] transition-colors"
               >
                 {msgCopied ? <><Check size={14} /> 복사 완료!</> : <><Copy size={14} /> 메시지 복사</>}
               </button>
@@ -353,7 +337,7 @@ export default function ClientsPage() {
                     <button
                       onClick={(e) => { e.stopPropagation(); handleConvertIntake(sub); }}
                       disabled={convertingId === sub.id}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-brand-gold px-3 py-1.5 text-xs font-bold text-black hover:bg-[#b8973e] disabled:opacity-50 transition-colors"
                     >
                       <Download size={13} />
                       {convertingId === sub.id ? '등록중...' : '정보 가져오기'}
@@ -390,14 +374,14 @@ export default function ClientsPage() {
             placeholder="이름 또는 연락처 검색..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value as ClientStatus | 'all')}
-          className="rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
         >
           <option value="all">전체 상태</option>
           {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s => (
@@ -417,7 +401,7 @@ export default function ClientsPage() {
       {/* Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-gold border-t-transparent" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-white py-20">
@@ -455,7 +439,7 @@ export default function ClientsPage() {
                   <td className="px-4 py-3 text-gray-600">{formatPhone(client.phone)}</td>
                   <td className="px-4 py-3 text-right font-mono text-gray-700">{formatKRW(totalDebt(client))}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${STATUS_COLORS[client.status]}`}>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${STATUS_COLORS[client.status].dot}`}>
                       {STATUS_LABELS[client.status]}
                     </span>
                   </td>
@@ -503,7 +487,7 @@ export default function ClientsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">이름 *</label>
                 <input
                   value={qaName} onChange={e => setQaName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                   placeholder="홍길동"
                   autoFocus
                 />
@@ -512,7 +496,7 @@ export default function ClientsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">전화번호 *</label>
                 <input
                   value={qaPhone} onChange={e => setQaPhone(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                   placeholder="010-0000-0000"
                   type="tel"
                 />
@@ -528,7 +512,7 @@ export default function ClientsPage() {
               <button
                 onClick={handleQuickAdd}
                 disabled={qaLoading || !qaName.trim() || !qaPhone.trim()}
-                className="flex-1 rounded-lg bg-[#C9A84C] px-4 py-2.5 text-sm font-bold text-black hover:bg-[#b8973e] disabled:opacity-50 transition-colors"
+                className="flex-1 rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-bold text-black hover:bg-[#b8973e] disabled:opacity-50 transition-colors"
               >
                 {qaLoading ? '처리 중...' : '등록 + 링크 전송'}
               </button>
@@ -561,7 +545,7 @@ export default function ClientsPage() {
               </button>
               <button
                 onClick={() => { setShowUpgradeModal(false); navigate('/settings'); }}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="flex-1 rounded-lg bg-brand-gold px-4 py-2 text-sm font-medium text-black hover:bg-[#b8973e]"
               >
                 플랜 보기
               </button>

@@ -208,35 +208,35 @@ export default function SupplementStep({ onComplete }: SupplementStepProps) {
                 placeholder="채권자명"
                 value={newDebt.creditorName}
                 onChange={(e) => setNewDebt((p) => ({ ...p, creditorName: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
               />
               <input
                 type="number"
                 placeholder="금액 (원)"
                 value={newDebt.amount}
                 onChange={(e) => setNewDebt((p) => ({ ...p, amount: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
               />
               <input
                 type="number"
                 placeholder="금리 %"
                 value={newDebt.rate}
                 onChange={(e) => setNewDebt((p) => ({ ...p, rate: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
               />
               <input
                 type="date"
                 placeholder="차용일"
                 value={newDebt.borrowDate}
                 onChange={(e) => setNewDebt((p) => ({ ...p, borrowDate: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
               />
               <input
                 type="text"
                 placeholder="연락처"
                 value={newDebt.contact}
                 onChange={(e) => setNewDebt((p) => ({ ...p, contact: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
               />
             </div>
 
@@ -258,7 +258,7 @@ export default function SupplementStep({ onComplete }: SupplementStepProps) {
               type="checkbox"
               checked={noDebt}
               onChange={handleNoDebtToggle}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded border-gray-300 text-brand-gold focus:ring-brand-gold"
             />
             해당 없음 (사채 없음)
           </label>
@@ -326,7 +326,7 @@ export default function SupplementStep({ onComplete }: SupplementStepProps) {
                       setLeaseInfo(Number(e.target.value) || 0, leaseMonthly)
                     }
                     placeholder="0"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                   />
                 </div>
                 <div>
@@ -340,7 +340,7 @@ export default function SupplementStep({ onComplete }: SupplementStepProps) {
                       setLeaseInfo(leaseDeposit, Number(e.target.value) || 0)
                     }
                     placeholder="0"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                   />
                 </div>
               </div>
@@ -408,7 +408,7 @@ export default function SupplementStep({ onComplete }: SupplementStepProps) {
                 value={retirementEstimate || ''}
                 onChange={(e) => setRetirementEstimate(Number(e.target.value) || 0)}
                 placeholder="0"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
               />
             </div>
 
@@ -446,7 +446,7 @@ export default function SupplementStep({ onComplete }: SupplementStepProps) {
               type="checkbox"
               checked={noRetirement}
               onChange={handleNoRetirementToggle}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded border-gray-300 text-brand-gold focus:ring-brand-gold"
             />
             미취업 (해당 없음)
           </label>

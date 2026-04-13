@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Scale, Upload, Camera, CheckCircle, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -9,8 +9,13 @@ type SignupStep = 1 | 2 | 3;
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, signup } = useAuthStore();
+  const { user, loading: authLoading, login, signup } = useAuthStore();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // 이미 로그인된 사용자는 대시보드로 리다이렉트
+  useEffect(() => {
+    if (!authLoading && user) navigate('/dashboard', { replace: true });
+  }, [user, authLoading, navigate]);
 
   const [mode, setMode] = useState<Mode>('login');
   const [signupStep, setSignupStep] = useState<SignupStep>(1);
@@ -26,6 +31,13 @@ export default function LoginPage() {
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrDone, setOcrDone] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+
+  // Object URL 메모리 누수 방지
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   // BizReg fields (auto-filled by OCR, editable)
   const [officeName, setOfficeName] = useState('');
@@ -47,7 +59,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
     } finally {
@@ -97,7 +109,7 @@ export default function LoginPage() {
         rep, phone, email,
         bizNumber, address, bizType, bizItem, officeType,
       });
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '회원가입에 실패했습니다.';
       setError(msg);
@@ -129,20 +141,20 @@ export default function LoginPage() {
     <div className="flex min-h-screen">
       {/* Left – Brand (desktop) */}
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center bg-[#0D1B2A] text-white px-12">
-        <Scale className="h-16 w-16 text-[#C9A84C] mb-6" />
-        <h1 className="text-4xl font-bold text-[#C9A84C] mb-3">회생원클릭</h1>
+        <Scale className="h-16 w-16 text-brand-gold mb-6" />
+        <h1 className="text-4xl font-bold text-brand-gold mb-3">회생원클릭</h1>
         <p className="text-lg text-gray-300 mb-10">1회 인증으로 법원 서류 완성</p>
         <ul className="space-y-4 text-gray-400 text-sm max-w-xs">
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 text-[#C9A84C]">&#10003;</span>
+            <span className="mt-0.5 text-brand-gold">&#10003;</span>
             <span>사업자등록증 촬영으로 30초 가입</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 text-[#C9A84C]">&#10003;</span>
+            <span className="mt-0.5 text-brand-gold">&#10003;</span>
             <span>코드에프 1회 인증으로 서류 자동 생성</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 text-[#C9A84C]">&#10003;</span>
+            <span className="mt-0.5 text-brand-gold">&#10003;</span>
             <span>14일 PRO 무료체험 — 카드 등록 없이 시작</span>
           </li>
         </ul>
@@ -153,7 +165,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-6">
           {/* Mobile brand */}
           <div className="flex items-center gap-2 lg:hidden mb-4">
-            <Scale className="h-7 w-7 text-[#C9A84C]" />
+            <Scale className="h-7 w-7 text-brand-gold" />
             <span className="text-2xl font-bold text-[#0D1B2A]">회생원클릭</span>
           </div>
 
@@ -171,7 +183,7 @@ export default function LoginPage() {
               <form onSubmit={handleLogin} className="space-y-5">
                 <InputField label="이메일" type="email" value={email} onChange={setEmail} placeholder="name@office.com" required />
                 <InputField label="비밀번호" type="password" value={password} onChange={setPassword} placeholder="••••••••" required />
-                <button type="submit" disabled={loading} className="w-full rounded-lg bg-[#C9A84C] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b8973e] transition-colors disabled:opacity-50">
+                <button type="submit" disabled={loading} className="w-full rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b8973e] transition-colors disabled:opacity-50">
                   {loading ? '처리 중...' : '로그인'}
                 </button>
               </form>
@@ -180,7 +192,7 @@ export default function LoginPage() {
                 <p className="text-sm text-gray-500 mb-3">아직 계정이 없으신가요?</p>
                 <button
                   onClick={() => { setMode('signup'); setSignupStep(1); setError(''); }}
-                  className="w-full rounded-lg border-2 border-[#C9A84C] px-4 py-2.5 text-sm font-semibold text-[#C9A84C] hover:bg-[#C9A84C] hover:text-white transition-colors"
+                  className="w-full rounded-lg border-2 border-brand-gold px-4 py-2.5 text-sm font-semibold text-brand-gold hover:bg-brand-gold hover:text-white transition-colors"
                 >
                   무료체험 시작 (14일 PRO)
                 </button>
@@ -203,7 +215,7 @@ export default function LoginPage() {
                 <InputField label="이메일 *" type="email" value={email} onChange={setEmail} placeholder="name@office.com" />
                 <InputField label="비밀번호 * (6자 이상)" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
                 <InputField label="비밀번호 확인 *" type="password" value={passwordConfirm} onChange={setPasswordConfirm} placeholder="••••••••" />
-                <button onClick={goStep2} disabled={loading} className="w-full rounded-lg bg-[#C9A84C] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b8973e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                <button onClick={goStep2} disabled={loading} className="w-full rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b8973e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                   다음 <ArrowRight size={16} />
                 </button>
               </div>
@@ -226,13 +238,13 @@ export default function LoginPage() {
               {!previewUrl ? (
                 <div
                   onClick={() => fileRef.current?.click()}
-                  className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition-colors"
+                  className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center hover:border-brand-gold hover:bg-brand-gold/5 transition-colors"
                 >
                   <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                   <p className="text-sm font-medium text-gray-700">사업자등록증 이미지를 업로드하세요</p>
                   <p className="mt-1 text-xs text-gray-500">JPG, PNG, PDF / 최대 10MB</p>
                   <div className="mt-4 flex justify-center gap-3">
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-[#C9A84C] px-4 py-2 text-sm font-medium text-black">
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-brand-gold px-4 py-2 text-sm font-medium text-black">
                       <Upload size={14} /> 파일 선택
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">
@@ -246,10 +258,10 @@ export default function LoginPage() {
                     <img src={previewUrl} alt="사업자등록증" className="w-full max-h-48 object-contain bg-gray-100" />
                     {loading && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
-                        <Loader2 className="h-8 w-8 text-[#C9A84C] animate-spin mb-2" />
+                        <Loader2 className="h-8 w-8 text-brand-gold animate-spin mb-2" />
                         <p className="text-sm text-white">문서 인식 중... {ocrProgress}%</p>
                         <div className="mt-2 h-1.5 w-48 rounded-full bg-gray-700">
-                          <div className="h-full rounded-full bg-[#C9A84C] transition-all" style={{ width: `${ocrProgress}%` }} />
+                          <div className="h-full rounded-full bg-brand-gold transition-all" style={{ width: `${ocrProgress}%` }} />
                         </div>
                       </div>
                     )}
@@ -291,7 +303,7 @@ export default function LoginPage() {
                           onClick={() => setOfficeType(t)}
                           className={`flex-1 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${
                             officeType === t
-                              ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
+                              ? 'border-brand-gold bg-brand-gold/10 text-brand-gold'
                               : 'border-gray-200 text-gray-600'
                           }`}
                         >
@@ -307,7 +319,7 @@ export default function LoginPage() {
                 <button onClick={() => { setOcrDone(true); }} className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
                   건너뛰기 (직접입력)
                 </button>
-                <button onClick={goStep3} disabled={loading} className="flex-1 rounded-lg bg-[#C9A84C] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b8973e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                <button onClick={goStep3} disabled={loading} className="flex-1 rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b8973e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                   다음 <ArrowRight size={16} />
                 </button>
               </div>
@@ -344,7 +356,7 @@ export default function LoginPage() {
                         onClick={() => setOfficeType(t)}
                         className={`flex-1 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${
                           officeType === t
-                            ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
+                            ? 'border-brand-gold bg-brand-gold/10 text-brand-gold'
                             : 'border-gray-200 text-gray-600'
                         }`}
                       >
@@ -360,7 +372,7 @@ export default function LoginPage() {
                 <button
                   onClick={handleSignup}
                   disabled={loading}
-                  className="w-full rounded-lg bg-[#C9A84C] px-4 py-3 text-sm font-bold text-black hover:bg-[#b8973e] transition-colors disabled:opacity-50"
+                  className="w-full rounded-lg bg-brand-gold px-4 py-3 text-sm font-bold text-black hover:bg-[#b8973e] transition-colors disabled:opacity-50"
                 >
                   {loading ? '가입 처리 중...' : '무료체험 시작하기'}
                 </button>
@@ -387,7 +399,7 @@ function InputField({ label, value, onChange, placeholder, type = 'text', requir
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
       />
     </div>
   );
@@ -398,7 +410,7 @@ function StepBar({ current }: { current: 1 | 2 | 3 }) {
     <div className="flex items-center gap-2">
       {[1, 2, 3].map((s) => (
         <div key={s} className="flex items-center gap-2 flex-1">
-          <div className={`h-1.5 w-full rounded-full transition-colors ${s <= current ? 'bg-[#C9A84C]' : 'bg-gray-200'}`} />
+          <div className={`h-1.5 w-full rounded-full transition-colors ${s <= current ? 'bg-brand-gold' : 'bg-gray-200'}`} />
         </div>
       ))}
     </div>

@@ -110,6 +110,7 @@ export default function AuthStep() {
           clearPolling();
           setConnectedId(result.connectedId);
           setAuthStatus('done');
+          setCertPw('');
           setAuthError('');
         } else if (result.status === 'pending' && result.twoWayInfo) {
           // 서버가 새 twoWayInfo를 반환한 경우 갱신
@@ -166,6 +167,7 @@ export default function AuthStep() {
       if (result.status === 'done' && result.connectedId) {
         setConnectedId(result.connectedId);
         setAuthStatus('done');
+        setCertPw('');
       } else if (result.status === 'pending' && result.twoWayInfo) {
         setTwoWayInfo(result.twoWayInfo);
         setAuthStatus('pending');
@@ -232,8 +234,9 @@ export default function AuthStep() {
         useCollectionStore.getState().setCredentials({
           loginType: 'cert',
           id: '',
-          password: certPw.trim(),
+          password: '',
         });
+        setCertPw('');
         setAuthStatus('done');
         if (result.debts || result.assets) {
           useCollectionStore.getState().setResult({
@@ -462,7 +465,7 @@ export default function AuthStep() {
             <button
               onClick={handleCertAuth}
               disabled={loading || !pfxFile || !certPw.trim() || selectedBanks.length === 0}
-              className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+              className="w-full rounded-lg bg-brand-gold py-3 text-sm font-bold text-black hover:bg-[#b8973e] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
                 <span className="inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> 인증 중...</span>
@@ -644,7 +647,7 @@ export default function AuthStep() {
           </button>
         ) : authMethod === 'manual' ? (
           <button onClick={handleSkipAuth} disabled={selectedBanks.length === 0}
-            className="rounded-lg px-8 py-3 font-bold text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors">
+            className="rounded-lg px-8 py-3 font-bold text-sm bg-brand-gold text-black hover:bg-[#b8973e] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors">
             수동 입력으로 진행
           </button>
         ) : authMethod === 'skip' ? (

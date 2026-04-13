@@ -5,6 +5,7 @@ import type { DocType } from '@/types/document';
 import { workerApi } from '@/api/worker';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
+import { toast } from '@/utils/toast';
 
 interface DocDownloadButtonProps {
   client: Client;
@@ -29,8 +30,13 @@ export default function DocDownloadButton({
   const isLocked = format === 'hwpx' && !hasPro();
 
   const handleClick = async () => {
+    if (loading) return;
     if (isLocked) {
       openUpgradeModal();
+      return;
+    }
+    if (!office?.id) {
+      toast.error('사무소 정보를 불러올 수 없습니다. 다시 로그인해주세요.');
       return;
     }
 
@@ -38,15 +44,16 @@ export default function DocDownloadButton({
       setLoading(true);
       const result = await workerApi.generateDoc({
         clientId: client.id,
-        officeId: office?.id ?? '',
+        officeId: office.id,
         docType: String(docType),
         format,
         clientData: client,
       });
       window.open(result.downloadUrl, '_blank');
+      useUiStore.getState().showGoldBurst();
     } catch (err) {
       console.error('문서 생성 실패:', err);
-      alert('문서 생성에 실패했습니다. 다시 시도해주세요.');
+      toast.error('문서 생성에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setLoading(false);
     }
@@ -61,7 +68,7 @@ export default function DocDownloadButton({
           ? 'border border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-100'
           : disabled
             ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-            : 'bg-[#C9A84C] text-black hover:bg-[#b8973e]'
+            : 'bg-brand-gold text-black hover:bg-[#b8973e]'
       }`}
     >
       {loading ? (

@@ -138,7 +138,7 @@ export default function IntakePage() {
   const [submitted, setSubmitted] = useState(false);
 
   // PIN state
-  const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '']);
+  const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [pinError, setPinError] = useState('');
   const [pinVerifying, setPinVerifying] = useState(false);
   const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -252,7 +252,7 @@ export default function IntakePage() {
 
   const handlePinSubmit = async () => {
     const pin = pinDigits.join('');
-    if (pin.length !== 4 || !token) return;
+    if (pin.length !== 6 || !token) return;
     setPinVerifying(true);
     setPinError('');
 
@@ -274,7 +274,7 @@ export default function IntakePage() {
         setStep('consent');
       } else {
         setPinError('데모 비밀번호: 1234');
-        setPinDigits(['', '', '', '']);
+        setPinDigits(['', '', '', '', '', '']);
         pinRefs.current[0]?.focus();
       }
       setPinVerifying(false);
@@ -296,7 +296,7 @@ export default function IntakePage() {
           wrong_pin: '비밀번호가 올바르지 않습니다.',
         };
         setPinError(msgs[result.reason]);
-        setPinDigits(['', '', '', '']);
+        setPinDigits(['', '', '', '', '', '']);
         pinRefs.current[0]?.focus();
       }
     } catch {
@@ -733,7 +733,7 @@ export default function IntakePage() {
   const statusIcon = (status: BankStatus) => {
     switch (status) {
       case 'waiting': return <Clock className="h-4 w-4 text-gray-400" />;
-      case 'collecting': return <Loader2 className="h-4 w-4 text-[#C9A84C] animate-spin" />;
+      case 'collecting': return <Loader2 className="h-4 w-4 text-brand-gold animate-spin" />;
       case 'done': return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
       case 'error': return <XCircle className="h-4 w-4 text-red-400" />;
     }
@@ -764,7 +764,7 @@ export default function IntakePage() {
   if (pinVerifying) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0D1B2A]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#C9A84C] border-t-transparent" />
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand-gold border-t-transparent" />
       </div>
     );
   }
@@ -776,35 +776,35 @@ export default function IntakePage() {
         <CheckCircle className="h-20 w-20 text-emerald-400 mb-6" />
         <h1 className="text-2xl font-bold text-white mb-3">접수 완료!</h1>
         <p className="text-gray-300 mb-2">
-          <span className="text-[#C9A84C] font-semibold">{tokenData?.officeName}</span>에
+          <span className="text-brand-gold font-semibold">{tokenData?.officeName}</span>에
         </p>
         <p className="text-gray-300 mb-6">정보가 안전하게 전송되었습니다.</p>
 
         {/* 신용회복교육 안내 */}
         <div className="w-full max-w-sm rounded-2xl bg-white/10 backdrop-blur border border-white/10 p-5 mb-6 text-left">
           <div className="flex items-center gap-2 mb-3">
-            <CheckSquare size={18} className="text-[#C9A84C]" />
+            <CheckSquare size={18} className="text-brand-gold" />
             <h2 className="text-sm font-bold text-white">신용교육 수료 안내</h2>
           </div>
           <p className="text-xs text-gray-300 leading-relaxed mb-4">
-            개인회생 신청 시 <span className="text-[#C9A84C] font-medium">신용회복위원회 신용교육 이수증</span>을
+            개인회생 신청 시 <span className="text-brand-gold font-medium">신용회복위원회 신용교육 이수증</span>을
             법원에 제출해야 합니다. 아래 버튼을 눌러 온라인으로 수료하세요.
           </p>
           <ul className="text-xs text-gray-400 space-y-1.5 mb-4">
             <li className="flex items-start gap-1.5">
-              <span className="text-[#C9A84C] mt-0.5">1.</span>
+              <span className="text-brand-gold mt-0.5">1.</span>
               아래 링크 접속 → 회원가입/로그인
             </li>
             <li className="flex items-start gap-1.5">
-              <span className="text-[#C9A84C] mt-0.5">2.</span>
+              <span className="text-brand-gold mt-0.5">2.</span>
               온라인교육 → 개인회생·파산 과정 선택
             </li>
             <li className="flex items-start gap-1.5">
-              <span className="text-[#C9A84C] mt-0.5">3.</span>
+              <span className="text-brand-gold mt-0.5">3.</span>
               동영상 강의 6개 수강 (총 약 98분)
             </li>
             <li className="flex items-start gap-1.5">
-              <span className="text-[#C9A84C] mt-0.5">4.</span>
+              <span className="text-brand-gold mt-0.5">4.</span>
               수료 후 이수증 발급 → 사무소에 전달
             </li>
           </ul>
@@ -812,7 +812,7 @@ export default function IntakePage() {
             href="https://www.educredit.or.kr"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#C9A84C] py-3 text-sm font-bold text-black hover:bg-[#b8973e] transition-colors"
+            className="flex items-center justify-center gap-2 w-full rounded-xl bg-brand-gold py-3 text-sm font-bold text-black hover:bg-[#b8973e] transition-colors"
           >
             <CheckCircle2 size={16} />
             신용교육원 접속하기
@@ -836,7 +836,7 @@ export default function IntakePage() {
     if (tokenLoading) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#0D1B2A]">
-          <Loader2 className="h-8 w-8 animate-spin text-[#C9A84C]" />
+          <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
         </div>
       );
     }
@@ -856,7 +856,7 @@ export default function IntakePage() {
       <div className="flex min-h-screen flex-col bg-[#0D1B2A]">
         {/* PWA Install Banner */}
         {showInstallBanner && (
-          <div className="bg-[#C9A84C] px-4 py-3">
+          <div className="bg-brand-gold px-4 py-3">
             <div className="mx-auto max-w-lg flex items-center justify-between">
               <div className="flex items-center gap-2 text-black">
                 <Download size={16} />
@@ -864,7 +864,7 @@ export default function IntakePage() {
               </div>
               <button
                 onClick={handleInstall}
-                className="rounded-lg bg-black px-3 py-1 text-xs font-bold text-[#C9A84C]"
+                className="rounded-lg bg-black px-3 py-1 text-xs font-bold text-brand-gold"
               >
                 설치
               </button>
@@ -875,8 +875,8 @@ export default function IntakePage() {
         <div className="flex flex-1 flex-col items-center justify-center px-6">
           {/* Logo */}
           <div className="mb-8 flex flex-col items-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#C9A84C]/20">
-              <Scale size={32} className="text-[#C9A84C]" />
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-gold/20">
+              <Scale size={32} className="text-brand-gold" />
             </div>
             <h1 className="text-2xl font-bold text-white">회생원클릭</h1>
             <p className="mt-2 text-sm text-gray-400">사무소에서 안내받은 비밀번호를 입력하세요</p>
@@ -886,7 +886,7 @@ export default function IntakePage() {
           <div className="w-full max-w-xs">
             <div className="mb-4 flex items-center justify-center gap-2">
               <Lock size={16} className="text-gray-400" />
-              <span className="text-sm text-gray-400">비밀번호 4자리</span>
+              <span className="text-sm text-gray-400">비밀번호 6자리</span>
             </div>
 
             <div className="flex justify-center gap-3 mb-6">
@@ -905,8 +905,8 @@ export default function IntakePage() {
                     pinError
                       ? 'border-red-500 animate-shake'
                       : digit
-                        ? 'border-[#C9A84C]'
-                        : 'border-gray-600 focus:border-[#C9A84C]'
+                        ? 'border-brand-gold'
+                        : 'border-gray-600 focus:border-brand-gold'
                   }`}
                 />
               ))}
@@ -957,13 +957,13 @@ export default function IntakePage() {
     <div className="min-h-screen bg-gray-50">
       {/* PWA Install Banner */}
       {showInstallBanner && (
-        <div className="bg-[#C9A84C] px-4 py-2.5">
+        <div className="bg-brand-gold px-4 py-2.5">
           <div className="mx-auto max-w-lg flex items-center justify-between">
             <div className="flex items-center gap-2 text-black">
               <Download size={14} />
               <span className="text-xs font-medium">앱 설치</span>
             </div>
-            <button onClick={handleInstall} className="rounded bg-black px-2.5 py-1 text-xs font-bold text-[#C9A84C]">설치</button>
+            <button onClick={handleInstall} className="rounded bg-black px-2.5 py-1 text-xs font-bold text-brand-gold">설치</button>
           </div>
         </div>
       )}
@@ -972,8 +972,8 @@ export default function IntakePage() {
       <header className="sticky top-0 z-30 bg-[#0D1B2A] px-4 py-3 shadow-lg">
         <div className="mx-auto max-w-lg flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Scale size={20} className="text-[#C9A84C]" />
-            <span className="text-base font-bold text-[#C9A84C]">회생원클릭</span>
+            <Scale size={20} className="text-brand-gold" />
+            <span className="text-base font-bold text-brand-gold">회생원클릭</span>
           </div>
           <span className="text-xs text-gray-400">{tokenData.officeName}</span>
         </div>
@@ -990,7 +990,7 @@ export default function IntakePage() {
                     i < formStepIndex
                       ? 'bg-emerald-500 text-white'
                       : i === formStepIndex
-                        ? 'bg-[#C9A84C] text-black'
+                        ? 'bg-brand-gold text-black'
                         : 'bg-gray-200 text-gray-500'
                   }`}
                 >
@@ -1022,7 +1022,7 @@ export default function IntakePage() {
             <div className="rounded-xl bg-white p-5 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">금융데이터 수집 동의</h2>
               <p className="text-sm text-gray-600 leading-relaxed mb-5">
-                <span className="text-[#C9A84C] font-medium">{name || '의뢰인'}</span>님의
+                <span className="text-brand-gold font-medium">{name || '의뢰인'}</span>님의
                 개인회생 신청을 위한 금융데이터를 CODEF를 통해 자동 수집합니다.
                 아래 동의 항목을 모두 확인해 주세요.
               </p>
@@ -1034,7 +1034,7 @@ export default function IntakePage() {
                 className="flex items-center gap-3 w-full text-left pb-4 border-b border-gray-200 mb-4"
               >
                 {allConsented ? (
-                  <CheckSquare className="h-5 w-5 text-[#C9A84C] shrink-0" />
+                  <CheckSquare className="h-5 w-5 text-brand-gold shrink-0" />
                 ) : (
                   <Square className="h-5 w-5 text-gray-400 shrink-0" />
                 )}
@@ -1051,7 +1051,7 @@ export default function IntakePage() {
                     className="flex items-start gap-3 w-full text-left py-1"
                   >
                     {consents[i] ? (
-                      <CheckSquare className="h-5 w-5 text-[#C9A84C] shrink-0 mt-0.5" />
+                      <CheckSquare className="h-5 w-5 text-brand-gold shrink-0 mt-0.5" />
                     ) : (
                       <Square className="h-5 w-5 text-gray-400 shrink-0 mt-0.5" />
                     )}
@@ -1105,7 +1105,7 @@ export default function IntakePage() {
                   onClick={() => setAuthMode('cert')}
                   className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold transition-all ${
                     authMode === 'cert'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-brand-gold text-black'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -1201,7 +1201,7 @@ export default function IntakePage() {
                 <h3 className="text-gray-900 font-semibold">채무가 있는 금융기관 선택</h3>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   selectedBanks.length > 0
-                    ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                    ? 'bg-brand-gold/20 text-brand-gold'
                     : 'bg-gray-100 text-gray-500'
                 }`}>{selectedBanks.length}개</span>
               </div>
@@ -1213,10 +1213,10 @@ export default function IntakePage() {
               <button
                 type="button"
                 onClick={toggleAllBanks}
-                className="flex items-center gap-2.5 w-full rounded-xl bg-gray-50 px-4 py-3 border-2 border-dashed border-gray-300 transition-colors hover:border-[#C9A84C] hover:bg-[#C9A84C]/5"
+                className="flex items-center gap-2.5 w-full rounded-xl bg-gray-50 px-4 py-3 border-2 border-dashed border-gray-300 transition-colors hover:border-brand-gold hover:bg-brand-gold/5"
               >
                 {allBanksSelected ? (
-                  <CheckSquare className="h-5 w-5 text-[#C9A84C]" />
+                  <CheckSquare className="h-5 w-5 text-brand-gold" />
                 ) : (
                   <Square className="h-5 w-5 text-gray-400" />
                 )}
@@ -1241,13 +1241,13 @@ export default function IntakePage() {
                       className="flex items-center gap-2 mb-2"
                     >
                       {catAllSelected ? (
-                        <CheckSquare className="h-4 w-4 text-[#C9A84C]" />
+                        <CheckSquare className="h-4 w-4 text-brand-gold" />
                       ) : (
                         <Square className="h-4 w-4 text-gray-400" />
                       )}
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{cat.label}</span>
                       {catSelected > 0 && (
-                        <span className="text-[10px] text-[#C9A84C] font-medium">{catSelected}개</span>
+                        <span className="text-[10px] text-brand-gold font-medium">{catSelected}개</span>
                       )}
                     </button>
                     <div className="grid grid-cols-3 gap-1.5">
@@ -1260,7 +1260,7 @@ export default function IntakePage() {
                             onClick={() => toggleBank(bank)}
                             className={`rounded-lg px-2 py-2.5 text-xs font-medium transition-all text-center ${
                               selected
-                                ? 'bg-[#C9A84C]/15 border-2 border-[#C9A84C] text-[#C9A84C]'
+                                ? 'bg-brand-gold/15 border-2 border-brand-gold text-brand-gold'
                                 : 'bg-gray-50 border-2 border-gray-100 text-gray-500 active:border-gray-300'
                             }`}
                           >
@@ -1360,11 +1360,11 @@ export default function IntakePage() {
             <div className="rounded-xl bg-white p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">금융데이터 수집 중</h2>
-                <span className="text-sm font-mono text-[#C9A84C]">{collectProgress}%</span>
+                <span className="text-sm font-mono text-brand-gold">{collectProgress}%</span>
               </div>
               <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-[#C9A84C] transition-all duration-300"
+                  className="h-full rounded-full bg-brand-gold transition-all duration-300"
                   style={{ width: `${collectProgress}%` }}
                 />
               </div>
@@ -1391,7 +1391,7 @@ export default function IntakePage() {
                       <span className={`text-xs font-medium ${
                         status === 'done' ? 'text-emerald-500' :
                         status === 'error' ? 'text-red-400' :
-                        status === 'collecting' ? 'text-[#C9A84C]' :
+                        status === 'collecting' ? 'text-brand-gold' :
                         'text-gray-400'
                       }`}>
                         {statusLabel(status)}
@@ -1428,7 +1428,7 @@ export default function IntakePage() {
           <div className="space-y-4">
             {/* CODEF summary */}
             <div className="rounded-xl bg-[#0D1B2A] p-5 shadow-sm">
-              <h2 className="text-base font-semibold text-[#C9A84C] mb-3">수집 결과 요약</h2>
+              <h2 className="text-base font-semibold text-brand-gold mb-3">수집 결과 요약</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-lg bg-white/10 p-3 text-center">
                   <p className="text-xs text-gray-400 mb-1">총 채무</p>
@@ -1473,7 +1473,7 @@ export default function IntakePage() {
                         if (autoCourt) setCourt(autoCourt);
                       }
                     }}
-                    className="shrink-0 rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white">검색</button>
+                    className="shrink-0 rounded-xl bg-brand-gold px-4 py-3 text-sm font-medium text-black">검색</button>
                 </div>
               </div>
               <Field label="직장/직업" value={job} onChange={setJob} placeholder="(주)회사명 / 무직" />
@@ -1487,7 +1487,7 @@ export default function IntakePage() {
                       onClick={() => setJobType(k)}
                       className={`rounded-lg border-2 px-2 py-2 text-xs font-medium transition-colors ${
                         jobType === k
-                          ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
+                          ? 'border-brand-gold bg-brand-gold/10 text-brand-gold'
                           : 'border-gray-200 text-gray-600'
                       }`}
                     >
@@ -1515,7 +1515,7 @@ export default function IntakePage() {
 
               {family > 1 && (
                 <div className="mt-3">
-                  <button onClick={() => setShowFamilyDetail(!showFamilyDetail)} className="text-xs text-[#C9A84C] underline">
+                  <button onClick={() => setShowFamilyDetail(!showFamilyDetail)} className="text-xs text-brand-gold underline">
                     {showFamilyDetail ? '가족 정보 접기' : '가족 구성원 상세 입력 (선택)'}
                   </button>
                   {showFamilyDetail && (
@@ -1564,7 +1564,7 @@ export default function IntakePage() {
                       ))}
                       <button
                         onClick={() => setFamilyMembers(prev => [...prev, { relation: '배우자', name: '', age: 0, hasIncome: false }])}
-                        className="text-xs text-[#C9A84C]"
+                        className="text-xs text-brand-gold"
                       >
                         + 가족 추가
                       </button>
@@ -1602,7 +1602,7 @@ export default function IntakePage() {
                 <h2 className="text-lg font-semibold text-gray-900">채무 내역</h2>
                 <button
                   onClick={addDebt}
-                  className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
+                  className="flex items-center gap-1 rounded-lg bg-brand-gold px-3 py-1.5 text-xs font-medium text-black"
                 >
                   <Plus size={14} /> 수동 추가
                 </button>
@@ -1610,10 +1610,10 @@ export default function IntakePage() {
 
               {codefDebts.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-xs font-semibold text-[#C9A84C] mb-2">CODEF 자동 수집 ({codefDebts.length}건)</p>
+                  <p className="text-xs font-semibold text-brand-gold mb-2">CODEF 자동 수집 ({codefDebts.length}건)</p>
                   <div className="space-y-2">
                     {codefDebts.map(d => (
-                      <div key={d._key} className="rounded-lg bg-[#C9A84C]/5 border border-[#C9A84C]/20 px-4 py-3">
+                      <div key={d._key} className="rounded-lg bg-brand-gold/5 border border-brand-gold/20 px-4 py-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-800">{d.creditor}</span>
                           <span className="text-xs text-gray-500">{d.type}</span>
@@ -1663,7 +1663,7 @@ export default function IntakePage() {
                               type="month"
                               value={d.originalDate || ''}
                               onChange={e => updateDebt(i, 'originalDate', e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                             />
                           </div>
                           <NumberField label="최초 차용금액 (원, 선택)" value={d.originalAmount || 0} onChange={v => updateDebt(i, 'originalAmount', v)} />
@@ -1687,7 +1687,7 @@ export default function IntakePage() {
                 <h2 className="text-lg font-semibold text-gray-900">재산 내역</h2>
                 <button
                   onClick={addAsset}
-                  className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
+                  className="flex items-center gap-1 rounded-lg bg-brand-gold px-3 py-1.5 text-xs font-medium text-black"
                 >
                   <Plus size={14} /> 수동 추가
                 </button>
@@ -1695,10 +1695,10 @@ export default function IntakePage() {
 
               {codefAssets.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-xs font-semibold text-[#C9A84C] mb-2">CODEF 자동 수집 ({codefAssets.length}건)</p>
+                  <p className="text-xs font-semibold text-brand-gold mb-2">CODEF 자동 수집 ({codefAssets.length}건)</p>
                   <div className="space-y-2">
                     {codefAssets.map(a => (
-                      <div key={a._key} className="rounded-lg bg-[#C9A84C]/5 border border-[#C9A84C]/20 px-4 py-3">
+                      <div key={a._key} className="rounded-lg bg-brand-gold/5 border border-brand-gold/20 px-4 py-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-800">{a.name}</span>
                           <span className="text-xs text-gray-500">{a.type}</span>
@@ -1752,7 +1752,7 @@ export default function IntakePage() {
                                   onClick={async () => { const r = await openAddressSearch(); if (r) setAssets(prev => prev.map((aa, idx) => idx === i ? { ...aa, meta: { ...aa.meta, address: r.address } } : aa)); }}
                                 />
                                 <button type="button" onClick={async () => { const r = await openAddressSearch(); if (r) setAssets(prev => prev.map((aa, idx) => idx === i ? { ...aa, meta: { ...aa.meta, address: r.address } } : aa)); }}
-                                  className="shrink-0 rounded-lg bg-blue-600 px-3 py-2.5 text-xs font-medium text-white">검색</button>
+                                  className="shrink-0 rounded-lg bg-brand-gold px-3 py-2.5 text-xs font-medium text-black">검색</button>
                               </div>
                             </div>
                           )}
@@ -1766,7 +1766,7 @@ export default function IntakePage() {
                                   value={a.meta?.plate || ''}
                                   onChange={e => setAssets(prev => prev.map((aa, idx) => idx === i ? { ...aa, meta: { ...aa.meta, plate: e.target.value } } : aa))}
                                   placeholder="12가3456"
-                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                                 />
                               </div>
                               <div>
@@ -1776,7 +1776,7 @@ export default function IntakePage() {
                                   value={a.meta?.year || ''}
                                   onChange={e => setAssets(prev => prev.map((aa, idx) => idx === i ? { ...aa, meta: { ...aa.meta, year: Number(e.target.value) || 0 } } : aa))}
                                   placeholder="2020"
-                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                                 />
                               </div>
                             </div>
@@ -1791,7 +1791,7 @@ export default function IntakePage() {
                                   value={a.meta?.bankName || ''}
                                   onChange={e => setAssets(prev => prev.map((aa, idx) => idx === i ? { ...aa, meta: { ...aa.meta, bankName: e.target.value } } : aa))}
                                   placeholder="OO은행"
-                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                                 />
                               </div>
                               <div>
@@ -1802,7 +1802,7 @@ export default function IntakePage() {
                                   onChange={e => setAssets(prev => prev.map((aa, idx) => idx === i ? { ...aa, meta: { ...aa.meta, accountLast4: e.target.value } } : aa))}
                                   maxLength={4}
                                   placeholder="1234"
-                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                                 />
                               </div>
                             </div>
@@ -1816,7 +1816,7 @@ export default function IntakePage() {
                                 value={a.meta?.insurerName || ''}
                                 onChange={e => setAssets(prev => prev.map((aa, idx) => idx === i ? { ...aa, meta: { ...aa.meta, insurerName: e.target.value } } : aa))}
                                 placeholder="OO생명/화재"
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                               />
                             </div>
                           )}
@@ -1843,7 +1843,7 @@ export default function IntakePage() {
                 value={memo}
                 onChange={e => setMemo(e.target.value)}
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
                 placeholder="사무소에 전달할 내용이 있으면 입력해주세요"
               />
             </div>
@@ -1892,7 +1892,7 @@ export default function IntakePage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-gray-800">{d.creditor} ({d.type})</p>
                       {d.source === 'codef' && (
-                        <span className="text-[10px] font-semibold text-[#C9A84C] bg-[#C9A84C]/10 px-1.5 py-0.5 rounded">CODEF</span>
+                        <span className="text-[10px] font-semibold text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 rounded">CODEF</span>
                       )}
                     </div>
                     <p className="text-xs text-gray-500">{formatNum(d.amount)}원 / 이율 {d.rate}% / 월 {formatNum(d.monthly)}원</p>
@@ -1908,7 +1908,7 @@ export default function IntakePage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-gray-800">{a.name} ({a.type})</p>
                       {a.source === 'codef' && (
-                        <span className="text-[10px] font-semibold text-[#C9A84C] bg-[#C9A84C]/10 px-1.5 py-0.5 rounded">CODEF</span>
+                        <span className="text-[10px] font-semibold text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 rounded">CODEF</span>
                       )}
                     </div>
                     <p className="text-xs text-gray-500">{formatNum(a.rawValue)}원{a.memo ? ` - ${a.memo}` : ''}</p>
@@ -1954,7 +1954,7 @@ export default function IntakePage() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting || submitted}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#C9A84C] py-4 text-base font-bold text-black hover:bg-[#b8973e] transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-brand-gold py-4 text-base font-bold text-black hover:bg-[#b8973e] transition-colors disabled:opacity-50"
               >
                 {submitting ? (
                   <div className="h-5 w-5 animate-spin rounded-full border-2 border-black border-t-transparent" />
@@ -1988,7 +1988,7 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
       />
     </div>
   );
@@ -2005,7 +2005,7 @@ function NumberField({ label, value, onChange, step = 1 }: {
         value={value || ''}
         onChange={e => onChange(Number(e.target.value) || 0)}
         step={step}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
         placeholder="0"
       />
     </div>

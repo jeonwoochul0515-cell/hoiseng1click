@@ -242,6 +242,67 @@ export async function handleDocOcr(req: Request, res: Response) {
   }
 }
 
+/**
+ * Gemini Vision OCR 프록시
+ * 클라이언트에서 base64 이미지 + 프롬프트를 보내면 서버에서 Gemini API 호출
+ * → API 키가 클라이언트 번들에 노출되지 않음
+ */
+export async function handleGeminiOcr(req: Request, res: Response) {
+  try {
+    const { image, mimeType, prompt } = req.body as {
+      image: string;   // base64
+      mimeType: string;
+      prompt: string;
+    };
+
+    if (!image || !prompt) {
+      res.status(400).json({ error: "image, prompt 필드 필요" });
+      return;
+    }
+
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      throw new Error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
+    }
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+    const body = {
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType || "image/jpeg", data: image } },
+        ],
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+      },
+    };
+
+    const geminiRes = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      throw new Error(`Gemini API 오류 (${geminiRes.status}): ${errText}`);
+    }
+
+    const data = await geminiRes.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    res.json({ text });
+  } catch (err: any) {
+    console.error("[GeminiOCR] 오류:", err);
+    res.status(500).json({ error: err.message ?? "Gemini OCR 처리 실패" });
+  }
+}
+
 /** 크레딧포유 신용조회서 PDF 파싱 */
 export async function handleCreditReportParse(req: Request, res: Response) {
   try {

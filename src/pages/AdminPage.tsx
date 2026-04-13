@@ -9,11 +9,12 @@ import {
   ChevronDown, Calendar, Check, X,
 } from 'lucide-react';
 import dayjs from 'dayjs';
+import { toast } from '@/utils/toast';
 
 // --- 플랜 설정 ---
 const PLAN_META: Record<string, { label: string; price: string; color: string; bgColor: string }> = {
   starter:    { label: 'STARTER',    price: '49,000원/월',  color: 'text-gray-400',   bgColor: 'bg-gray-500/20' },
-  pro:        { label: 'PRO',        price: '99,000원/월',  color: 'text-[#C9A84C]',  bgColor: 'bg-[#C9A84C]/20' },
+  pro:        { label: 'PRO',        price: '99,000원/월',  color: 'text-brand-gold',  bgColor: 'bg-brand-gold/20' },
   enterprise: { label: 'ENTERPRISE', price: '199,000원/월', color: 'text-purple-400', bgColor: 'bg-purple-500/20' },
 };
 
@@ -67,7 +68,7 @@ export default function AdminPage() {
       setEditingPlan(null);
     } catch (err) {
       console.error('플랜 변경 실패:', err);
-      alert('플랜 변경에 실패했습니다.');
+      toast.error('플랜 변경에 실패했습니다.');
     } finally {
       setSaving(false);
     }
@@ -90,7 +91,7 @@ export default function AdminPage() {
       setExtendingId(null);
     } catch (err) {
       console.error('만료일 연장 실패:', err);
-      alert('만료일 연장에 실패했습니다.');
+      toast.error('만료일 연장에 실패했습니다.');
     } finally {
       setSaving(false);
     }
@@ -129,7 +130,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#C9A84C] border-t-transparent" />
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand-gold border-t-transparent" />
       </div>
     );
   }
@@ -219,7 +220,7 @@ export default function AdminPage() {
                               onClick={() => handlePlanChange(office.id, p)}
                               className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
                                 p === office.plan
-                                  ? 'bg-[#C9A84C] text-black'
+                                  ? 'bg-brand-gold text-black'
                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                               }`}
                             >

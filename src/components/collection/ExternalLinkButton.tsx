@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ExternalLink, CheckCircle2, Star } from 'lucide-react';
 
 interface ExternalLinkButtonProps {
@@ -19,11 +20,20 @@ export default function ExternalLinkButton({
   status = 'todo',
   onUploaded,
 }: ExternalLinkButtonProps) {
-  const handleClick = () => {
+  const [linkOpened, setLinkOpened] = useState(false);
+
+  const handleOpenLink = () => {
     window.open(url, '_blank');
-    if (status === 'todo' && onUploaded) {
+    if (status === 'todo') {
+      setLinkOpened(true);
+    }
+  };
+
+  const handleConfirmComplete = () => {
+    if (onUploaded) {
       onUploaded();
     }
+    setLinkOpened(false);
   };
 
   const statusConfig = {
@@ -52,7 +62,7 @@ export default function ExternalLinkButton({
   return (
     <div className="w-full">
       <button
-        onClick={handleClick}
+        onClick={handleOpenLink}
         className={`flex w-full items-center gap-3 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${config.bg} ${config.text}`}
       >
         {/* 좌측: 아이콘 + 라벨 + 서류명 */}
@@ -60,7 +70,7 @@ export default function ExternalLinkButton({
           {icon && <span className="flex-shrink-0">{icon}</span>}
           {config.icon && <span className="flex-shrink-0">{config.icon}</span>}
           <span className="truncate">{label}</span>
-          <span className="text-xs text-gray-400 truncate">— {certName}</span>
+          <span className="text-xs text-gray-400 truncate">-- {certName}</span>
         </div>
 
         {/* 우측: 상태 라벨 + 외부링크 아이콘 */}
@@ -69,6 +79,17 @@ export default function ExternalLinkButton({
           <ExternalLink size={14} className="text-gray-400" />
         </div>
       </button>
+
+      {/* 발급 완료 확인 버튼 */}
+      {linkOpened && status === 'todo' && (
+        <button
+          onClick={handleConfirmComplete}
+          className="mt-2 w-full rounded-lg border border-emerald-400 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+        >
+          <CheckCircle2 size={14} className="inline mr-1.5 -mt-0.5" />
+          발급 완료
+        </button>
+      )}
 
       {/* 메뉴 경로 안내 */}
       <p className="mt-1 px-1 text-xs text-gray-400">{path}</p>

@@ -146,13 +146,13 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
         <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
           <button
             onClick={() => setMode('plate')}
-            className={`px-3 py-1.5 transition ${mode === 'plate' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+            className={`px-3 py-1.5 transition ${mode === 'plate' ? 'bg-brand-gold text-black' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
           >
             차량번호
           </button>
           <button
             onClick={() => setMode('manual')}
-            className={`px-3 py-1.5 transition ${mode === 'manual' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+            className={`px-3 py-1.5 transition ${mode === 'manual' ? 'bg-brand-gold text-black' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
           >
             수동 입력
           </button>
@@ -170,7 +170,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
                 value={plate}
                 onChange={e => setPlate(e.target.value)}
                 placeholder="예: 12가 3456"
-                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -181,7 +181,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
                   value={ownerName}
                   onChange={e => setOwnerName(e.target.value)}
                   placeholder="홍길동"
-                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
                 />
               </div>
               <div>
@@ -192,7 +192,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
                   onChange={e => setOwnerBirth(e.target.value)}
                   placeholder="19850101"
                   maxLength={8}
-                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
                 />
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
                 value={plate}
                 onChange={e => setPlate(e.target.value)}
                 placeholder="예: 12가 3456"
-                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -218,7 +218,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
                 <select
                   value={model}
                   onChange={e => setModel(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
                 >
                   {VEHICLE_MODELS.map(g => (
                     <optgroup key={g.group} label={g.group}>
@@ -234,7 +234,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
                 <select
                   value={year}
                   onChange={e => setYear(Number(e.target.value))}
-                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
                 >
                   {yearOptions.map(y => (
                     <option key={y} value={y}>{y}년</option>
@@ -249,7 +249,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
                   onChange={e => setKm(Number(e.target.value))}
                   min={0}
                   step={1000}
-                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
                 />
               </div>
             </div>
@@ -261,7 +261,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
       <button
         onClick={handleLookup}
         disabled={loading}
-        className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-lg bg-brand-gold py-2.5 text-sm font-medium text-black transition hover:bg-[#b8973e] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? (
           <span className="inline-flex items-center gap-2">
@@ -338,7 +338,7 @@ export default function VehicleLookup({ onAdd }: VehicleLookupProps) {
                 value={lien}
                 onChange={e => setLien(Number(e.target.value))}
                 min={0}
-                className="w-40 rounded border border-gray-300 bg-gray-200 px-3 py-1 text-right text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="w-40 rounded border border-gray-300 bg-gray-200 px-3 py-1 text-right text-sm text-gray-900 focus:border-brand-gold focus:outline-none"
               />
             </div>
 

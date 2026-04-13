@@ -10,6 +10,8 @@ declare global {
   }
 }
 
+import { toast } from '@/utils/toast';
+
 let initialized = false;
 
 function ensureInit(): boolean {
@@ -47,7 +49,7 @@ export async function sendKakaoLink({
     const msg = `[${officeName}] 개인회생 접수\n\n${clientName}님, 아래 링크를 눌러 접수를 진행해 주세요.\n\n링크: ${intakeLink}\n비밀번호: ${pin}`;
     try {
       await navigator.clipboard.writeText(msg);
-      alert('카카오톡 SDK를 불러오지 못해 메시지가 클립보드에 복사되었습니다.\n카카오톡에 직접 붙여넣기 해주세요.');
+      toast.warning('카카오톡 SDK를 불러오지 못해 메시지가 클립보드에 복사되었습니다. 카카오톡에 직접 붙여넣기 해주세요.');
     } catch {
       prompt('카카오톡 SDK를 불러오지 못했습니다. 아래 내용을 복사하세요:', msg);
     }
@@ -83,7 +85,7 @@ export async function sendKakaoLink({
     const msg = `[${officeName}] 개인회생 접수\n\n${clientName}님, 아래 링크를 눌러 접수를 진행해 주세요.\n\n링크: ${intakeLink}\n비밀번호: ${pin}`;
     try {
       await navigator.clipboard.writeText(msg);
-      alert('카카오톡 전송에 실패했습니다.\n메시지가 클립보드에 복사되었습니다. 카카오톡에 직접 붙여넣기 해주세요.');
+      toast.warning('카카오톡 전송에 실패했습니다. 메시지가 클립보드에 복사되었습니다. 카카오톡에 직접 붙여넣기 해주세요.');
     } catch {
       prompt('카카오톡 전송에 실패했습니다. 아래 내용을 복사하세요:', msg);
     }

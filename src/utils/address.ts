@@ -34,10 +34,12 @@ export interface AddressSearchResult {
   sigungu: string;
 }
 
+import { toast } from '@/utils/toast';
+
 export function openAddressSearch(): Promise<AddressSearchResult | null> {
   return new Promise((resolve) => {
     if (!window.daum?.Postcode) {
-      alert('주소 검색 서비스를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+      toast.error('주소 검색 서비스를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
       resolve(null);
       return;
     }

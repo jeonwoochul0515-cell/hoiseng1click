@@ -20,7 +20,7 @@
 
 // 경기도 북부 → 의정부지방법원 관할 시군구
 const UIJEONGBU_AREAS = [
-  '의정부', '고양', '파주', '동두천', '양주', '포천', '연천', '가평', '남양주', '구리',
+  '의정부', '고양', '파주', '동두천', '양주', '포천', '연천', '가평', '남양주', '구리', '하남',
 ];
 
 // 강원 동부 → 춘천지방법원 강릉지원 관할
@@ -104,13 +104,14 @@ export function getCourtByAddress(sido: string, sigungu: string): string {
  * 도로명주소 문자열에서 관할법원 추정 (sido/sigungu 없을 때 fallback)
  */
 export function getCourtByAddressString(address: string): string {
+  // 경기도 처리 (SIDO_COURT_MAP에 없으므로 먼저 체크)
+  if (address.startsWith('경기') || address.startsWith('경기도')) {
+    const isNorth = UIJEONGBU_AREAS.some(area => address.includes(area));
+    return isNorth ? '의정부지방법원' : '수원지방법원';
+  }
+
   for (const [key, court] of Object.entries(SIDO_COURT_MAP)) {
     if (address.startsWith(key)) {
-      // 경기도인 경우 시군구 체크
-      if (key.startsWith('경기')) {
-        const isNorth = UIJEONGBU_AREAS.some(area => address.includes(area));
-        return isNorth ? '의정부지방법원' : '수원지방법원';
-      }
       if (key.includes('강원')) {
         const isEast = GANGNEUNG_AREAS.some(area => address.includes(area));
         return isEast ? '춘천지방법원 강릉지원' : '춘천지방법원';

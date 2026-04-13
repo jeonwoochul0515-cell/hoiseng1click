@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Printer, Users } from 'lucide-react';
 import type { Client } from '@/types/client';
 import type { DocType } from '@/types/document';
@@ -8,14 +9,23 @@ import { formatPhone, formatKRW } from '@/utils/formatter';
 import DocSelector from '@/components/documents/DocSelector';
 import DocPreview from '@/components/documents/DocPreview';
 import DocDownloadButton from '@/components/documents/DocDownloadButton';
-import UpgradeModal from '@/components/subscription/UpgradeModal';
+
 
 export default function DocumentsPage() {
   const { data: clients, isLoading } = useClients();
   const { office } = useAuthStore();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedDocType, setSelectedDocType] = useState<DocType | null>('debt_list');
+
+  // URL 파라미터에서 clientId를 읽어 초기 의뢰인 자동 선택
+  useEffect(() => {
+    const clientId = searchParams.get('clientId');
+    if (clientId) {
+      setSelectedClientId(clientId);
+    }
+  }, [searchParams]);
 
   const filteredClients = useMemo(() => {
     if (!clients) return [];
@@ -40,14 +50,14 @@ export default function DocumentsPage() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="이름 또는 연락처 검색"
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]"
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold"
             />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {isLoading ? (
             <div className="flex items-center justify-center py-10">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#C9A84C] border-t-transparent" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
             </div>
           ) : filteredClients.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-gray-400">
@@ -61,7 +71,7 @@ export default function DocumentsPage() {
                 onClick={() => setSelectedClientId(c.id)}
                 className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
                   selectedClientId === c.id
-                    ? 'bg-[#C9A84C]/15 text-[#C9A84C]'
+                    ? 'bg-brand-gold/15 text-brand-gold'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
@@ -128,7 +138,6 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      <UpgradeModal />
     </div>
   );
 }

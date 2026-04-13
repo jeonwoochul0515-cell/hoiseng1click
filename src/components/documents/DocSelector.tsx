@@ -30,7 +30,7 @@ export default function DocSelector({ selected, onSelect }: DocSelectorProps) {
             onClick={() => onSelect(dt)}
             className={`flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors ${
               isSelected
-                ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]'
+                ? 'border-brand-gold bg-brand-gold/10 text-brand-gold'
                 : 'border-gray-200 bg-white text-gray-700 hover:border-gray-500'
             }`}
           >

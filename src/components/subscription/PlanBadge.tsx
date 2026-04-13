@@ -6,7 +6,7 @@ interface PlanBadgeProps {
 
 const badgeStyles: Record<PlanType, string> = {
   starter: 'bg-gray-600/20 text-gray-600',
-  pro: 'bg-yellow-600/20 text-[#C9A84C]',
+  pro: 'bg-yellow-600/20 text-brand-gold',
   enterprise: 'bg-purple-600/20 text-purple-400',
 };
 

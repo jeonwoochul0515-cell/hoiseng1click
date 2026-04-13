@@ -122,7 +122,7 @@ export default function LiquidationPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="이름 또는 연락처 검색"
-              className="w-full rounded-lg bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-500 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+              className="w-full rounded-lg bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-500 outline-none focus:ring-1 focus:ring-brand-gold"
             />
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function LiquidationPage() {
                   onClick={() => setSelectedClientId(c.id)}
                   className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
                     selectedClientId === c.id
-                      ? 'bg-[#C9A84C]/15 text-[#C9A84C]'
+                      ? 'bg-brand-gold/15 text-brand-gold'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
@@ -175,7 +175,7 @@ export default function LiquidationPage() {
               </button>
               <button
                 onClick={() => window.print()}
-                className="flex items-center gap-2 rounded-lg bg-[#C9A84C] px-4 py-2 text-sm font-medium text-black hover:bg-[#b8973e] transition-colors"
+                className="flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2 text-sm font-medium text-black hover:bg-[#b8973e] transition-colors"
               >
                 <Printer size={16} />
                 PDF 출력
@@ -356,7 +356,7 @@ export default function LiquidationPage() {
                       value={retirementWage || ''}
                       onChange={(e) => setRetirementWage(Number(e.target.value))}
                       placeholder="0"
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold"
                     />
                   </div>
                   <div>
@@ -367,7 +367,7 @@ export default function LiquidationPage() {
                       onChange={(e) => setYearsWorked(Number(e.target.value))}
                       placeholder="0"
                       min={0}
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold"
                     />
                   </div>
                   <div>
@@ -378,7 +378,7 @@ export default function LiquidationPage() {
                       onChange={(e) => setYearsUntilRetirement(Number(e.target.value))}
                       placeholder="0"
                       min={0}
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold"
                     />
                   </div>
                 </div>
@@ -407,7 +407,7 @@ export default function LiquidationPage() {
                       value={depositAmount || ''}
                       onChange={(e) => setDepositAmount(Number(e.target.value))}
                       placeholder="0"
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold"
                     />
                   </div>
                   <div>
@@ -418,7 +418,7 @@ export default function LiquidationPage() {
                       onChange={(e) => setDepositYears(Number(e.target.value))}
                       placeholder="0"
                       min={0}
-                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold"
                     />
                   </div>
                 </div>
@@ -457,7 +457,7 @@ export default function LiquidationPage() {
                     type="number"
                     value={taxDelinquent}
                     onChange={(e) => setTaxDelinquent(Number(e.target.value))}
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold"
                   />
                 </div>
                 <div>
@@ -466,7 +466,7 @@ export default function LiquidationPage() {
                     type="number"
                     value={wageClaim}
                     onChange={(e) => setWageClaim(Number(e.target.value))}
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold"
                   />
                 </div>
                 <div>
@@ -475,7 +475,7 @@ export default function LiquidationPage() {
                     type="number"
                     value={smallDeposit}
                     onChange={(e) => setSmallDeposit(Number(e.target.value))}
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold"
                   />
                 </div>
               </div>

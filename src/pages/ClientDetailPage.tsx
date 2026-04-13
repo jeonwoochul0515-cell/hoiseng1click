@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Database, FileText, Send, MessageCircle, Copy, Check, LinkIcon, Download, ExternalLink, Loader2 } from 'lucide-react';
+import { ArrowLeft, Database, FileText, Send, MessageCircle, Copy, Check, LinkIcon, Download, Loader2 } from 'lucide-react';
 import DocCollectPanel from '@/components/client/DocCollectPanel';
 import { sendKakaoLink } from '@/utils/kakao';
 import { getClient } from '@/api/firestore';
@@ -12,6 +12,7 @@ import { AssetPanel } from '@/components/client/AssetPanel';
 import { formatKRW, formatPhone, formatDate, maskSSN } from '@/utils/formatter';
 import { calcMonthlyPayment, calcRepayTotal, calcLivingCost } from '@/utils/calculator';
 import type { Client, ClientStatus } from '@/types/client';
+import { toast } from '@/utils/toast';
 
 const STATUS_OPTIONS: { value: ClientStatus; label: string; color: string }[] = [
   { value: 'new', label: '신규', color: '#3B82F6' },
@@ -66,14 +67,14 @@ export default function ClientDetailPage() {
       setIntakeLink(`${window.location.origin}/intake/${tokenId}`);
       setIntakePin(pin);
     } catch {
-      alert('링크 생성에 실패했습니다.');
+      toast.error('링크 생성에 실패했습니다.');
     } finally {
       setLinkLoading(false);
     }
   };
 
   const getMessageTemplate = () =>
-    `[${office?.name}] 개인회생 접수 안내\n\n${client?.name}님 안녕하세요.\n아래 링크를 눌러 정보를 입력해 주세요.\n\n접수 링크: ${intakeLink}\n비밀번호: ${intakePin}\n\n* 비밀번호 4자리를 입력하면 접수가 시작됩니다.\n* 링크는 7일간 유효합니다.`;
+    `[${office?.name}] 개인회생 접수 안내\n\n${client?.name}님 안녕하세요.\n아래 링크를 눌러 정보를 입력해 주세요.\n\n접수 링크: ${intakeLink}\n비밀번호: ${intakePin}\n\n* 비밀번호 6자리를 입력하면 접수가 시작됩니다.\n* 링크는 7일간 유효합니다.`;
 
   const handleSendKakao = async () => {
     if (!office || !client) return;
@@ -91,14 +92,14 @@ export default function ClientDetailPage() {
       setMsgCopied(true);
       setTimeout(() => setMsgCopied(false), 2000);
     } catch {
-      alert('클립보드 복사에 실패했습니다.');
+      toast.error('클립보드 복사에 실패했습니다.');
     }
   };
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-gold border-t-transparent" />
       </div>
     );
   }
@@ -162,7 +163,7 @@ export default function ClientDetailPage() {
             <button
               onClick={handleGenerateIntakeLink}
               disabled={linkLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A84C] px-3 py-2 text-sm font-medium text-black hover:bg-[#b8973e] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-gold px-3 py-2 text-sm font-medium text-black hover:bg-[#b8973e] disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
               {linkLoading ? '생성중...' : '접수링크 전송'}
@@ -170,7 +171,7 @@ export default function ClientDetailPage() {
 
             <button
               onClick={() => navigate(`/collection/${client.id}`)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-gold px-3 py-2 text-sm font-medium text-black hover:bg-[#b8973e]"
             >
               <Database className="h-4 w-4" />
               CODEF 수집
@@ -202,7 +203,7 @@ export default function ClientDetailPage() {
           <div className="rounded-xl bg-[#0D1B2A] px-5 py-4 space-y-3">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
-                <LinkIcon size={16} className="text-[#C9A84C]" />
+                <LinkIcon size={16} className="text-brand-gold" />
                 <span className="text-sm font-semibold text-white">{client.name}님 접수링크</span>
               </div>
               <button
@@ -216,7 +217,7 @@ export default function ClientDetailPage() {
                 <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">비밀번호</p>
                 <div className="flex gap-1.5">
                   {intakePin.split('').map((d, i) => (
-                    <span key={i} className="flex h-7 w-7 items-center justify-center rounded-md bg-[#C9A84C]/20 text-base font-bold text-[#C9A84C]">{d}</span>
+                    <span key={i} className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-gold/20 text-base font-bold text-brand-gold">{d}</span>
                   ))}
                 </div>
               </div>
@@ -359,7 +360,7 @@ export default function ClientDetailPage() {
             <p className="mb-4 text-sm text-gray-500">이 의뢰인의 데이터를 기반으로 법원 제출 서류를 생성합니다.</p>
             <Link
               to={`/documents?clientId=${client.id}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-medium text-black hover:bg-[#b8973e]"
             >
               <FileText className="h-4 w-4" />
               서류 생성 페이지로 이동
@@ -453,7 +454,7 @@ function UploadedDocsTab({ officeId, client }: { officeId: string; client: Clien
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
-      alert('클립보드 복사에 실패했습니다.');
+      toast.error('클립보드 복사에 실패했습니다.');
     }
   };
 
@@ -466,7 +467,7 @@ function UploadedDocsTab({ officeId, client }: { officeId: string; client: Clien
       const { tokenId } = await createToken(office.id, office.name, client.name, client.phone);
       setDocSubmitLink(`${window.location.origin}/docs/${tokenId}`);
     } catch {
-      alert('링크 생성에 실패했습니다.');
+      toast.error('링크 생성에 실패했습니다.');
     }
   };
 
@@ -519,7 +520,7 @@ function UploadedDocsTab({ officeId, client }: { officeId: string; client: Clien
                   <p className="text-xs text-gray-500">{d.fileName} · {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString('ko-KR') : ''}</p>
                 </div>
                 <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer"
-                  className="shrink-0 flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+                  className="shrink-0 flex items-center gap-1 rounded-lg bg-brand-gold px-3 py-1.5 text-xs font-medium text-black hover:bg-[#b8973e]">
                   <Download size={12} /> 다운로드
                 </a>
               </div>

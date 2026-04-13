@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getClient, updateClient } from '@/api/firestore';
 import { generateNarrative } from '@/utils/aiWriter';
 import type { Client } from '@/types/client';
+import { toast } from '@/utils/toast';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -309,10 +310,10 @@ export default function StatementPage() {
         })));
         filled++;
       }
-      alert(filled > 0 ? `${filled}개 항목이 자동 채워졌습니다.` : '자동 채움 가능한 데이터가 없습니다.');
+      toast.success(filled > 0 ? `${filled}개 항목이 자동 채워졌습니다.` : '자동 채움 가능한 데이터가 없습니다.');
     } catch (err: any) {
       console.error('진술서 데이터 로드 실패:', err);
-      alert('CODEF 자동채움 실패: ' + (err.message || '서버 오류'));
+      toast.error('CODEF 자동채움 실패: ' + (err.message || '서버 오류'));
     } finally {
       setLoading(false);
     }
@@ -342,7 +343,7 @@ export default function StatementPage() {
       setter(result);
     } catch (err: any) {
       console.error('AI 작성 실패:', err);
-      alert(err.message || 'AI 작성에 실패했습니다');
+      toast.error(err.message || 'AI 작성에 실패했습니다');
     } finally {
       setAiLoadingField(null);
     }
@@ -370,7 +371,7 @@ export default function StatementPage() {
               CODEF 자동채움
             </button>
             <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+              className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-black rounded-lg text-sm font-semibold hover:bg-[#b8973e] disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               저장
             </button>

@@ -1,35 +1,30 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, query, where, orderBy, limit as fbLimit } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { getClients } from '@/api/firestore';
 import {
   Users, UserPlus, CheckCircle, FileText, Send, ShieldCheck,
-  Clock, AlertTriangle, Inbox, Loader2,
+  Clock, AlertTriangle, Inbox, Loader2, LayoutGrid, List,
 } from 'lucide-react';
 import type { Client, ClientStatus } from '@/types/client';
 import type { IntakeSubmission } from '@/api/intake';
 import { formatKRW, formatDate } from '@/utils/formatter';
+import { STATUS_LABELS, STATUS_COLORS } from '@/constants/status';
+import DonutChart from '@/components/ui/DonutChart';
+import KanbanBoard from '@/components/client/KanbanBoard';
+import { useCoachMark } from '@/hooks/useCoachMark';
+import CoachMark from '@/components/ui/CoachMark';
 
-// ----- Status helpers -----
-
-const STATUS_LABELS: Record<ClientStatus, string> = {
-  new: '신규',
-  contacted: '상담',
-  collecting: '수집중',
-  drafting: '서류작성',
-  submitted: '제출',
-  approved: '인가',
-};
-
-const STATUS_COLORS: Record<ClientStatus, string> = {
-  new: 'bg-blue-500/20 text-blue-400',
-  contacted: 'bg-purple-500/20 text-purple-400',
-  collecting: 'bg-yellow-600/20 text-[#C9A84C]',
-  drafting: 'bg-purple-500/20 text-purple-400',
-  submitted: 'bg-amber-500/20 text-amber-400',
-  approved: 'bg-green-500/20 text-green-400',
+/** Tailwind dot class -> hex color for SVG rendering */
+const STATUS_HEX: Record<string, string> = {
+  new: '#3B82F6',
+  contacted: '#8B5CF6',
+  collecting: '#F59E0B',
+  drafting: '#8B5CF6',
+  submitted: '#F97316',
+  approved: '#10B981',
 };
 
 // ----- Component -----
@@ -40,6 +35,21 @@ export default function DashboardPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [pendingIntakes, setPendingIntakes] = useState<(IntakeSubmission & { id: string })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const [loadKey, setLoadKey] = useState(0);
+  const [viewMode, setViewMode] = useState<'kanban' | 'bar'>('kanban');
+
+  const handleStatusChange = async (clientId: string, newStatus: ClientStatus) => {
+    const officeId = office?.id;
+    if (!officeId) return;
+    try {
+      await updateDoc(doc(db, 'offices', officeId, 'clients', clientId), { status: newStatus });
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, status: newStatus } : c));
+    } catch (err) {
+      console.error('상태 변경 실패:', err);
+    }
+  };
 
   // Fetch clients and pending intakes
   useEffect(() => {
@@ -48,6 +58,7 @@ export default function DashboardPage() {
 
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
         // Fetch clients and intakes in parallel
         const [clientList, intakeSnap] = await Promise.all([
@@ -71,6 +82,7 @@ export default function DashboardPage() {
         setPendingIntakes(pending);
       } catch (err) {
         console.error('대시보드 데이터 로드 실패:', err);
+        if (!cancelled) setError('데이터를 불러오지 못했습니다.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -78,7 +90,7 @@ export default function DashboardPage() {
 
     load();
     return () => { cancelled = true; };
-  }, [office]);
+  }, [office, loadKey]);
 
   // ----- Derived data -----
 
@@ -156,7 +168,38 @@ export default function DashboardPage() {
       .map(c => ({ id: c.id, name: c.name }));
   }, [clients]);
 
+  const statusDistribution = useMemo(() => {
+    return (Object.entries(statusCounts) as [ClientStatus, number][])
+      .filter(([_, count]) => count > 0)
+      .map(([status, count]) => ({
+        label: STATUS_LABELS[status],
+        value: count,
+        color: STATUS_HEX[status] ?? '#6B7280',
+      }));
+  }, [statusCounts]);
+
   const maxPipeline = Math.max(...pipelineStages.map((s) => s.count), 1);
+
+  // ----- Coach mark -----
+  const coachMark = useCoachMark(totalClients);
+
+  // ----- Onboarding banner -----
+  const [showBanner, setShowBanner] = useState(() => {
+    return !localStorage.getItem('onboarding_seen');
+  });
+
+  const handleDismissBanner = () => {
+    localStorage.setItem('onboarding_seen', 'true');
+    setShowBanner(false);
+  };
+
+  const planExpiryDate = useMemo(() => {
+    if (!office?.planExpiry) return null;
+    const d = office.planExpiry instanceof Date
+      ? office.planExpiry
+      : (office.planExpiry as any).toDate?.() ?? null;
+    return d;
+  }, [office?.planExpiry]);
 
   if (loading) {
     return (
@@ -166,8 +209,42 @@ export default function DashboardPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-4">
+        <AlertTriangle className="h-10 w-10 text-red-400" />
+        <p className="text-sm text-gray-600">{error}</p>
+        <button
+          onClick={() => setLoadKey((k) => k + 1)}
+          className="rounded-lg bg-brand-gold px-5 py-2 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Onboarding Welcome Banner */}
+      {showBanner && (
+        <div className="relative rounded-xl bg-brand-gold p-4 text-black">
+          <button
+            onClick={handleDismissBanner}
+            className="absolute top-3 right-3 text-black/60 hover:text-black text-lg font-bold leading-none"
+            aria-label="닫기"
+          >
+            &times;
+          </button>
+          <p className="text-base font-bold">14일 PRO 무료체험이 시작되었습니다!</p>
+          {planExpiryDate && (
+            <p className="mt-1 text-sm text-black/80">
+              만료일: {planExpiryDate.getFullYear()}년 {planExpiryDate.getMonth() + 1}월 {planExpiryDate.getDate()}일
+            </p>
+          )}
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
 
       {/* KPI Cards */}
@@ -198,25 +275,58 @@ export default function DashboardPage() {
 
       {/* Pipeline */}
       <div className="rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">파이프라인</h2>
-        <div className="space-y-3">
-          {pipelineStages.map((stage) => (
-            <div key={stage.status} className="flex items-center gap-3">
-              <span className="w-16 shrink-0 text-right text-sm text-gray-600">{stage.label}</span>
-              <div className="flex-1">
-                <div
-                  className="h-7 rounded-md flex items-center px-3 text-xs font-semibold text-gray-900 transition-all"
-                  style={{
-                    width: `${Math.max((stage.count / maxPipeline) * 100, 8)}%`,
-                    backgroundColor: stage.color,
-                  }}
-                >
-                  {stage.count}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">파이프라인</h2>
+          <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-0.5">
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="칸반 보기"
+            >
+              <LayoutGrid size={14} />
+              <span className="hidden sm:inline">칸반</span>
+            </button>
+            <button
+              onClick={() => setViewMode('bar')}
+              className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                viewMode === 'bar'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="바 차트 보기"
+            >
+              <List size={14} />
+              <span className="hidden sm:inline">차트</span>
+            </button>
+          </div>
+        </div>
+
+        {viewMode === 'kanban' ? (
+          <KanbanBoard clients={clients} onStatusChange={handleStatusChange} />
+        ) : (
+          <div className="space-y-3">
+            {pipelineStages.map((stage) => (
+              <div key={stage.status} className="flex items-center gap-3">
+                <span className="w-16 shrink-0 text-right text-sm text-gray-600">{stage.label}</span>
+                <div className="flex-1">
+                  <div
+                    className="h-7 rounded-md flex items-center px-3 text-xs font-semibold text-gray-900 transition-all"
+                    style={{
+                      width: `${Math.max((stage.count / maxPipeline) * 100, 8)}%`,
+                      backgroundColor: stage.color,
+                    }}
+                  >
+                    {stage.count}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Bottom Row */}
@@ -225,7 +335,16 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 rounded-xl bg-white p-6">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">최근 활동</h2>
           {recentClients.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-400">등록된 의뢰인이 없습니다</p>
+            <div className="flex flex-col items-center gap-3 py-10">
+              <Users className="h-10 w-10 text-gray-300" />
+              <p className="text-sm text-gray-400">아직 등록된 의뢰인이 없습니다</p>
+              <button
+                onClick={() => navigate('/clients')}
+                className="rounded-lg bg-brand-gold px-5 py-2 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors"
+              >
+                의뢰인 등록하기
+              </button>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -243,7 +362,7 @@ export default function DashboardPage() {
                       <td className="py-3 font-medium text-gray-900">{c.name}</td>
                       <td className="py-3 text-right">{formatKRW(c.totalDebt)}</td>
                       <td className="py-3 text-center">
-                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[c.status]}`}>
+                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[c.status].bg} ${STATUS_COLORS[c.status].text}`}>
                           {STATUS_LABELS[c.status]}
                         </span>
                       </td>
@@ -256,8 +375,19 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Quick Actions */}
+        {/* Right column: Chart + Quick Actions */}
         <div className="space-y-4">
+          {/* 사건 현황 도넛 차트 */}
+          <div className="rounded-xl bg-white border border-gray-200 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">사건 현황</h2>
+            <DonutChart
+              data={statusDistribution}
+              centerText={String(totalClients)}
+              centerSubText="명"
+              size={180}
+            />
+          </div>
+
           {/* Pending Intakes */}
           {pendingIntakes.length > 0 && (
             <div className="rounded-xl bg-white p-5">
@@ -280,16 +410,16 @@ export default function DashboardPage() {
           {/* CODEF waiting */}
           {codefWaiting.length > 0 && (
             <div className="rounded-xl bg-white p-5">
-              <div className="mb-3 flex items-center gap-2 text-[#C9A84C]">
+              <div className="mb-3 flex items-center gap-2 text-brand-gold">
                 <Clock size={18} />
                 <h3 className="text-sm font-semibold">CODEF 수집 대기</h3>
-                <span className="ml-auto rounded-full bg-[#C9A84C]/20 px-2 py-0.5 text-xs font-bold">{codefWaiting.length}</span>
+                <span className="ml-auto rounded-full bg-brand-gold/20 px-2 py-0.5 text-xs font-bold">{codefWaiting.length}</span>
               </div>
               <ul className="space-y-2">
                 {codefWaiting.map((c) => (
                   <li key={c.id} className="flex items-center justify-between text-sm">
                     <span className="text-gray-700">{c.name}</span>
-                    <button onClick={() => navigate(`/clients/${c.id}`)} className="text-xs text-[#C9A84C] hover:underline">수집 시작</button>
+                    <button onClick={() => navigate(`/clients/${c.id}`)} className="text-xs text-brand-gold hover:underline">수집 시작</button>
                   </li>
                 ))}
               </ul>
@@ -308,7 +438,7 @@ export default function DashboardPage() {
                 {docMissing.map((c) => (
                   <li key={c.id} className="flex items-center justify-between text-sm">
                     <span className="text-gray-700">{c.name}</span>
-                    <button onClick={() => navigate(`/documents?client=${c.id}`)} className="text-xs text-amber-400 hover:underline">서류 생성</button>
+                    <button onClick={() => navigate(`/documents?clientId=${c.id}`)} className="text-xs text-amber-400 hover:underline">서류 생성</button>
                   </li>
                 ))}
               </ul>
@@ -316,6 +446,18 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Coach Mark */}
+      {coachMark.isActive && coachMark.step && (
+        <CoachMark
+          targetId={coachMark.step.targetId}
+          message={coachMark.step.message}
+          step={coachMark.step.stepNumber}
+          totalSteps={coachMark.step.totalSteps}
+          onNext={coachMark.next}
+          onSkip={coachMark.skip}
+        />
+      )}
     </div>
   );
 }

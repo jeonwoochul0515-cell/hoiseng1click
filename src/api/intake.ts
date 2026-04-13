@@ -89,7 +89,7 @@ export async function getIntakeToken(tokenId: string): Promise<IntakeToken | nul
 }
 
 function generatePin(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 export async function createIntakeToken(
@@ -203,8 +203,11 @@ export async function convertSubmissionToClient(
       const result = await encryptSSN(submission.ssn);
       ssnEncrypted = result.encrypted;
       ssnMasked = result.masked;
-    } catch {
-      console.warn('SSN 암호화 실패 — 평문 저장됨');
+    } catch (err) {
+      if (import.meta.env.PROD) {
+        throw new Error('주민등록번호 암호화에 실패했습니다.');
+      }
+      console.warn('SSN 암호화 실패 — 개발 환경에서 평문 저장됨', err);
     }
   }
 

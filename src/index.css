@@ -43,6 +43,59 @@ body {
   animation: shake 0.4s ease-in-out;
 }
 
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s ease-out;
+}
+
+@keyframes gold-check-bounce {
+  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+  60% { transform: scale(1.2) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes gold-particle {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+
+@keyframes fade-up {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* 접근성: 큰 글씨 모드 */
+.large-text {
+  font-size: 120% !important;
+}
+.large-text .text-sm {
+  font-size: 0.975rem !important;
+}
+.large-text .text-xs {
+  font-size: 0.85rem !important;
+}
+
+/* 접근성: 고대비 모드 */
+.high-contrast {
+  --color-bg-main: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+}
+.high-contrast .text-gray-400,
+.high-contrast .text-gray-500 {
+  color: #374151 !important;
+}
+.high-contrast .text-gray-300 {
+  color: #4B5563 !important;
+}
+.high-contrast .border-gray-100,
+.high-contrast .border-gray-200 {
+  border-color: #6B7280 !important;
+}
+
 /* 법원 서류 프리뷰 인쇄 최적화 */
 @media print {
   @page {

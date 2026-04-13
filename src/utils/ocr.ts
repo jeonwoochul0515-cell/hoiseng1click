@@ -1,5 +1,6 @@
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY ?? '';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+import { auth } from '@/firebase';
+
+const WORKER_BASE = import.meta.env.VITE_WORKER_BASE_URL ?? 'http://localhost:8787';
 
 // ---------------------------------------------------------------------------
 // 공통: 이미지 → base64
@@ -13,41 +14,31 @@ async function fileToBase64(file: File): Promise<{ base64: string; mimeType: str
 }
 
 // ---------------------------------------------------------------------------
-// 공통: Gemini Vision 호출
+// 공통: Workers 프록시 경유 Gemini Vision 호출
 // ---------------------------------------------------------------------------
 async function callGeminiVision(file: File, prompt: string): Promise<string> {
-  if (!GEMINI_API_KEY) throw new Error('Gemini API 키가 설정되지 않았습니다.');
+  const user = auth.currentUser;
+  if (!user) throw new Error('로그인이 필요합니다.');
+  const token = await user.getIdToken();
 
   const { base64, mimeType } = await fileToBase64(file);
 
-  const body = {
-    contents: [{
-      parts: [
-        { text: prompt },
-        { inline_data: { mime_type: mimeType, data: base64 } },
-      ],
-    }],
-    generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 2048,
-    },
-  };
-
-  const res = await fetch(GEMINI_URL, {
+  const res = await fetch(`${WORKER_BASE}/ai/ocr`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ image: base64, mimeType, prompt }),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Gemini API 오류 (${res.status}): ${err}`);
+    throw new Error(`OCR API 오류 (${res.status}): ${err}`);
   }
 
-  const data = await res.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const data = await res.json() as { text: string };
+  return data.text ?? '';
 }
 
 // ---------------------------------------------------------------------------

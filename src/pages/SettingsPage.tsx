@@ -7,10 +7,11 @@ import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
 import { PLAN_CONFIGS } from '@/types/subscription';
 import PlanBadge from '@/components/subscription/PlanBadge';
-import UpgradeModal from '@/components/subscription/UpgradeModal';
+
 import { formatKRW, formatDate } from '@/utils/formatter';
 import { createIntakeToken, convertSubmissionToClient, type IntakeSubmission } from '@/api/intake';
 import { migrateSSN } from '@/utils/ssnCrypto';
+import { toast } from '@/utils/toast';
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/firebase';
 
@@ -70,7 +71,7 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
-      alert('저장에 실패했습니다.');
+      toast.error('저장에 실패했습니다.');
     } finally {
       setSaving(false);
     }
@@ -98,7 +99,7 @@ export default function SettingsPage() {
       const { tokenId, pin } = await createIntakeToken(office.id, office.name);
       setIntakeLink(`${window.location.origin}/intake/${tokenId}`);
       setIntakePin(pin);
-    } catch { alert('링크 생성에 실패했습니다.'); }
+    } catch { toast.error('링크 생성에 실패했습니다.'); }
     setLinkLoading(false);
   };
 
@@ -108,12 +109,12 @@ export default function SettingsPage() {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
-      alert('클립보드 복사에 실패했습니다.');
+      toast.error('클립보드 복사에 실패했습니다.');
     }
   };
 
   const getIntakeMessage = () =>
-    `[${office?.name}] 개인회생 접수 안내\n\n안녕하세요. 아래 링크를 눌러 정보를 입력해 주세요.\n\n접수 링크: ${intakeLink}\n비밀번호: ${intakePin}\n\n* 비밀번호 4자리를 입력하면 접수가 시작됩니다.\n* 링크는 7일간 유효합니다.`;
+    `[${office?.name}] 개인회생 접수 안내\n\n안녕하세요. 아래 링크를 눌러 정보를 입력해 주세요.\n\n접수 링크: ${intakeLink}\n비밀번호: ${intakePin}\n\n* 비밀번호 6자리를 입력하면 접수가 시작됩니다.\n* 링크는 7일간 유효합니다.`;
 
   const handleCopyIntakeMessage = async () => {
     try {
@@ -121,7 +122,7 @@ export default function SettingsPage() {
       setMsgCopied(true);
       setTimeout(() => setMsgCopied(false), 2000);
     } catch {
-      alert('클립보드 복사에 실패했습니다.');
+      toast.error('클립보드 복사에 실패했습니다.');
     }
   };
 
@@ -150,7 +151,7 @@ export default function SettingsPage() {
       const subs = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as IntakeSubmission & { id: string }));
       setSubmissions(subs);
-    } catch (err) { console.error('접수 목록 조회 실패:', err); alert('접수 목록을 불러오지 못했습니다.'); }
+    } catch (err) { console.error('접수 목록 조회 실패:', err); toast.error('접수 목록을 불러오지 못했습니다.'); }
     setSubsLoading(false);
   };
 
@@ -165,7 +166,7 @@ export default function SettingsPage() {
       if (confirm('의뢰인 등록 완료! 상세 페이지로 이동하시겠습니까?')) {
         navigate(`/clients/${clientId}`);
       }
-    } catch (err) { console.error('의뢰인 변환 실패:', err); alert('의뢰인 등록에 실패했습니다: ' + (err instanceof Error ? err.message : String(err))); }
+    } catch (err) { console.error('의뢰인 변환 실패:', err); toast.error('의뢰인 등록에 실패했습니다: ' + (err instanceof Error ? err.message : String(err))); }
     setConverting(null);
   };
 
@@ -184,7 +185,7 @@ export default function SettingsPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition-colors ${
               activeTab === tab.id
-                ? 'bg-[#C9A84C] text-black'
+                ? 'bg-brand-gold text-black'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
             }`}
           >
@@ -203,61 +204,61 @@ export default function SettingsPage() {
             <div>
               <label className="mb-1 block text-sm text-gray-600">사무소명</label>
               <input type="text" value={officeName} onChange={(e) => setOfficeName(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold" />
             </div>
 
             <div>
               <label className="mb-1 block text-sm text-gray-600">대표자명</label>
               <input type="text" value={repName} onChange={(e) => setRepName(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold" />
             </div>
 
             <div>
               <label className="mb-1 block text-sm text-gray-600">사업자등록번호</label>
               <input type="text" value={bizNumber} onChange={(e) => setBizNumber(e.target.value)} placeholder="000-00-00000"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold" />
             </div>
 
             <div>
               <label className="mb-1 block text-sm text-gray-600">사업장 주소</label>
               <input type="text" value={officeAddress} onChange={(e) => setOfficeAddress(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-sm text-gray-600">업태</label>
                 <input type="text" value={bizType} onChange={(e) => setBizType(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold" />
               </div>
               <div>
                 <label className="mb-1 block text-sm text-gray-600">종목</label>
                 <input type="text" value={bizItem} onChange={(e) => setBizItem(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold" />
               </div>
             </div>
 
             <div>
               <label className="mb-1 block text-sm text-gray-600">연락처</label>
               <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="02-0000-0000"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold" />
             </div>
 
             <div>
               <label className="mb-1 block text-sm text-gray-600">이메일</label>
               <input type="email" value={officeEmail} onChange={(e) => setOfficeEmail(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-[#C9A84C]" />
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-brand-gold" />
             </div>
 
             <div>
               <label className="mb-1 block text-sm text-gray-600">사무소 유형</label>
               <div className="flex gap-3">
                 <button onClick={() => setOfficeType('lawyer')}
-                  className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors ${officeType === 'lawyer' ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]' : 'border-gray-200 text-gray-600 hover:border-gray-500'}`}>
+                  className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors ${officeType === 'lawyer' ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-200 text-gray-600 hover:border-gray-500'}`}>
                   변호사
                 </button>
                 <button onClick={() => setOfficeType('scrivener')}
-                  className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors ${officeType === 'scrivener' ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C]' : 'border-gray-200 text-gray-600 hover:border-gray-500'}`}>
+                  className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors ${officeType === 'scrivener' ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-200 text-gray-600 hover:border-gray-500'}`}>
                   법무사
                 </button>
               </div>
@@ -266,7 +267,7 @@ export default function SettingsPage() {
             <button
               onClick={handleSaveOffice}
               disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-[#C9A84C] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-brand-gold px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors disabled:opacity-50"
             >
               <Save size={16} />
               {saving ? '저장 중...' : saved ? '저장 완료!' : '저장'}
@@ -304,7 +305,7 @@ export default function SettingsPage() {
               <button className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 codefConnected
                   ? 'border border-gray-300 text-gray-600 hover:bg-gray-100'
-                  : 'bg-[#C9A84C] text-black hover:bg-[#b8973e]'
+                  : 'bg-brand-gold text-black hover:bg-[#b8973e]'
               }`}>
                 {codefConnected ? '연결 해제' : 'CODEF 연결하기'}
               </button>
@@ -326,12 +327,12 @@ export default function SettingsPage() {
                   if (!confirm('기존 의뢰인의 주민등록번호를 모두 암호화합니다. 진행하시겠습니까?')) return;
                   try {
                     const result = await migrateSSN(office.id);
-                    alert(`암호화 완료: ${result.migrated}건 처리됨`);
+                    toast.success(`암호화 완료: ${result.migrated}건 처리됨`);
                   } catch (err) {
-                    alert('마이그레이션 실패: ' + (err instanceof Error ? err.message : String(err)));
+                    toast.error('마이그레이션 실패: ' + (err instanceof Error ? err.message : String(err)));
                   }
                 }}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2 text-sm font-medium text-black hover:bg-[#b8973e] transition-colors"
               >
                 <Shield size={14} />
                 SSN 일괄 암호화 실행
@@ -350,9 +351,9 @@ export default function SettingsPage() {
                 value={publicApiKey}
                 onChange={(e) => setPublicApiKey(e.target.value)}
                 placeholder="공공데이터포털에서 발급받은 인증키 입력"
-                className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 outline-none focus:ring-1 focus:ring-[#C9A84C]"
+                className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 outline-none focus:ring-1 focus:ring-brand-gold"
               />
-              <button className="mt-3 flex items-center gap-2 rounded-lg bg-[#C9A84C] px-4 py-2 text-sm font-medium text-black hover:bg-[#b8973e] transition-colors">
+              <button className="mt-3 flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2 text-sm font-medium text-black hover:bg-[#b8973e] transition-colors">
                 <Save size={14} />
                 저장
               </button>
@@ -373,7 +374,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleGenIntakeLink}
                 disabled={linkLoading}
-                className="flex items-center gap-2 rounded-lg bg-[#C9A84C] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-brand-gold px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors disabled:opacity-50"
               >
                 <LinkIcon size={16} />
                 {linkLoading ? '생성 중...' : '접수 링크 생성'}
@@ -397,7 +398,7 @@ export default function SettingsPage() {
                     <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">비밀번호</p>
                     <div className="flex gap-1.5">
                       {intakePin.split('').map((d, i) => (
-                        <span key={i} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#C9A84C]/20 text-lg font-bold text-[#C9A84C]">{d}</span>
+                        <span key={i} className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/20 text-lg font-bold text-brand-gold">{d}</span>
                       ))}
                     </div>
                   </div>
@@ -413,7 +414,7 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={handleCopyIntakeMessage}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#C9A84C] py-2 text-xs font-bold text-black hover:bg-[#b8973e] transition-colors"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-gold py-2 text-xs font-bold text-black hover:bg-[#b8973e] transition-colors"
                   >
                     {msgCopied ? <><Check size={14} /> 복사 완료!</> : <><Copy size={14} /> 메시지 전체 복사</>}
                   </button>
@@ -481,7 +482,7 @@ export default function SettingsPage() {
                               <button
                                 onClick={() => handleConvert(sub)}
                                 disabled={converting === sub.id}
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-gold px-3 py-1.5 text-xs font-medium text-black hover:bg-[#b8973e] disabled:opacity-50"
                               >
                                 <UserPlus size={14} />
                                 {converting === sub.id ? '등록 중...' : '의뢰인으로 등록'}
@@ -506,7 +507,7 @@ export default function SettingsPage() {
             {/* Current plan */}
             <div className="rounded-lg border border-gray-200 p-5">
               <div className="flex items-center gap-3 mb-4">
-                <CreditCard size={20} className="text-[#C9A84C]" />
+                <CreditCard size={20} className="text-brand-gold" />
                 <span className="font-medium text-gray-900">현재 플랜</span>
                 <PlanBadge plan={plan} />
               </div>
@@ -514,7 +515,7 @@ export default function SettingsPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">월 요금</span>
-                  <span className="text-gray-900 font-medium">{formatKRW(planConfig.price)}/월</span>
+                  <span className="text-gray-900 font-medium">{planConfig.price === Infinity ? '협의' : `${formatKRW(planConfig.price)}/월`}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">만료일</span>
@@ -550,7 +551,7 @@ export default function SettingsPage() {
 
             <button
               onClick={openUpgradeModal}
-              className="w-full rounded-lg bg-[#C9A84C] py-3 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors"
+              className="w-full rounded-lg bg-brand-gold py-3 text-sm font-semibold text-black hover:bg-[#b8973e] transition-colors"
             >
               플랜 변경
             </button>
@@ -558,7 +559,6 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <UpgradeModal />
     </div>
   );
 }

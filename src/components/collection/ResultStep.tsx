@@ -16,19 +16,11 @@ export default function ResultStep({ clientId }: ResultStepProps) {
   const [monthlyIncome, setMonthlyIncome] = useState<number>(0);
   const [familySize, setFamilySize] = useState<number>(1);
 
-  if (!result) {
-    return (
-      <div className="mx-auto max-w-2xl text-center py-12 text-gray-500">
-        수집 결과가 없습니다.
-      </div>
-    );
-  }
+  const { debts = [], assets = [], summary } = result ?? {};
 
-  const { debts, assets, summary } = result;
-
-  // 변제계획안 자동 계산
+  // 변제계획안 자동 계산 (Hook은 조건부 return 앞에 배치)
   const repaymentPlan = useMemo(() => {
-    if (monthlyIncome <= 0) return null;
+    if (!result || monthlyIncome <= 0) return null;
     return calcRepaymentPlan({
       monthlyIncome,
       familySize,
@@ -44,7 +36,15 @@ export default function ResultStep({ clientId }: ResultStepProps) {
         mortgage: a.mortgage ?? 0,
       })),
     });
-  }, [monthlyIncome, familySize, debts, assets]);
+  }, [result, monthlyIncome, familySize, debts, assets]);
+
+  if (!result) {
+    return (
+      <div className="mx-auto max-w-2xl text-center py-12 text-gray-500">
+        수집 결과가 없습니다.
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

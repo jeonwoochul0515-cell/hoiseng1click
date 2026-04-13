@@ -6,8 +6,11 @@ import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import UpgradeModal from '@/components/subscription/UpgradeModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import ToastContainer from '@/components/ui/Toast';
+import GoldBurst from '@/components/ui/GoldBurst';
 
 // 라우트 기반 코드 스플리팅
+const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const IntakePage = lazy(() => import('@/pages/IntakePage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
@@ -24,7 +27,7 @@ const DocumentSubmitPage = lazy(() => import('@/pages/DocumentSubmitPage'));
 function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center h-full min-h-[200px]">
-      <div className="animate-spin rounded-full h-10 w-10 border-2 border-amber-400 border-t-transparent" />
+      <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand-gold border-t-transparent" />
     </div>
   );
 }
@@ -47,7 +50,7 @@ function AppLayout() {
   return (
     <div className="flex h-screen bg-bg-main">
       <Sidebar />
-      <div className="flex-1 flex flex-col ml-[220px]">
+      <div className="flex-1 flex flex-col md:ml-[220px]">
         <TopBar />
         <main className="flex-1 overflow-auto p-6">
           <Suspense fallback={<LoadingSpinner />}>
@@ -69,7 +72,7 @@ function PlanGuard({ requirePro }: { requirePro?: boolean }) {
     if (shouldRedirect) openUpgradeModal();
   }, [shouldRedirect, openUpgradeModal]);
 
-  if (shouldRedirect) return <Navigate to="/" replace />;
+  if (shouldRedirect) return <Navigate to="/dashboard" replace />;
   return <Outlet />;
 }
 
@@ -84,13 +87,16 @@ export default function App() {
   return (
     <ErrorBoundary>
     <BrowserRouter>
+      <ToastContainer />
+      <GoldBurst />
       <Suspense fallback={<LoadingSpinner />}>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/intake/:token" element={<IntakePage />} />
         <Route path="/docs/:token" element={<DocumentSubmitPage />} />
         <Route element={<AuthGuard />}>
-          <Route index element={<DashboardPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/:id" element={<ClientDetailPage />} />
           <Route path="clients/:clientId/statement" element={<StatementPage />} />
@@ -102,9 +108,9 @@ export default function App() {
           </Route>
           <Route path="settings" element={<SettingsPage />} />
           <Route path="admin" element={<AdminPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
     </BrowserRouter>

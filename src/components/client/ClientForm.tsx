@@ -11,6 +11,7 @@ import { getClientDecryptedSSN } from '@/api/firestore';
 import { useAuthStore } from '@/store/authStore';
 import { OcrScanner, type OcrDocType } from './OcrScanner';
 import type { IdCardData, BankbookData } from '@/utils/ocr';
+import { toast } from '@/utils/toast';
 
 interface ClientFormProps {
   isOpen: boolean;
@@ -211,28 +212,40 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
   };
 
   const handleSave = async () => {
-    const payload = {
-      name, phone, ssn, address, zonecode, job, jobType, family, court, memo,
-      income, income2, rent, education, medical,
-      food, transport, telecom,
-      debtReason, repayPeriodMonths,
-      fee, feeInstallment, feeInstallmentMonths, feePaidAmount,
-      status: client?.status ?? 'new' as const,
-      collectionDone: client?.collectionDone ?? false,
-      debts: debts.filter(d => d.name || d.creditor || d.amount),
-      assets: assets.filter(a => a.name || a.rawValue).map(a => ({
-        ...a,
-        value: Math.max(0, (a.rawValue ?? 0) * (a.liquidationRate ?? 1) - (a.mortgage ?? 0)),
-      })),
-    };
+    if (createMutation.isPending || updateMutation.isPending) return;
 
-    if (isEdit && client) {
-      await updateMutation.mutateAsync({ clientId: client.id, data: payload });
-    } else {
-      await createMutation.mutateAsync(payload);
+    if (!name.trim()) {
+      toast.warning('이름을 입력해주세요.');
+      return;
     }
-    onSave?.();
-    onClose();
+
+    try {
+      const payload = {
+        name, phone, ssn, address, zonecode, job, jobType, family, court, memo,
+        income, income2, rent, education, medical,
+        food, transport, telecom,
+        debtReason, repayPeriodMonths,
+        fee, feeInstallment, feeInstallmentMonths, feePaidAmount,
+        status: client?.status ?? 'new' as const,
+        collectionDone: client?.collectionDone ?? false,
+        debts: debts.filter(d => d.name || d.creditor || d.amount),
+        assets: assets.filter(a => a.name || a.rawValue).map(a => ({
+          ...a,
+          value: Math.max(0, (a.rawValue ?? 0) * (a.liquidationRate ?? 1) - (a.mortgage ?? 0)),
+        })),
+      };
+
+      if (isEdit && client) {
+        await updateMutation.mutateAsync({ clientId: client.id, data: payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
+      onSave?.();
+      onClose();
+    } catch (err) {
+      console.error('저장 실패:', err);
+      toast.error('저장에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   if (!isOpen) return null;
@@ -280,7 +293,7 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
               <button
                 type="button"
                 onClick={() => openOcrScanner('idCard')}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#C9A84C] bg-[#C9A84C]/5 px-4 py-3 text-sm font-medium text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand-gold bg-brand-gold/5 px-4 py-3 text-sm font-medium text-brand-gold hover:bg-brand-gold/10 transition-colors"
               >
                 <ScanLine className="h-4 w-4" /> 주민등록증 스캔 (이름 / 주민번호 / 주소 자동입력)
               </button>
@@ -315,7 +328,7 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
                         if (autoCourt) setCourt(autoCourt);
                       }
                     }}
-                    className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 flex items-center gap-1">
+                    className="shrink-0 rounded-lg bg-brand-gold px-3 py-2 text-sm font-medium text-black hover:bg-[#b8973e] flex items-center gap-1">
                     <Search className="h-4 w-4" /> 검색
                   </button>
                 </div>
@@ -459,7 +472,7 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
                           <input value={asset.meta?.address ?? ''} readOnly className="input-sm flex-1 bg-gray-50 cursor-pointer" placeholder="검색"
                             onClick={async () => { const r = await openAddressSearch(); if (r) setAssets(prev => prev.map((a, idx) => idx === i ? { ...a, meta: { ...a.meta, address: r.address } } : a)); }} />
                           <button type="button" onClick={async () => { const r = await openAddressSearch(); if (r) setAssets(prev => prev.map((a, idx) => idx === i ? { ...a, meta: { ...a.meta, address: r.address } } : a)); }}
-                            className="shrink-0 rounded bg-blue-600 px-2 py-1 text-xs text-white"><Search className="h-3 w-3" /></button>
+                            className="shrink-0 rounded bg-brand-gold px-2 py-1 text-xs text-black"><Search className="h-3 w-3" /></button>
                         </div>
                       </Field>
                       <Field label="면적 (m2)" compact>
@@ -485,7 +498,7 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
                       <button
                         type="button"
                         onClick={() => openOcrScanner('bankbook', i)}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-[#C9A84C] bg-[#C9A84C]/5 px-3 py-1.5 text-xs font-medium text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-colors"
+                        className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-brand-gold bg-brand-gold/5 px-3 py-1.5 text-xs font-medium text-brand-gold hover:bg-brand-gold/10 transition-colors"
                       >
                         <ScanLine className="h-3.5 w-3.5" /> 통장 스캔
                       </button>
@@ -617,7 +630,7 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
                   <div
                     onClick={() => setFeeInstallment(!feeInstallment)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      feeInstallment ? 'bg-blue-600' : 'bg-gray-300'
+                      feeInstallment ? 'bg-brand-gold' : 'bg-gray-300'
                     }`}
                   >
                     <span
@@ -689,7 +702,7 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
           <button
             onClick={handleSave}
             disabled={createMutation.isPending || updateMutation.isPending}
-            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full rounded-lg bg-brand-gold py-2.5 text-sm font-medium text-black hover:bg-[#b8973e] disabled:opacity-50 transition-colors"
           >
             {createMutation.isPending || updateMutation.isPending ? '저장 중...' : '저장'}
           </button>

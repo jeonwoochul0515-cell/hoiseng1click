@@ -11,6 +11,7 @@ import type { ClientDocument, DocCategory } from '@/types/document';
 import { generateDocButtons, type DocButton } from '@/utils/requiredDocs';
 import { getDocuments, uploadDocument, requestOcr } from '@/api/documents';
 import { formatKRW } from '@/utils/formatter';
+import { toast } from '@/utils/toast';
 
 interface Props {
   client: Client;
@@ -93,7 +94,7 @@ export default function DocCollectPanel({ client, officeId }: Props) {
       setDocs(prev => [...prev, doc]);
     } catch (err) {
       console.error('업로드 실패:', err);
-      alert('업로드에 실패했습니다.');
+      toast.error('업로드에 실패했습니다.');
     } finally {
       setUploading(null);
     }
@@ -231,7 +232,7 @@ export default function DocCollectPanel({ client, officeId }: Props) {
                         {/* 다운로드 (업로드된 경우) */}
                         {uploadedDoc && (
                           <a href={uploadedDoc.downloadUrl} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-1 rounded-lg bg-blue-500 px-2 py-1.5 text-xs text-white hover:bg-blue-600">
+                            className="flex items-center gap-1 rounded-lg bg-brand-gold px-2 py-1.5 text-xs text-black hover:bg-[#b8973e]">
                             <Download size={10} />
                           </a>
                         )}

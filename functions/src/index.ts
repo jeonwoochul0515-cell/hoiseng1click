@@ -11,7 +11,7 @@ import { handleStatementDataV2 } from "./statementHelpers";
 import { handleAiGenerate } from "./aiWriter";
 import { handleVehicleInfo, handlePropertyPrice, handleAssetLookup } from "./codefProperty";
 import { encryptSSN, decryptSSN, maskSSN } from "./ssnCrypto";
-import { handleDocOcr, handleCreditReportParse } from "./ocrProcessor";
+import { handleDocOcr, handleCreditReportParse, handleGeminiOcr } from "./ocrProcessor";
 import { handlePublicAuthCreate } from "./codefPublicAuth";
 
 admin.initializeApp();
@@ -115,6 +115,9 @@ app.post("/codef/statement-data-v2", handleStatementDataV2);
 
 // AI 진술서 작성
 app.post("/ai/generate", handleAiGenerate);
+
+// AI OCR (Gemini Vision 프록시 — API 키 서버 보관)
+app.post("/ai/ocr", handleGeminiOcr);
 
 // 서류 OCR 처리
 app.post("/doc/ocr", handleDocOcr);

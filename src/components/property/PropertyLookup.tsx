@@ -143,7 +143,7 @@ export default function PropertyLookup({ onAdd }: PropertyLookupProps) {
             value={address}
             onChange={e => setAddress(e.target.value)}
             placeholder="예: 서울특별시 강남구 역삼동 123-45"
-            className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
           />
         </div>
 
@@ -153,7 +153,7 @@ export default function PropertyLookup({ onAdd }: PropertyLookupProps) {
             <select
               value={type}
               onChange={e => setType(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
             >
               {PROPERTY_TYPES.map(t => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -167,7 +167,7 @@ export default function PropertyLookup({ onAdd }: PropertyLookupProps) {
               value={area}
               onChange={e => setArea(Number(e.target.value))}
               min={1}
-              className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
             />
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function PropertyLookup({ onAdd }: PropertyLookupProps) {
                 value={dong}
                 onChange={e => setDong(e.target.value)}
                 placeholder="예: 101"
-                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
             </div>
             <div>
@@ -192,7 +192,7 @@ export default function PropertyLookup({ onAdd }: PropertyLookupProps) {
                 value={ho}
                 onChange={e => setHo(e.target.value)}
                 placeholder="예: 1502"
-                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
               />
             </div>
           </div>
@@ -203,7 +203,7 @@ export default function PropertyLookup({ onAdd }: PropertyLookupProps) {
       <button
         onClick={handleLookup}
         disabled={loading}
-        className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-lg bg-brand-gold py-2.5 text-sm font-medium text-black transition hover:bg-[#b8973e] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? (
           <span className="inline-flex items-center gap-2">
@@ -262,7 +262,7 @@ export default function PropertyLookup({ onAdd }: PropertyLookupProps) {
                 value={mortgage}
                 onChange={e => setMortgage(Number(e.target.value))}
                 min={0}
-                className="w-40 rounded border border-gray-300 bg-gray-200 px-3 py-1 text-right text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="w-40 rounded border border-gray-300 bg-gray-200 px-3 py-1 text-right text-sm text-gray-900 focus:border-brand-gold focus:outline-none"
               />
             </div>
 

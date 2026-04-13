@@ -13,8 +13,8 @@ interface DocPreviewProps {
 }
 
 /* ─── 공통 스타일 (법원 간이양식 기준) ─── */
-const today = new Date();
-const yr = today.getFullYear();
+function getToday() { return new Date(); }
+function getYear() { return getToday().getFullYear(); }
 
 /* 법원 양식: 얇은 검정 테두리, 배경색 없음
    나눔명조 400/700/800 — Google Fonts에서 로드 */
@@ -62,7 +62,7 @@ function signatureBlock(court: string, name: string, role = '채무자', labelSu
   return (
     <>
       <div className="mt-14 text-center" style={{ fontSize: '11.5pt', letterSpacing: '0.04em' }}>
-        <p className="mb-10">{yr}  .{' '}{' '} .{' '}{' '} .</p>
+        <p className="mb-10">{getYear()}  .{' '}{' '} .{' '}{' '} .</p>
         <p className="mb-2">
           {role}{'　　'}
           <span className="inline-block min-w-[100px] mx-1">{val(name)}</span>
@@ -238,7 +238,7 @@ function renderApplication(c: Client | null, office?: Office | null) {
         </p>
         <p className="mt-3">■ <strong>휴대전화번호</strong> : {val(phone)}</p>
 
-        <p className="mt-6 text-center text-[10.5pt]">{yr}{'  '}.{'  '}{' '}.{'  '}{' '}.</p>
+        <p className="mt-6 text-center text-[10.5pt]">{getYear()}{'  '}.{'  '}{' '}.{'  '}{' '}.</p>
         <p className="mt-4 text-center text-[10.5pt]">
           신청인{'  '}채무자{'　　　　　　　　'}(날인 또는 서명)
         </p>
@@ -253,7 +253,7 @@ function renderApplication(c: Client | null, office?: Office | null) {
 
       {/* ── 최종 서명란 ── */}
       <div className="mt-14 text-center text-[11pt]">
-        <p>{yr}{'  '}.{'  '}{' '}.{'  '}{' '}.</p>
+        <p>{getYear()}{'  '}.{'  '}{' '}.{'  '}{' '}.</p>
         <p className="mt-10">
           신청인{'　　　　　　　　　'}(서명 또는 날인)
         </p>

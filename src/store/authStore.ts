@@ -52,7 +52,7 @@ interface AuthState {
   updateOffice: (data: Partial<Office>) => Promise<void>;
   logout: () => Promise<void>;
   loadOffice: (uid: string) => Promise<void>;
-  refreshPlanStatus: () => void;
+  refreshPlanStatus: () => Promise<void>;
   init: () => () => void;
 
   canAddClient: () => boolean;
@@ -169,7 +169,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user, loading: true });
         try {
           await get().loadOffice(user.uid);
-          get().refreshPlanStatus();
+          await get().refreshPlanStatus();
         } catch (e) {
           console.error('Failed to load office:', e);
         } finally {

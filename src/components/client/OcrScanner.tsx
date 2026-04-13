@@ -120,13 +120,13 @@ export function OcrScanner({ docType, isOpen, onClose, onResult }: OcrScannerPro
             {!previewUrl ? (
               <div
                 onClick={() => fileRef.current?.click()}
-                className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 transition-colors"
+                className="cursor-pointer rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-center hover:border-brand-gold hover:bg-brand-gold/5 transition-colors"
               >
                 <Upload className="mx-auto h-10 w-10 text-gray-400 mb-3" />
                 <p className="text-sm font-medium text-gray-700">이미지를 업로드하세요</p>
                 <p className="mt-1 text-xs text-gray-500">JPG, PNG / 최대 10MB</p>
                 <div className="mt-4 flex justify-center gap-3">
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-[#C9A84C] px-4 py-2 text-sm font-medium text-black">
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-brand-gold px-4 py-2 text-sm font-medium text-black">
                     <Upload size={14} /> 파일 선택
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">
@@ -140,10 +140,10 @@ export function OcrScanner({ docType, isOpen, onClose, onResult }: OcrScannerPro
                   <img src={previewUrl} alt="스캔 이미지" className="w-full max-h-48 object-contain bg-gray-100" />
                   {loading && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
-                      <Loader2 className="h-8 w-8 text-[#C9A84C] animate-spin mb-2" />
+                      <Loader2 className="h-8 w-8 text-brand-gold animate-spin mb-2" />
                       <p className="text-sm text-white">문서 인식 중... {progress}%</p>
                       <div className="mt-2 h-1.5 w-48 rounded-full bg-gray-700">
-                        <div className="h-full rounded-full bg-[#C9A84C] transition-all" style={{ width: `${progress}%` }} />
+                        <div className="h-full rounded-full bg-brand-gold transition-all" style={{ width: `${progress}%` }} />
                       </div>
                     </div>
                   )}
@@ -199,7 +199,7 @@ export function OcrScanner({ docType, isOpen, onClose, onResult }: OcrScannerPro
             <button
               onClick={handleConfirm}
               disabled={!done || !result}
-              className="flex-1 rounded-lg bg-[#C9A84C] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b8973e] transition-colors disabled:opacity-50"
+              className="flex-1 rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b8973e] transition-colors disabled:opacity-50"
             >
               확인
             </button>
@@ -220,7 +220,7 @@ function FieldRow({ label, value, onChange, placeholder }: {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C] outline-none"
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none"
       />
     </div>
   );

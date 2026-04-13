@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { getRequiredCerts, PUBLIC_CERTS, type BankCertInfo } from '@/utils/bankDirectory';
 import { verifyIntakePin, type IntakeToken } from '@/api/intake';
+import { toast } from '@/utils/toast';
 
 type SubmitStatus = 'pending' | 'uploading' | 'uploaded' | 'skipped';
 
@@ -21,7 +22,7 @@ interface CertItem extends BankCertInfo {
 export default function DocumentSubmitPage() {
   const { token } = useParams<{ token: string }>();
   const [step, setStep] = useState<'pin' | 'list'>('pin');
-  const [pinDigits, setPinDigits] = useState(['', '', '', '']);
+  const [pinDigits, setPinDigits] = useState(['', '', '', '', '', '']);
   const [pinError, setPinError] = useState('');
   const [tokenData, setTokenData] = useState<IntakeToken | null>(null);
   const [certs, setCerts] = useState<CertItem[]>([]);
@@ -31,7 +32,7 @@ export default function DocumentSubmitPage() {
   // PIN 인증 후 의뢰인 채무 데이터 로드
   const handlePinSubmit = async () => {
     const pin = pinDigits.join('');
-    if (pin.length !== 4 || !token) return;
+    if (pin.length !== 6 || !token) return;
     setLoading(true);
     setPinError('');
 
@@ -112,14 +113,14 @@ export default function DocumentSubmitPage() {
     const next = [...pinDigits];
     next[index] = value;
     setPinDigits(next);
-    if (value && index < 3) {
+    if (value && index < 5) {
       const nextInput = document.getElementById(`doc-pin-${index + 1}`);
       nextInput?.focus();
     }
-    // 4자리 완성 시 자동 제출 (완성된 배열 직접 사용)
-    if (index === 3 && value && next.every(d => d)) {
+    // 6자리 완성 시 자동 제출 (완성된 배열 직접 사용)
+    if (index === 5 && value && next.every(d => d)) {
       const pin = next.join('');
-      if (pin.length === 4) {
+      if (pin.length === 6) {
         setLoading(true);
         setPinError('');
         verifyIntakePin(token!, pin).then(async result => {
@@ -199,7 +200,7 @@ export default function DocumentSubmitPage() {
       setCerts(prev => prev.map((c, i) =>
         i === index ? { ...c, status: 'pending', fileName: undefined } : c
       ));
-      alert('파일 업로드에 실패했습니다. 다시 시도해주세요.');
+      toast.error('파일 업로드에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -249,7 +250,7 @@ export default function DocumentSubmitPage() {
           <div className="text-center">
             <FileText className="mx-auto h-12 w-12 text-amber-500 mb-3" />
             <h1 className="text-xl font-bold text-gray-900">서류 제출</h1>
-            <p className="text-sm text-gray-500 mt-1">비밀번호 4자리를 입력해주세요</p>
+            <p className="text-sm text-gray-500 mt-1">비밀번호 6자리를 입력해주세요</p>
           </div>
 
           <div className="flex justify-center gap-3">
