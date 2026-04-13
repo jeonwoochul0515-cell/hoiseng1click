@@ -101,9 +101,9 @@ function HeroSection() {
         {/* 신뢰 수치 */}
         <div className="mx-auto mt-16 grid max-w-lg grid-cols-3 gap-6">
           {[
-            { icon: Users, label: '사용 법무사', value: '200+' },
-            { icon: FileText, label: '생성 서류', value: '15,000+' },
-            { icon: Clock, label: '평균 절감', value: '4.2시간' },
+            { icon: FileText, label: '자동생성 서류', value: '6종' },
+            { icon: Database, label: 'CODEF 연동', value: '1회 인증' },
+            { icon: Clock, label: '서류 완성', value: '5분 이내' },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <stat.icon size={24} className="mx-auto mb-2 text-brand-gold" />
