@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getClients } from '@/api/firestore';
 import {
   Users, UserPlus, CheckCircle, FileText, Send, ShieldCheck,
-  Clock, AlertTriangle, Inbox, Loader2, LayoutGrid, List,
+  Clock, AlertTriangle, Inbox, Loader2, LayoutGrid, List, Ban,
 } from 'lucide-react';
 import type { Client, ClientStatus } from '@/types/client';
 import type { IntakeSubmission } from '@/api/intake';
@@ -166,6 +166,14 @@ export default function DashboardPage() {
       .filter(c => c.status === 'drafting')
       .slice(0, 5)
       .map(c => ({ id: c.id, name: c.name }));
+  }, [clients]);
+
+  // 제출됨(submitted) 상태인데 사건번호 미입력 — 부가신청서 제출 불가
+  const caseNumberMissing = useMemo(() => {
+    return clients
+      .filter(c => c.status === 'submitted' && !c.caseNumber?.trim())
+      .slice(0, 5)
+      .map(c => ({ id: c.id, name: c.name, court: c.court }));
   }, [clients]);
 
   const statusDistribution = useMemo(() => {
@@ -420,6 +428,40 @@ export default function DashboardPage() {
                   <li key={c.id} className="flex items-center justify-between text-sm">
                     <span className="text-gray-700">{c.name}</span>
                     <button onClick={() => navigate(`/clients/${c.id}`)} className="text-xs text-brand-gold hover:underline">수집 시작</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* 사건번호 등록 필요 (부가신청서 제출 전) */}
+          {caseNumberMissing.length > 0 && (
+            <div className="rounded-xl bg-white p-5 border-2 border-indigo-200">
+              <div className="mb-3 flex items-center gap-2 text-indigo-600">
+                <Ban size={18} />
+                <h3 className="text-sm font-semibold">사건번호 등록 필요</h3>
+                <span className="ml-auto rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs font-bold text-indigo-700">
+                  {caseNumberMissing.length}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 mb-2">
+                제출 완료된 의뢰인 중 사건번호 미입력 — 금지/중지/면제재산 신청서 생성 불가
+              </p>
+              <ul className="space-y-2">
+                {caseNumberMissing.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-700">{c.name}</span>
+                      {c.court && (
+                        <span className="text-[10px] text-gray-400">{c.court}</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => navigate(`/clients/${c.id}/additional-applications`)}
+                      className="text-xs text-indigo-600 hover:underline font-medium"
+                    >
+                      등록하기
+                    </button>
                   </li>
                 ))}
               </ul>

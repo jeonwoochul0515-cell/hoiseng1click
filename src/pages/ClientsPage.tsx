@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, ArrowUpDown, Trash2, Pencil, Users, LinkIcon, Copy, Check, MessageCircle, Inbox, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Plus, ArrowUpDown, Trash2, Pencil, Users, LinkIcon, Copy, Check, MessageCircle, Inbox, Download, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { useClients, useDeleteClient, useCreateClient } from '@/hooks/useClients';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
@@ -453,6 +453,16 @@ export default function ClientsPage() {
                   <td className="px-4 py-3 text-gray-500">{formatDate(client.createdAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/clients/${client.id}/additional-applications`);
+                        }}
+                        className="rounded p-1 text-gray-600 hover:bg-gray-100 hover:text-indigo-600"
+                        title={client.caseNumber ? '부가신청서 생성' : '사건번호 등록 필요'}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={e => handleEdit(e, client)}
                         className="rounded p-1 text-gray-600 hover:bg-gray-100 hover:text-blue-600"
