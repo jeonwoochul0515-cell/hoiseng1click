@@ -1,4 +1,4 @@
-import { FileText, List, DollarSign, ClipboardList, Calculator } from 'lucide-react';
+import { FileText, List, DollarSign, ClipboardList, Calculator, ShieldBan } from 'lucide-react';
 import type { DocType } from '@/types/document';
 import { DOC_LABELS } from '@/types/document';
 
@@ -14,9 +14,10 @@ const DOC_ICONS: Record<DocType, typeof FileText> = {
   application: FileText,
   repay_plan: Calculator,
   statement: FileText,
+  prohibition_order: ShieldBan,
 };
 
-const docTypes: DocType[] = ['debt_list', 'asset_list', 'income_list', 'application', 'repay_plan', 'statement'];
+const docTypes: DocType[] = ['debt_list', 'asset_list', 'income_list', 'application', 'repay_plan', 'statement', 'prohibition_order'];
 
 export default function DocSelector({ selected, onSelect }: DocSelectorProps) {
   return (

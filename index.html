@@ -2,7 +2,12 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <script>
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      }
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon-office.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>회생원클릭 - 법률사무소 자동문서생성</title>
     <meta name="description" content="법무사·변호사 전용 개인회생·파산 서류 자동생성 SaaS. CODEF 1회 인증으로 법원 제출 서류 6종을 자동 완성합니다. 14일 무료체험, 카드 등록 불필요." />
@@ -23,10 +28,26 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="회생원클릭" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "회생원클릭",
+      "description": "법무사·변호사 전용 개인회생·파산 서류 자동생성 SaaS",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "49000",
+        "priceCurrency": "KRW"
+      }
+    }
+    </script>
     <!-- 법원 서류용 한글 명조체 (나눔명조) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet" /></noscript>
   </head>
   <body>
     <div id="root"></div>

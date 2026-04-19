@@ -17,18 +17,19 @@ async function fileToBase64(file: File): Promise<{ base64: string; mimeType: str
 // 공통: Workers 프록시 경유 Gemini Vision 호출
 // ---------------------------------------------------------------------------
 async function callGeminiVision(file: File, prompt: string): Promise<string> {
-  const user = auth.currentUser;
-  if (!user) throw new Error('로그인이 필요합니다.');
-  const token = await user.getIdToken();
-
   const { base64, mimeType } = await fileToBase64(file);
+
+  // 인증 토큰이 있으면 포함, 없으면 (회원가입 시) 생략
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const user = auth.currentUser;
+  if (user) {
+    const token = await user.getIdToken();
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   const res = await fetch(`${WORKER_BASE}/ai/ocr`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: JSON.stringify({ image: base64, mimeType, prompt }),
   });
 

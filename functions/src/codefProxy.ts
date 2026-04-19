@@ -1,6 +1,13 @@
 import type { Request, Response } from "express";
 import * as crypto from "crypto";
 import * as admin from "firebase-admin";
+import {
+  validateCredentials,
+  validateBanks,
+  validateTokenId,
+  validateConnectedId,
+  ValidationError,
+} from "./validators";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -8,7 +15,7 @@ import * as admin from "firebase-admin";
 const OAUTH_URL = "https://oauth.codef.io/oauth/token";
 
 function getCodefBase(): string {
-  return process.env.CODEF_API_HOST || "https://development.codef.io";
+  return process.env.CODEF_API_HOST || "https://api.codef.io";
 }
 
 const CODEF_PUBLIC_KEY = process.env.CODEF_PUBLIC_KEY ||
@@ -154,7 +161,7 @@ function buildAccountList(
 export async function callCodef(token: string, endpoint: string, body: object): Promise<unknown> {
   async function doFetch(authToken: string): Promise<{ status: number; decoded: string }> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const jsonBody = JSON.stringify(body);
     // 요청 로깅 (비밀번호/파일 데이터 제외)
     const logBody = JSON.parse(jsonBody);
@@ -361,6 +368,10 @@ export async function handleCodefCollect(req: Request, res: Response) {
       banks?: string[];
     };
 
+    if (body.connectedId !== undefined) validateConnectedId(body.connectedId);
+    if (!body.connectedId) validateCredentials(body.credentials);
+    validateBanks(body.banks);
+
     const token = await getToken();
 
     if (body.connectedId) {
@@ -393,8 +404,12 @@ export async function handleCodefCollect(req: Request, res: Response) {
     }
     res.json(result);
   } catch (err: any) {
+    if (err instanceof ValidationError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
     console.error(`[CODEF] handleCodefCollect 예외:`, err.message, err.stack?.slice(0, 500));
-    res.status(500).json({ error: err.message ?? "CODEF 수집 실패" });
+    res.status(500).json({ error: "CODEF 수집 중 오류가 발생했습니다" });
   }
 }
 
@@ -408,28 +423,26 @@ export async function handleIntakeCodefCollect(req: Request, res: Response) {
       credentials: { loginType: string; id: string; password: string };
       banks?: string[];
     };
-    if (!body.tokenId) { res.status(400).json({ error: "토큰 ID가 필요합니다" }); return; }
-    if (!body.credentials) { res.status(400).json({ error: "금융기관 인증 정보가 필요합니다" }); return; }
+    validateTokenId(body.tokenId);
+    validateCredentials(body.credentials);
+    validateBanks(body.banks);
 
-    // Validate intake token against Firestore
+    // Validate intake token and mark as used atomically via transaction
     const tokenRef = admin.firestore().collection('intakeTokens').doc(body.tokenId);
-    const tokenDoc = await tokenRef.get();
-    if (!tokenDoc.exists) {
-      res.status(403).json({ error: "유효하지 않은 토큰입니다" });
-      return;
-    }
-    const tokenData = tokenDoc.data();
-    if (tokenData?.used) {
-      res.status(403).json({ error: "이미 사용된 토큰입니다" });
-      return;
-    }
-    if (tokenData?.expiresAt && tokenData.expiresAt.toDate() < new Date()) {
-      res.status(403).json({ error: "만료된 토큰입니다" });
-      return;
-    }
-
-    // Mark token as used before calling CODEF to prevent reuse
-    await tokenRef.update({ used: true, usedAt: admin.firestore.FieldValue.serverTimestamp() });
+    await admin.firestore().runTransaction(async (transaction) => {
+      const tokenDoc = await transaction.get(tokenRef);
+      if (!tokenDoc.exists) {
+        throw new Error("유효하지 않은 토큰입니다");
+      }
+      const tokenData = tokenDoc.data();
+      if (tokenData?.used) {
+        throw new Error("이미 사용된 토큰입니다");
+      }
+      if (tokenData?.expiresAt && tokenData.expiresAt.toDate() < new Date()) {
+        throw new Error("만료된 토큰입니다");
+      }
+      transaction.update(tokenRef, { used: true, usedAt: admin.firestore.FieldValue.serverTimestamp() });
+    });
 
     const token = await getToken();
     const accountList = body.banks?.length
@@ -444,8 +457,12 @@ export async function handleIntakeCodefCollect(req: Request, res: Response) {
     }
     res.json(result);
   } catch (err: any) {
+    if (err instanceof ValidationError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
     console.error(`[CODEF] handleIntakeCodefCollect 예외:`, err.message, err.stack?.slice(0, 500));
-    res.status(500).json({ error: err.message ?? "CODEF 수집 실패" });
+    res.status(500).json({ error: "CODEF 수집 중 오류가 발생했습니다" });
   }
 }
 
@@ -460,7 +477,7 @@ export async function handleIntakeCodefCollect(req: Request, res: Response) {
 export async function handleStatementData(req: Request, res: Response) {
   try {
     const { connectedId } = req.body as { connectedId: string };
-    if (!connectedId) { res.status(400).json({ error: "connectedId가 필요합니다" }); return; }
+    validateConnectedId(connectedId);
 
     const token = await getToken();
     const now = new Date();
@@ -486,7 +503,12 @@ export async function handleStatementData(req: Request, res: Response) {
       cancelledInsurance: stmtInsCancel(g(insList)),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message ?? "진술서 데이터 수집 실패" });
+    if (err instanceof ValidationError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    console.error(`[CODEF] handleStatementData 예외:`, err.message);
+    res.status(500).json({ error: "진술서 데이터 수집 중 오류가 발생했습니다" });
   }
 }
 

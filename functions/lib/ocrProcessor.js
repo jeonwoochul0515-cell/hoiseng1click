@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleDocOcr = handleDocOcr;
+exports.handleGeminiOcr = handleGeminiOcr;
 exports.handleCreditReportParse = handleCreditReportParse;
 const admin = __importStar(require("firebase-admin"));
 const sdk_1 = __importDefault(require("@anthropic-ai/sdk"));
@@ -233,6 +234,83 @@ async function handleDocOcr(req, res) {
         }
         catch { /* 무시 */ }
         res.status(500).json({ error: err.message ?? "OCR 처리 실패" });
+    }
+}
+/**
+ * Gemini Vision OCR 프록시
+ * 클라이언트에서 base64 이미지 + 프롬프트를 보내면 서버에서 Gemini API 호출
+ * → API 키가 클라이언트 번들에 노출되지 않음
+ */
+async function handleGeminiOcr(req, res) {
+    try {
+        const { image, mimeType, prompt } = req.body;
+        if (!image) {
+            res.status(400).json({ error: "image 필드 필요" });
+            return;
+        }
+        const clovaUrl = process.env.CLOVA_OCR_URL;
+        const clovaSecret = process.env.CLOVA_OCR_SECRET;
+        if (!clovaUrl || !clovaSecret) {
+            throw new Error("CLOVA_OCR_URL, CLOVA_OCR_SECRET 환경변수가 설정되지 않았습니다.");
+        }
+        // 네이버 클로바 OCR API 호출
+        const format = (mimeType || "image/jpeg").includes("png") ? "png" : "jpg";
+        const clovaBody = {
+            version: "V2",
+            requestId: crypto.randomUUID(),
+            timestamp: Date.now(),
+            lang: "ko",
+            images: [
+                {
+                    format,
+                    name: "image",
+                    data: image,
+                },
+            ],
+        };
+        const clovaRes = await fetch(clovaUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-OCR-SECRET": clovaSecret,
+            },
+            body: JSON.stringify(clovaBody),
+        });
+        if (!clovaRes.ok) {
+            const errText = await clovaRes.text();
+            throw new Error(`CLOVA OCR API 오류 (${clovaRes.status}): ${errText}`);
+        }
+        const clovaData = await clovaRes.json();
+        // 클로바 OCR 결과에서 텍스트 추출
+        const fields = clovaData.images?.[0]?.fields ?? [];
+        const extractedText = fields.map((f) => f.inferText ?? "").join(" ");
+        // 프롬프트가 있으면 Claude로 구조화 파싱 (사업자등록증 등)
+        if (prompt && extractedText) {
+            try {
+                const anthropicKey = process.env.ANTHROPIC_API_KEY;
+                if (anthropicKey) {
+                    const client = new sdk_1.default({ apiKey: anthropicKey });
+                    const msg = await client.messages.create({
+                        model: "claude-haiku-4-5-20251001",
+                        max_tokens: 1024,
+                        messages: [
+                            { role: "user", content: `OCR로 추출된 텍스트입니다:\n\n${extractedText}\n\n${prompt}` },
+                        ],
+                    });
+                    const aiText = msg.content[0]?.type === "text" ? msg.content[0].text : extractedText;
+                    res.json({ text: aiText });
+                    return;
+                }
+            }
+            catch (aiErr) {
+                console.warn("[CLOVA OCR] Claude 파싱 실패, 원본 텍스트 반환:", aiErr);
+            }
+        }
+        res.json({ text: extractedText });
+    }
+    catch (err) {
+        console.error("[CLOVA OCR] 오류:", err);
+        res.status(500).json({ error: err.message ?? "CLOVA OCR 처리 실패" });
     }
 }
 /** 크레딧포유 신용조회서 PDF 파싱 */

@@ -199,7 +199,7 @@ export default function ClientsPage() {
     // 플랜 한도 체크 (실제 클라이언트 수 기반)
     const actualCount = clients?.length ?? 0;
     const config = PLAN_CONFIGS[office.plan];
-    if (actualCount >= config.maxClients) {
+    if (actualCount >= config.maxClientsPerMonth) {
       setShowUpgradeModal(true);
       return;
     }
@@ -228,7 +228,7 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-bold text-gray-900">의뢰인 관리</h1>
           {planConfig && office && (
             <p className="mt-1 text-sm text-gray-500">
-              의뢰인 {clients?.length ?? 0}/{planConfig.maxClients === Infinity ? '무제한' : `${planConfig.maxClients}명`} ({planConfig.name} 한도)
+              의뢰인 {clients?.length ?? 0}/{planConfig.maxClientsPerMonth === Infinity ? '무제한' : `${planConfig.maxClientsPerMonth}명`} ({planConfig.name} 한도)
             </p>
           )}
         </div>

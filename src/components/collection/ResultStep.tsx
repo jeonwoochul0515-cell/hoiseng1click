@@ -215,6 +215,34 @@ export default function ResultStep({ clientId }: ResultStepProps) {
                 </dl>
               </div>
 
+              {/* 조세채권 절반기간 완납 검증 */}
+              {repaymentPlan.taxCheck.taxTotal > 0 && (
+                <div className={`rounded-lg p-4 ${repaymentPlan.taxCheck.canPayInHalf ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex items-start gap-2">
+                    <span className={`text-lg ${repaymentPlan.taxCheck.canPayInHalf ? '✅' : '🚨'}`}>
+                      {repaymentPlan.taxCheck.canPayInHalf ? '✅' : '🚨'}
+                    </span>
+                    <div>
+                      <p className={`text-sm font-semibold ${repaymentPlan.taxCheck.canPayInHalf ? 'text-emerald-700' : 'text-red-700'}`}>
+                        조세채권 {formatKRW(repaymentPlan.taxCheck.taxTotal)}
+                        {repaymentPlan.taxCheck.canPayInHalf
+                          ? ` — 변제기간 절반(${repaymentPlan.taxCheck.halfPeriod}개월) 내 완납 가능`
+                          : ` — 변제기간 절반(${repaymentPlan.taxCheck.halfPeriod}개월) 내 완납 불가`
+                        }
+                      </p>
+                      {!repaymentPlan.taxCheck.canPayInHalf && (
+                        <p className="mt-1 text-xs text-red-600">
+                          {repaymentPlan.taxCheck.suggestion}
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">
+                        완납 필요 기간: {repaymentPlan.taxCheck.monthsNeeded}개월 / 절반 기간: {repaymentPlan.taxCheck.halfPeriod}개월
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* 채권자별 배당 테이블 */}
               {repaymentPlan.creditorShares.length > 0 && (
                 <div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Save, Wifi, WifiOff, CreditCard, LinkIcon, Copy, Check, Inbox, ChevronDown, ChevronUp, UserPlus, CheckCircle, MessageCircle, Shield } from 'lucide-react';
 import { sendKakaoLink } from '@/utils/kakao';
@@ -41,17 +41,32 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   // Office form state
-  const [officeName, setOfficeName] = useState(office?.name ?? '');
-  const [repName, setRepName] = useState(office?.rep ?? '');
-  const [phone, setPhone] = useState(office?.phone ?? '');
-  const [officeEmail, setOfficeEmail] = useState(office?.email ?? '');
-  const [bizNumber, setBizNumber] = useState(office?.bizNumber ?? '');
-  const [officeAddress, setOfficeAddress] = useState(office?.address ?? '');
-  const [bizType, setBizType] = useState(office?.bizType ?? '');
-  const [bizItem, setBizItem] = useState(office?.bizItem ?? '');
-  const [officeType, setOfficeType] = useState<'lawyer' | 'scrivener'>(office?.type ?? 'lawyer');
+  const [officeName, setOfficeName] = useState('');
+  const [repName, setRepName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [officeEmail, setOfficeEmail] = useState('');
+  const [bizNumber, setBizNumber] = useState('');
+  const [officeAddress, setOfficeAddress] = useState('');
+  const [bizType, setBizType] = useState('');
+  const [bizItem, setBizItem] = useState('');
+  const [officeType, setOfficeType] = useState<'lawyer' | 'scrivener'>('lawyer');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // office 로딩 후 폼 동기화
+  useEffect(() => {
+    if (office) {
+      setOfficeName(office.name ?? '');
+      setRepName(office.rep ?? '');
+      setPhone(office.phone ?? '');
+      setOfficeEmail(office.email ?? '');
+      setBizNumber(office.bizNumber ?? '');
+      setOfficeAddress(office.address ?? '');
+      setBizType(office.bizType ?? '');
+      setBizItem(office.bizItem ?? '');
+      setOfficeType(office.type ?? 'lawyer');
+    }
+  }, [office]);
 
   const handleSaveOffice = async () => {
     setSaving(true);
@@ -172,6 +187,115 @@ export default function SettingsPage() {
 
   const plan = office?.plan ?? 'starter';
   const planConfig = PLAN_CONFIGS[plan];
+
+  const location = useLocation();
+  const isIndividualPage = location.pathname.startsWith('/my');
+  const individual = useAuthStore((s) => s.individual);
+
+  // 개인 모드 설정 화면
+  if (isIndividualPage) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-[#2D3436]">설정</h1>
+
+        {/* 내 정보 */}
+        <div className="rounded-2xl bg-white p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-[#2D3436]">내 정보</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-sm text-[#636E72]">이름</label>
+              <p className="text-[#2D3436] font-medium">{individual?.name || '미입력'}</p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-[#636E72]">이메일</label>
+              <p className="text-[#2D3436]">{individual?.email || '미입력'}</p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-[#636E72]">전화번호</label>
+              <p className="text-[#2D3436]">{individual?.phone || '미입력'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 플랜 정보 */}
+        <div className="rounded-2xl bg-white p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-[#2D3436]">플랜 정보</h2>
+          {individual?.plan ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex rounded-full bg-[#48B5A0]/20 px-3 py-1 text-sm font-bold text-[#48B5A0]">
+                  {individual.plan === 'self' ? 'SELF' : individual.plan === 'self_plus' ? 'SELF+' : 'FULL'}
+                </span>
+                {individual.planExpiresAt && (
+                  <span className="text-sm text-[#636E72]">
+                    만료: {individual.planExpiresAt instanceof Date
+                      ? individual.planExpiresAt.toLocaleDateString()
+                      : (individual.planExpiresAt as any).toDate?.().toLocaleDateString() ?? ''}
+                  </span>
+                )}
+              </div>
+              {individual.plan === 'self' && (
+                <button
+                  onClick={() => navigate('/my/upgrade')}
+                  className="rounded-xl bg-[#E8836B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#d4725c] transition-colors"
+                >
+                  SELF+ 업그레이드
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-[#636E72]">아직 플랜을 선택하지 않으셨습니다.</p>
+              <button
+                onClick={() => navigate('/my/upgrade')}
+                className="rounded-xl bg-[#E8836B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#d4725c] transition-colors"
+              >
+                플랜 선택하기
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 보안 */}
+        <div className="rounded-2xl bg-white p-6 space-y-3">
+          <h2 className="text-lg font-semibold text-[#2D3436]">보안</h2>
+          <div className="flex items-center gap-2 text-sm text-[#636E72]">
+            <Shield size={14} className="text-[#48B5A0]" />
+            <span>모든 개인정보는 AES-256으로 암호화되어 저장됩니다</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-[#636E72]">
+            <Shield size={14} className="text-[#48B5A0]" />
+            <span>법원 제출 외 용도로 사용하지 않습니다</span>
+          </div>
+        </div>
+
+        {/* 회원탈퇴 */}
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+          <h2 className="text-lg font-semibold text-red-700">회원탈퇴</h2>
+          <p className="mt-2 text-sm text-red-600">탈퇴하면 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+          <button
+            onClick={async () => {
+              if (!confirm('정말 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.')) return;
+              if (!confirm('탈퇴 후 복구가 불가능합니다. 정말 진행하시겠습니까?')) return;
+              try {
+                await useAuthStore.getState().deleteAccount();
+                navigate('/');
+              } catch (err: any) {
+                if (err?.code === 'auth/requires-recent-login') {
+                  alert('보안을 위해 다시 로그인 후 탈퇴해주세요.');
+                } else {
+                  alert('탈퇴 처리 중 오류가 발생했습니다: ' + (err?.message ?? ''));
+                }
+              }
+            }}
+            className="mt-4 rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors"
+          >
+            회원탈퇴
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -527,14 +651,14 @@ export default function SettingsPage() {
                   <span className="text-gray-600">이달 서류 생성</span>
                   <span className="text-gray-900 font-medium">
                     {office?.docCountThisMonth ?? 0}건
-                    {planConfig.maxDocsPerMonth < Infinity && ` / ${planConfig.maxDocsPerMonth}건`}
+                    {planConfig.maxClientsPerMonthPerMonth < Infinity && ` / ${planConfig.maxClientsPerMonthPerMonth}건`}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">의뢰인 수</span>
                   <span className="text-gray-900 font-medium">
                     {office?.clientCount ?? 0}명
-                    {planConfig.maxClients < Infinity && ` / ${planConfig.maxClients}명`}
+                    {planConfig.maxClientsPerMonth < Infinity && ` / ${planConfig.maxClientsPerMonth}명`}
                   </span>
                 </div>
               </div>
@@ -557,6 +681,31 @@ export default function SettingsPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* 회원탈퇴 */}
+      <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-6">
+        <h2 className="text-lg font-semibold text-red-700">회원탈퇴</h2>
+        <p className="mt-2 text-sm text-red-600">탈퇴하면 모든 의뢰인 데이터와 서류가 삭제되며 복구할 수 없습니다.</p>
+        <button
+          onClick={async () => {
+            if (!confirm('정말 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.')) return;
+            if (!confirm('탈퇴 후 복구가 불가능합니다. 정말 진행하시겠습니까?')) return;
+            try {
+              await useAuthStore.getState().deleteAccount();
+              navigate('/');
+            } catch (err: any) {
+              if (err?.code === 'auth/requires-recent-login') {
+                alert('보안을 위해 다시 로그인 후 탈퇴해주세요.');
+              } else {
+                alert('탈퇴 처리 중 오류가 발생했습니다: ' + (err?.message ?? ''));
+              }
+            }
+          }}
+          className="mt-4 rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors"
+        >
+          회원탈퇴
+        </button>
       </div>
 
     </div>

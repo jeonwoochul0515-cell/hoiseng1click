@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search, Printer, Users } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Search, Printer, Users, Monitor, FileSpreadsheet } from 'lucide-react';
 import type { Client } from '@/types/client';
 import type { DocType } from '@/types/document';
 import { useClients } from '@/hooks/useClients';
@@ -9,11 +9,13 @@ import { formatPhone, formatKRW } from '@/utils/formatter';
 import DocSelector from '@/components/documents/DocSelector';
 import DocPreview from '@/components/documents/DocPreview';
 import DocDownloadButton from '@/components/documents/DocDownloadButton';
+import { generateCreditorCsv, generateAssetCsv, downloadCsv } from '@/utils/ecfsCsv';
 
 
 export default function DocumentsPage() {
   const { data: clients, isLoading } = useClients();
   const { office } = useAuthStore();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -38,9 +40,27 @@ export default function DocumentsPage() {
   const totalDebt = (c: Client) => c.debts.reduce((s, d) => s + d.amount, 0);
 
   return (
-    <div className="flex h-full gap-4">
-      {/* Left Panel - Client List */}
-      <div className="flex w-[300px] shrink-0 flex-col rounded-xl bg-white border border-gray-200">
+    <div className="flex h-full flex-col md:flex-row gap-4">
+      {/* Mobile: Client dropdown selector */}
+      <div className="md:hidden rounded-xl bg-white border border-gray-200 p-4">
+        <label htmlFor="mobile-client-select" className="mb-2 block text-sm font-semibold text-gray-900">의뢰인 선택</label>
+        <select
+          id="mobile-client-select"
+          value={selectedClientId ?? ''}
+          onChange={e => setSelectedClientId(e.target.value || null)}
+          className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-900 outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold"
+        >
+          <option value="">-- 의뢰인을 선택하세요 --</option>
+          {(clients ?? []).map(c => (
+            <option key={c.id} value={c.id}>
+              {c.name} ({formatPhone(c.phone)})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Left Panel - Client List (desktop only) */}
+      <div className="hidden md:flex md:w-[300px] md:shrink-0 flex-col rounded-xl bg-white border border-gray-200">
         <div className="border-b border-gray-200 p-4">
           <h2 className="mb-3 text-sm font-semibold text-gray-900">의뢰인 선택</h2>
           <div className="relative">
@@ -125,11 +145,29 @@ export default function DocumentsPage() {
               <DocDownloadButton client={selectedClient} docType="all" format="docx" label="전체 6종 ZIP (DOCX)" />
               <DocDownloadButton client={selectedClient} docType="all" format="hwpx" label="전체 6종 ZIP (HWPX)" />
               <button
+                onClick={() => {
+                  const csv = generateCreditorCsv(selectedClient.debts);
+                  downloadCsv(csv, `채권자목록_${selectedClient.name}.csv`);
+                }}
+                disabled={selectedClient.debts.length === 0}
+                className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FileSpreadsheet size={16} />
+                전자소송 CSV
+              </button>
+              <button
                 onClick={() => window.print()}
                 className="flex items-center gap-2 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 <Printer size={16} />
                 인쇄
+              </button>
+              <button
+                onClick={() => navigate(`/ecfs-helper?clientId=${selectedClient.id}`)}
+                className="flex items-center gap-2 rounded-lg bg-[#0D1B2A] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1a2d42] transition-colors"
+              >
+                <Monitor size={16} />
+                전자소송 제출
               </button>
             </>
           ) : (

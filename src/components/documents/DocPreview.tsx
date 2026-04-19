@@ -3,7 +3,7 @@ import type { DocType } from '@/types/document';
 import type { Client, StatementData } from '@/types/client';
 import type { Office } from '@/store/authStore';
 import { formatPhone } from '@/utils/formatter';
-import { calcMonthlyPayment, calcLivingCost, getMedianIncome } from '@/utils/calculator';
+import { calcMonthlyPayment, calcLivingCost, getMedianIncome, applySubrogation } from '@/utils/calculator';
 import { findCreditor } from '@/utils/creditorDirectory';
 
 interface DocPreviewProps {
@@ -267,7 +267,8 @@ function renderApplication(c: Client | null, office?: Office | null) {
    간이양식 1-1: 개인회생채권자목록
    ──────────────────────────────────────────────────────────────────── */
 function renderDebtList(c: Client | null) {
-  const debts = c?.debts ?? [];
+  // 대위변제 적용: 원채권 차감 + 구상채권자 별도 행 추가
+  const debts = applySubrogation(c?.debts ?? []);
   const totalPrincipal = debts.reduce((s, d) => s + d.amount, 0);
   const totalInterest = debts.reduce((s, d) => s + (d.overdueInterest ?? 0), 0);
   const name = c?.name ?? '';
@@ -400,7 +401,21 @@ function renderDebtList(c: Client | null) {
                   {/* 행3: 이자 + 산정근거 */}
                   <tr>
                     <td className={td}>{d.overdueInterest ? `${num(d.overdueInterest)}원` : ''}</td>
-                    <td className={td} colSpan={2}></td>
+                    <td className={td} colSpan={2}>
+                      {/* 대위변제 비고 */}
+                      {d.hasSubrogation && (d.subrogationAmount ?? 0) > 0 && (
+                        <span className="text-[9pt]">
+                          대위변제: {num(d.subrogationAmount!)}원 (대위변제자: {d.subrogationCreditor || '-'}, {d.subrogationDate || '-'})
+                        </span>
+                      )}
+                      {/* 구상채권 비고 */}
+                      {d.isSubrogationClaim && (
+                        <span className="text-[9pt]">
+                          구상채권 (원채권자: {d.originalCreditor || '-'})
+                          {(d.originalDebtAmount ?? 0) > 0 && ` / 원채무: ${num(d.originalDebtAmount!)}원`}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 </React.Fragment>
               );
@@ -993,7 +1008,8 @@ function renderIncomeList(c: Client | null) {
    간이양식 2: 변제계획안 + 변제예정액표
    ──────────────────────────────────────────────────────────────────── */
 function renderRepayPlan(c: Client | null, office?: Office | null) {
-  const debts = c?.debts ?? [];
+  // 대위변제 적용: 원채권 차감 + 구상채권자 별도 행 추가
+  const debts = applySubrogation(c?.debts ?? []);
   const name = c?.name ?? '';
   const income = c?.income ?? 0;
   const income2 = c?.income2 ?? 0;

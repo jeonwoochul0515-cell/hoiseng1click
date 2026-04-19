@@ -51,6 +51,11 @@ interface DebtRow {
   creditorAddress?: string;
   creditorPhone?: string;
   creditorFax?: string;
+  // 별제권 관련
+  collateralType?: '주택' | '차량' | '기타';
+  collateralValue?: number;
+  collateralDesc?: string;
+  seniorLien?: number;
 }
 interface AssetRow {
   _key: number;
@@ -1667,6 +1672,26 @@ export default function IntakePage() {
                             />
                           </div>
                           <NumberField label="최초 차용금액 (원, 선택)" value={d.originalAmount || 0} onChange={v => updateDebt(i, 'originalAmount', v)} />
+                          {d.type === '담보' && (
+                            <div className="mt-2 space-y-3 rounded-lg bg-amber-50 p-3">
+                              <p className="text-xs font-semibold text-amber-800">담보 상세 (별제권)</p>
+                              <div>
+                                <label className="mb-1 block text-xs text-gray-600">담보물 종류</label>
+                                <select
+                                  value={d.collateralType ?? '기타'}
+                                  onChange={e => updateDebt(i, 'collateralType', e.target.value)}
+                                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+                                >
+                                  <option value="주택">주택</option>
+                                  <option value="차량">차량</option>
+                                  <option value="기타">기타</option>
+                                </select>
+                              </div>
+                              <NumberField label="담보물 시가 (원)" value={d.collateralValue || 0} onChange={v => updateDebt(i, 'collateralValue', v)} />
+                              <Field label="담보물 설명" value={d.collateralDesc ?? ''} onChange={v => updateDebt(i, 'collateralDesc', v)} placeholder="주소, 차종 등" />
+                              <NumberField label="선순위 설정액 (원)" value={d.seniorLien || 0} onChange={v => updateDebt(i, 'seniorLien', v)} />
+                            </div>
+                          )}
                         </div>
                       );
                     })}

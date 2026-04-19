@@ -99,6 +99,69 @@ export async function updateDocumentOcr(
   await updateDoc(doc(db, 'offices', officeId, 'clients', clientId, 'documents', docId), ocrData);
 }
 
+// ── Individual (B2C) 서류 CRUD ──
+
+const individualDocCol = (uid: string, caseId: string) =>
+  collection(db, 'individuals', uid, 'cases', caseId, 'documents');
+
+/** 개인용 서류 목록 조회 */
+export async function getIndividualDocuments(uid: string, caseId: string = 'default'): Promise<ClientDocument[]> {
+  const q = query(individualDocCol(uid, caseId), orderBy('uploadedAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({
+    ...d.data(),
+    id: d.id,
+    uploadedAt: toDate(d.data().uploadedAt),
+  } as ClientDocument));
+}
+
+/** 개인용 파일 업로드 */
+export async function uploadIndividualDocument(
+  uid: string,
+  caseId: string,
+  file: File,
+  metadata: {
+    category: DocCategory;
+    subCategory: string;
+    institution: string;
+    docType: string;
+    codefAmount?: number;
+  }
+): Promise<ClientDocument> {
+  const safeName = metadata.institution.replace(/[^가-힣a-zA-Z0-9]/g, '_');
+  const ext = file.name.split('.').pop() || 'pdf';
+  const storagePath = `individuals/${uid}/cases/${caseId}/docs/${metadata.category}/${safeName}_${Date.now()}.${ext}`;
+  const storageRef = ref(storage, storagePath);
+
+  await uploadBytes(storageRef, file, {
+    contentType: file.type || 'application/octet-stream',
+    customMetadata: {
+      institution: metadata.institution,
+      docType: metadata.docType,
+      originalName: file.name,
+    },
+  });
+
+  const downloadUrl = await getDownloadURL(storageRef);
+
+  const docData: Omit<ClientDocument, 'id'> = {
+    category: metadata.category,
+    subCategory: metadata.subCategory,
+    institution: metadata.institution,
+    docType: metadata.docType,
+    fileName: file.name,
+    storagePath,
+    downloadUrl,
+    ocrStatus: 'pending',
+    uploadedAt: Timestamp.now() as any,
+    uploadedBy: 'client',
+    codefAmount: metadata.codefAmount,
+  };
+
+  const ref2 = await addDoc(individualDocCol(uid, caseId), docData);
+  return { ...docData, id: ref2.id } as ClientDocument;
+}
+
 /** OCR 요청 (Cloud Functions 호출) */
 export async function requestOcr(
   officeId: string,

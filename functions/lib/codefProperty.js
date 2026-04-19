@@ -8,7 +8,7 @@ exports.handleAssetLookup = handleAssetLookup;
 // ---------------------------------------------------------------------------
 const OAUTH_URL = "https://oauth.codef.io/oauth/token";
 function getCodefBase() {
-    return process.env.CODEF_API_HOST || "https://development.codef.io";
+    return process.env.CODEF_API_HOST || "https://api.codef.io";
 }
 let cachedToken = null;
 async function getToken() {
@@ -57,11 +57,6 @@ async function callCodef(token, endpoint, body) {
         throw new Error(`CODEF API error on ${endpoint}: ${err instanceof Error ? err.message : "호출 실패"}`);
     }
 }
-function isSandbox() {
-    const host = process.env.CODEF_API_HOST || "https://development.codef.io";
-    const hasCredentials = !!(process.env.CODEF_CLIENT_ID && process.env.CODEF_CLIENT_SECRET);
-    return !hasCredentials || host.includes("sandbox");
-}
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. 차량등록원부 + 시세 조회
 // ═══════════════════════════════════════════════════════════════════════════
@@ -77,12 +72,6 @@ async function handleVehicleInfo(req, res) {
         const { carNumber, ownerName, ownerBirthDate } = req.body;
         if (!carNumber) {
             res.status(400).json({ error: "차량번호가 필요합니다" });
-            return;
-        }
-        // 샌드박스 모드
-        if (isSandbox()) {
-            await new Promise(r => setTimeout(r, 800));
-            res.json(generateVehicleSandbox(carNumber));
             return;
         }
         const token = await getToken();
@@ -153,12 +142,6 @@ async function handlePropertyPrice(req, res) {
         const { address, propertyType, dong, ho } = req.body;
         if (!address) {
             res.status(400).json({ error: "주소가 필요합니다" });
-            return;
-        }
-        // 샌드박스 모드
-        if (isSandbox()) {
-            await new Promise(r => setTimeout(r, 800));
-            res.json(generatePropertySandbox(address, propertyType ?? "apt"));
             return;
         }
         const token = await getToken();
@@ -240,14 +223,6 @@ async function handlePropertyPrice(req, res) {
 async function handleAssetLookup(req, res) {
     try {
         const { vehicles, properties } = req.body;
-        // 샌드박스 모드
-        if (isSandbox()) {
-            await new Promise(r => setTimeout(r, 1200));
-            const vehicleResults = (vehicles ?? []).map(v => generateVehicleSandbox(v.carNumber));
-            const propertyResults = (properties ?? []).map(p => generatePropertySandbox(p.address, p.propertyType ?? "apt"));
-            res.json({ vehicles: vehicleResults, properties: propertyResults });
-            return;
-        }
         const token = await getToken();
         // 차량 조회 병렬 실행
         const vehiclePromises = (vehicles ?? []).map(async (v) => {
@@ -330,75 +305,5 @@ async function handleAssetLookup(req, res) {
     catch (err) {
         res.status(500).json({ error: err.message ?? "재산 조회 실패" });
     }
-}
-// ═══════════════════════════════════════════════════════════════════════════
-// 샌드박스 데이터 생성
-// ═══════════════════════════════════════════════════════════════════════════
-function generateVehicleSandbox(carNumber) {
-    const models = ["소나타", "아반떼", "그랜저", "K5", "투싼", "싼타페", "카니발", "모닝"];
-    const model = models[Math.floor(Math.random() * models.length)];
-    const year = 2018 + Math.floor(Math.random() * 7);
-    const age = new Date().getFullYear() - year;
-    const basePrices = {
-        "소나타": 28000000, "아반떼": 20000000, "그랜저": 38000000, "K5": 27000000,
-        "투싼": 30000000, "싼타페": 35000000, "카니발": 40000000, "모닝": 12000000,
-    };
-    const depRates = {
-        0: 1.0, 1: 0.82, 2: 0.70, 3: 0.60, 4: 0.52, 5: 0.44, 6: 0.37, 7: 0.31, 8: 0.26,
-    };
-    const newPrice = basePrices[model] ?? 25000000;
-    const dep = depRates[Math.min(age, 8)] ?? 0.22;
-    const insurancePrice = Math.floor(newPrice * dep);
-    const liquidation70 = Math.floor(insurancePrice * 0.70);
-    const hasMortgage = Math.random() > 0.7;
-    const mortgage = hasMortgage ? Math.floor(Math.random() * 5000000 / 100000) * 100000 : 0;
-    return {
-        carNumber,
-        model,
-        year,
-        displacement: 1600 + Math.floor(Math.random() * 4) * 500,
-        fuelType: Math.random() > 0.3 ? "가솔린" : "디젤",
-        basePrice: insurancePrice,
-        liquidation70,
-        mortgage,
-        seizure: 0,
-        netValue: Math.max(0, liquidation70 - mortgage),
-        mortgageDetails: hasMortgage
-            ? [{ creditor: "국민은행", resAmount: mortgage, resDate: "20230315" }]
-            : [],
-        seizureDetails: [],
-        registrationDate: `${year}0${3 + Math.floor(Math.random() * 6)}15`,
-        ownerCount: 1 + Math.floor(Math.random() * 2),
-        source: "sandbox",
-    };
-}
-function generatePropertySandbox(address, propertyType) {
-    const regionPrices = {
-        "강남": 1200000000, "서초": 1100000000, "송파": 900000000, "마포": 750000000,
-        "용산": 850000000, "성동": 700000000, "영등포": 650000000,
-        "분당": 800000000, "일산": 500000000, "수원": 450000000,
-    };
-    let rawPrice = 350000000; // 기본값
-    for (const [region, price] of Object.entries(regionPrices)) {
-        if (address.includes(region)) {
-            rawPrice = price + Math.floor((Math.random() - 0.5) * price * 0.2);
-            break;
-        }
-    }
-    if (propertyType === "house")
-        rawPrice = Math.floor(rawPrice * 0.6);
-    if (propertyType === "land")
-        rawPrice = Math.floor(rawPrice * 0.4);
-    return {
-        address,
-        propertyType,
-        rawPrice,
-        area: propertyType === "apt" ? 84 : propertyType === "house" ? 120 : 200,
-        liquidation75: Math.floor(rawPrice * 0.75),
-        standardDate: `${new Date().getFullYear()}0101`,
-        buildingName: propertyType === "apt" ? "래미안 아파트" : "",
-        dongHo: propertyType === "apt" ? "101동 1502호" : "",
-        source: "sandbox",
-    };
 }
 //# sourceMappingURL=codefProperty.js.map

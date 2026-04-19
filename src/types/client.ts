@@ -22,6 +22,43 @@ export interface Debt {
   creditorFax?: string;
   transferredFrom?: string;  // 원 채권자 (채권양도된 경우)
   transferDate?: string;     // 양도일
+
+  // 보증채무
+  isGuarantee?: boolean;        // 보증채무 여부
+  guaranteeType?: '연대보증' | '일반보증' | '근보증';
+  primaryDebtor?: string;       // 주채무자 이름
+  primaryDebtorSSN?: string;    // 주채무자 주민번호
+
+  // 소멸시효 관련
+  lastPaymentDate?: string;     // 마지막 변제일 (YYYY-MM-DD)
+  debtCategory?: '일반채권' | '상사채권' | '카드채무' | '대출채무' | '사채' | '판결채권' | '세금';
+
+  // 이자/지연손해금 자동 계산
+  overdueStartDate?: string;    // 연체 기산일 (YYYY-MM-DD)
+  interestType?: '약정이율' | '법정이율' | '상사법정이율';  // 이율 유형
+
+  // 비면책채권
+  isNonDischargeable?: boolean;  // 비면책채권 여부
+  nonDischargeReason?: '조세' | '벌금' | '양육비' | '불법행위' | '근로채권' | '누락채권';
+
+  // 별제권 관련 (담보채권)
+  collateralType?: '주택' | '차량' | '기타';    // 담보물 종류
+  collateralValue?: number;                      // 담보물 시가
+  collateralDesc?: string;                       // 담보물 설명 (주소, 차종 등)
+  seniorLien?: number;                           // 선순위 설정액
+  separateSecurityAmount?: number;               // 별제권 행사 예상액 (자동 계산)
+  deficiencyAmount?: number;                     // 부족액 (자동 계산, 일반채권 전환분)
+
+  // 대위변제
+  hasSubrogation?: boolean;        // 대위변제 여부
+  subrogationAmount?: number;      // 대위변제 금액
+  subrogationCreditor?: string;    // 대위변제자 (구상채권자)
+  subrogationDate?: string;        // 대위변제일
+
+  // 구상채권
+  isSubrogationClaim?: boolean;     // 이 채무가 구상채권인지
+  originalCreditor?: string;       // 원 채권자 (구상채권의 경우)
+  originalDebtAmount?: number;     // 원 채무 금액
 }
 
 export interface Asset {
@@ -52,10 +89,12 @@ export interface Asset {
 }
 
 export interface FamilyMember {
-  relation: string;
+  relation: '배우자' | '자녀' | '부모' | '형제' | '기타';
   name: string;
   age: number;
   hasIncome: boolean;
+  isDependent: boolean;  // 실제 부양 여부
+  specialNeeds?: '미성년' | '장애' | '노인' | '질병';
 }
 
 // 진술서 관련 타입
@@ -170,6 +209,14 @@ export interface Client {
   insurancePremium?: number;
   // 가족 상세
   familyMembers?: FamilyMember[];
+  // 자영업자 소득 산정
+  selfEmployedIncome?: {
+    revenue1: number;   // 최근 1년차 연간 매출
+    revenue2: number;   // 최근 2년차 연간 매출
+    expense1: number;   // 최근 1년차 연간 경비
+    expense2: number;   // 최근 2년차 연간 경비
+    taxReportIncome?: number; // 종합소득세 신고 기준 소득
+  };
   // 라이프니츠 현재가치 (청산가치 페이지)
   leibniz?: {
     retirementWage?: number;

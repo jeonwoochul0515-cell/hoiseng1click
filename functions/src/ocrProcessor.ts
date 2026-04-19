@@ -255,51 +255,83 @@ export async function handleGeminiOcr(req: Request, res: Response) {
       prompt: string;
     };
 
-    if (!image || !prompt) {
-      res.status(400).json({ error: "image, prompt 필드 필요" });
+    if (!image) {
+      res.status(400).json({ error: "image 필드 필요" });
       return;
     }
 
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      throw new Error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
+    const clovaUrl = process.env.CLOVA_OCR_URL;
+    const clovaSecret = process.env.CLOVA_OCR_SECRET;
+    if (!clovaUrl || !clovaSecret) {
+      throw new Error("CLOVA_OCR_URL, CLOVA_OCR_SECRET 환경변수가 설정되지 않았습니다.");
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-
-    const body = {
-      contents: [{
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType || "image/jpeg", data: image } },
-        ],
-      }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-      },
+    // 네이버 클로바 OCR API 호출
+    const format = (mimeType || "image/jpeg").includes("png") ? "png" : "jpg";
+    const clovaBody = {
+      version: "V2",
+      requestId: crypto.randomUUID(),
+      timestamp: Date.now(),
+      lang: "ko",
+      images: [
+        {
+          format,
+          name: "image",
+          data: image,
+        },
+      ],
     };
 
-    const geminiRes = await fetch(geminiUrl, {
+    const clovaRes = await fetch(clovaUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+        "X-OCR-SECRET": clovaSecret,
+      },
+      body: JSON.stringify(clovaBody),
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      throw new Error(`Gemini API 오류 (${geminiRes.status}): ${errText}`);
+    if (!clovaRes.ok) {
+      const errText = await clovaRes.text();
+      throw new Error(`CLOVA OCR API 오류 (${clovaRes.status}): ${errText}`);
     }
 
-    const data = await geminiRes.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    const clovaData = await clovaRes.json() as {
+      images?: Array<{
+        fields?: Array<{ inferText?: string; name?: string; boundingPoly?: unknown }>;
+      }>;
     };
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    res.json({ text });
+    // 클로바 OCR 결과에서 텍스트 추출
+    const fields = clovaData.images?.[0]?.fields ?? [];
+    const extractedText = fields.map((f) => f.inferText ?? "").join(" ");
+
+    // 프롬프트가 있으면 Claude로 구조화 파싱 (사업자등록증 등)
+    if (prompt && extractedText) {
+      try {
+        const anthropicKey = process.env.ANTHROPIC_API_KEY;
+        if (anthropicKey) {
+          const client = new Anthropic({ apiKey: anthropicKey });
+          const msg = await client.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 1024,
+            messages: [
+              { role: "user", content: `OCR로 추출된 텍스트입니다:\n\n${extractedText}\n\n${prompt}` },
+            ],
+          });
+          const aiText = msg.content[0]?.type === "text" ? msg.content[0].text : extractedText;
+          res.json({ text: aiText });
+          return;
+        }
+      } catch (aiErr) {
+        console.warn("[CLOVA OCR] Claude 파싱 실패, 원본 텍스트 반환:", aiErr);
+      }
+    }
+
+    res.json({ text: extractedText });
   } catch (err: any) {
-    console.error("[GeminiOCR] 오류:", err);
-    res.status(500).json({ error: err.message ?? "Gemini OCR 처리 실패" });
+    console.error("[CLOVA OCR] 오류:", err);
+    res.status(500).json({ error: err.message ?? "CLOVA OCR 처리 실패" });
   }
 }
 

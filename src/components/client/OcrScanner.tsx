@@ -64,7 +64,8 @@ export function OcrScanner({ docType, isOpen, onClose, onResult }: OcrScannerPro
       }
       setResult(data);
       setDone(true);
-    } catch {
+    } catch (err) {
+      console.error('OCR 인식 실패:', err);
       setError('이미지를 인식하지 못했습니다. 다시 시도해 주세요.');
     } finally {
       setLoading(false);
@@ -137,7 +138,7 @@ export function OcrScanner({ docType, isOpen, onClose, onResult }: OcrScannerPro
             ) : (
               <div className="space-y-3">
                 <div className="relative rounded-xl overflow-hidden border border-gray-200">
-                  <img src={previewUrl} alt="스캔 이미지" className="w-full max-h-48 object-contain bg-gray-100" />
+                  <img src={previewUrl} alt="스캔 이미지" loading="lazy" className="w-full max-h-48 object-contain bg-gray-100" />
                   {loading && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
                       <Loader2 className="h-8 w-8 text-brand-gold animate-spin mb-2" />

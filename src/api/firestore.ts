@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, setDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase';
 import type { Client } from '@/types/client';
 import { encryptSSN, decryptSSN } from '@/utils/ssnCrypto';
@@ -93,4 +93,65 @@ export async function updateClient(officeId: string, clientId: string, data: Par
 
 export async function deleteClient(officeId: string, clientId: string): Promise<void> {
   await deleteDoc(doc(db, 'offices', officeId, 'clients', clientId));
+}
+
+// ── Individual (B2C) CRUD ──
+
+const individualCasesCol = (uid: string) => collection(db, 'individuals', uid, 'cases');
+
+export async function getIndividualCase(uid: string, caseId: string = 'default'): Promise<Client | null> {
+  const snap = await getDoc(doc(db, 'individuals', uid, 'cases', caseId));
+  return snap.exists() ? convertClient(snap.id, snap.data()) : null;
+}
+
+export async function createIndividualCase(uid: string, data: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>, caseId: string = 'default'): Promise<string> {
+  const payload: Record<string, unknown> = { ...data, createdAt: Timestamp.now(), updatedAt: Timestamp.now() };
+
+  if (data.ssn) {
+    try {
+      const { encrypted, masked } = await encryptSSN(data.ssn);
+      payload.ssnEncrypted = encrypted;
+      payload.ssnMasked = masked;
+      payload.ssn = '';
+    } catch (err) {
+      if (import.meta.env.PROD) {
+        throw new Error('주민등록번호 암호화에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+      console.warn('SSN 암호화 실패 — 개발 환경에서만 평문 저장 허용', err);
+    }
+  }
+
+  const ref = doc(db, 'individuals', uid, 'cases', caseId);
+  await setDoc(ref, payload);
+  return caseId;
+}
+
+export async function updateIndividualCase(uid: string, caseId: string, data: Partial<Client>): Promise<void> {
+  const payload: Record<string, unknown> = { ...data, updatedAt: Timestamp.now() };
+
+  if (data.ssn) {
+    try {
+      const { encrypted, masked } = await encryptSSN(data.ssn);
+      payload.ssnEncrypted = encrypted;
+      payload.ssnMasked = masked;
+      payload.ssn = '';
+    } catch (err) {
+      if (import.meta.env.PROD) {
+        throw new Error('주민등록번호 암호화에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+      console.warn('SSN 암호화 실패 — 개발 환경에서만 평문 저장 허용', err);
+    }
+  }
+
+  await updateDoc(doc(db, 'individuals', uid, 'cases', caseId), payload);
+}
+
+export async function getIndividualCaseDecryptedSSN(uid: string, caseId: string = 'default'): Promise<string> {
+  const snap = await getDoc(doc(db, 'individuals', uid, 'cases', caseId));
+  if (!snap.exists()) return '';
+  const data = snap.data();
+  if (data.ssnEncrypted) {
+    return decryptSSN(data.ssnEncrypted);
+  }
+  return data.ssn || '';
 }

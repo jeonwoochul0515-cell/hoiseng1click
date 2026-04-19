@@ -19,11 +19,11 @@ id = "placeholder_replace_after_kv_create"
 # FIREBASE_PROJECT_ID
 # PUBLIC_DATA_API_KEY
 
-# 개발환경 (데모 API)
+# 프로덕션 — 크레덴셜은 wrangler secret put으로 관리
+# wrangler secret put CODEF_CLIENT_ID
+# wrangler secret put CODEF_CLIENT_SECRET
+# wrangler secret put CODEF_PUBLIC_KEY
+# wrangler secret put PUBLIC_DATA_API_KEY
 [vars]
-CODEF_API_HOST = "https://development.codef.io"
-CODEF_CLIENT_ID = "c9fd9ae8-ed95-4929-a7b1-2c856a90325d"
-CODEF_CLIENT_SECRET = "ea642760-235b-4647-9b52-f4d955b6bfb7"
+CODEF_API_HOST = "https://api.codef.io"
 FIREBASE_PROJECT_ID = "hoiseng1click"
-CODEF_PUBLIC_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA9rz2qUGlx8m5E+3FazN2vX1kmbiKFfgkLy7DTBZX0TStLWn7Xq4SfqdIzHZxCEPw5iMsKGfA+TCs6fLObYNzA+0EkHkVSv8E2HVHvbQbtT5xIghi1DNyL4zvfs+YrZaybVBPb0uKn8SP9yA9yxcATv2QHee6m7qaLieoAwLYBACNLOc1oDXMnwGfg7RSxgtVxLm4uFT/z0/nRSzgyVwDXPo8g+uY6fiwPwS/3ouAjw0KsCTMIJr6SzccLlQv5+PqpYvmjMn9+RzIpA6VHpVVeFSbvaRIgiyeRr1oyh7OCtWQROUQs4nVQPOQj5zXvJPEtDZYc6LrZpPxiH2b1m2NIQIDAQAB"
-PUBLIC_DATA_API_KEY = "uL+CiKXTpwEg0Llpd6HhKCdTuyq8n1C+P5hj18uFaH8GvntGQ+6vTRcKb1IBSn2G0om7cwxb49A+YBhct0Zk8Q=="

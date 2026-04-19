@@ -66,7 +66,8 @@ export default function ClientDetailPage() {
       const { tokenId, pin } = await createIntakeToken(office.id, office.name, client.name, client.phone);
       setIntakeLink(`${window.location.origin}/intake/${tokenId}`);
       setIntakePin(pin);
-    } catch {
+    } catch (err) {
+      console.error('인테이크 링크 생성 실패:', err);
       toast.error('링크 생성에 실패했습니다.');
     } finally {
       setLinkLoading(false);
@@ -91,7 +92,8 @@ export default function ClientDetailPage() {
       await navigator.clipboard.writeText(getMessageTemplate());
       setMsgCopied(true);
       setTimeout(() => setMsgCopied(false), 2000);
-    } catch {
+    } catch (err) {
+      console.error('클립보드 복사 실패:', err);
       toast.error('클립보드 복사에 실패했습니다.');
     }
   };
@@ -453,7 +455,8 @@ function UploadedDocsTab({ officeId, client }: { officeId: string; client: Clien
       await navigator.clipboard.writeText(docSubmitLink);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-    } catch {
+    } catch (err) {
+      console.error('클립보드 복사 실패:', err);
       toast.error('클립보드 복사에 실패했습니다.');
     }
   };
@@ -466,7 +469,8 @@ function UploadedDocsTab({ officeId, client }: { officeId: string; client: Clien
       if (!office) return;
       const { tokenId } = await createToken(office.id, office.name, client.name, client.phone);
       setDocSubmitLink(`${window.location.origin}/docs/${tokenId}`);
-    } catch {
+    } catch (err) {
+      console.error('서류제출 링크 생성 실패:', err);
       toast.error('링크 생성에 실패했습니다.');
     }
   };

@@ -8,7 +8,8 @@ export async function getPropertyPriceDirect(_address: string, _type: string, _a
     const res = await fetch(url);
     if (!res.ok) return null;
     return await res.json();
-  } catch {
+  } catch (err) {
+    console.error('공공데이터 API 호출 실패:', err);
     return null;
   }
 }

@@ -87,7 +87,7 @@ export default function DocCollectPanel({ client, officeId }: Props) {
         : btn.docType.includes('납세') ? 'tax_cert'
         : 'general';
 
-      requestOcr(officeId, client.id, doc.id, doc.storagePath, ocrDocType).catch(() => {});
+      requestOcr(officeId, client.id, doc.id, doc.storagePath, ocrDocType).catch((err) => { console.error('OCR 요청 실패:', err); });
 
       // 상태 업데이트
       setButtons(prev => prev.map(b => b.id === btn.id ? { ...b, status: 'uploaded' } : b));

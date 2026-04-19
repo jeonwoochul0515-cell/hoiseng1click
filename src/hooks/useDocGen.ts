@@ -8,6 +8,7 @@ interface DocGenParams {
   officeId: string;
   docType: DocType | 'all';
   format: DocFormat;
+  userType?: 'office' | 'individual';
 }
 
 export function useDocGen() {
@@ -19,6 +20,7 @@ export function useDocGen() {
         docType: params.docType,
         format: params.format,
         clientData: params.client,
+        userType: params.userType ?? 'office',
       });
       return res;
     },

@@ -115,21 +115,67 @@ function buildApplicationData(client) {
         today: today(),
     };
 }
+// 별제권 계산 헬퍼
+function calcSeparateSecurityAmount(debtAmount, collateralValue, seniorLien = 0) {
+    const netCollateral = Math.max(0, collateralValue - seniorLien);
+    return Math.min(debtAmount, netCollateral);
+}
+function calcDeficiencyAmount(debtAmount, separateSecurityAmount) {
+    return Math.max(0, debtAmount - separateSecurityAmount);
+}
 function buildDebtListData(client) {
-    const debts = (client.debts ?? []).map((d, i) => ({
-        no: i + 1,
-        creditor: d.creditor ?? d.name ?? "",
-        type: d.type ?? "무담보",
-        originalDate: d.originalDate ?? d.originDate ?? "",
-        originalAmount: formatKRW(d.originalAmount ?? d.amount ?? 0),
-        amount: formatKRW(d.amount ?? 0),
-        rate: (d.rate ?? 0).toFixed(1) + "%",
-        overdueInterest: formatKRW(d.overdueInterest ?? 0),
-        accelerationDate: d.accelerationDate ?? "",
-        totalOwed: formatKRW((d.amount ?? 0) + (d.overdueInterest ?? 0)),
-        securedNote: d.type === "담보" ? (d.securedNote ?? d.collateralDesc ?? d.collateral ?? "담보설정") : "",
-    }));
     const allDebts = client.debts ?? [];
+    const debts = allDebts.map((d, i) => {
+        // 별제권 계산
+        let separateSecurity = 0;
+        let deficiency = d.amount ?? 0;
+        if (d.type === "담보" && d.collateralValue) {
+            separateSecurity = d.separateSecurityAmount
+                ?? calcSeparateSecurityAmount(d.amount ?? 0, d.collateralValue, d.seniorLien ?? 0);
+            deficiency = d.deficiencyAmount
+                ?? calcDeficiencyAmount(d.amount ?? 0, separateSecurity);
+        }
+        // 보증채무 비고
+        let note = "";
+        if (d.isGuarantee && d.guaranteeType) {
+            note = `${d.guaranteeType} 보증인, 주채무자: ${d.primaryDebtor ?? "미상"}`;
+        }
+        // 채권양도 비고
+        if (d.transferredFrom) {
+            const transferNote = `원채권자: ${d.transferredFrom}${d.transferDate ? `, 양도일: ${d.transferDate}` : ""}`;
+            note = note ? `${note} / ${transferNote}` : transferNote;
+        }
+        // 담보 비고
+        if (d.type === "담보") {
+            const secNote = d.securedNote ?? d.collateralDesc ?? d.collateral ?? "담보설정";
+            note = note ? `${note} / ${secNote}` : secNote;
+        }
+        return {
+            no: i + 1,
+            creditor: d.creditor ?? d.name ?? "",
+            type: d.type ?? "무담보",
+            originalDate: d.originalDate ?? d.originDate ?? "",
+            originalAmount: formatKRW(d.originalAmount ?? d.amount ?? 0),
+            amount: formatKRW(d.amount ?? 0),
+            rate: (d.rate ?? 0).toFixed(1) + "%",
+            overdueInterest: formatKRW(d.overdueInterest ?? 0),
+            accelerationDate: d.accelerationDate ?? "",
+            totalOwed: formatKRW((d.amount ?? 0) + (d.overdueInterest ?? 0)),
+            securedNote: note,
+            // 보증채무
+            isGuarantee: d.isGuarantee ?? false,
+            guaranteeType: d.guaranteeType ?? "",
+            primaryDebtor: d.primaryDebtor ?? "",
+            // 채권양도
+            transferredFrom: d.transferredFrom ?? "",
+            transferDate: d.transferDate ?? "",
+            // 별제권 관련
+            separateSecurityAmount: d.type === "담보" ? formatKRW(separateSecurity) : "",
+            deficiencyAmount: d.type === "담보" ? formatKRW(deficiency) : "",
+            collateralType: d.collateralType ?? "",
+            collateralDesc: d.collateralDesc ?? "",
+        };
+    });
     const totalDebt = allDebts.reduce((s, d) => s + (d.amount ?? 0), 0);
     const unsecuredDebt = allDebts
         .filter((d) => d.type !== "담보")
@@ -137,6 +183,25 @@ function buildDebtListData(client) {
     const securedDebt = allDebts
         .filter((d) => d.type === "담보")
         .reduce((s, d) => s + (d.amount ?? 0), 0);
+    // 별제권 합계
+    const totalSeparateSecurity = allDebts
+        .filter((d) => d.type === "담보")
+        .reduce((s, d) => {
+        if (!d.collateralValue)
+            return s;
+        const sep = d.separateSecurityAmount
+            ?? calcSeparateSecurityAmount(d.amount ?? 0, d.collateralValue, d.seniorLien ?? 0);
+        return s + sep;
+    }, 0);
+    const totalDeficiency = allDebts
+        .filter((d) => d.type === "담보")
+        .reduce((s, d) => {
+        if (!d.collateralValue)
+            return s + (d.amount ?? 0);
+        const sep = d.separateSecurityAmount
+            ?? calcSeparateSecurityAmount(d.amount ?? 0, d.collateralValue, d.seniorLien ?? 0);
+        return s + calcDeficiencyAmount(d.amount ?? 0, sep);
+    }, 0);
     return {
         clientName: client.name ?? "",
         clientAddr: client.address ?? "",
@@ -146,6 +211,8 @@ function buildDebtListData(client) {
         totalDebt: formatKRW(totalDebt),
         unsecuredDebt: formatKRW(unsecuredDebt),
         securedDebt: formatKRW(securedDebt),
+        totalSeparateSecurity: formatKRW(totalSeparateSecurity),
+        totalDeficiency: formatKRW(totalDeficiency),
     };
 }
 function buildAssetListData(client) {
@@ -327,21 +394,40 @@ function buildRepayPlanData(client) {
     const effectiveTotal = Math.max(disposableTotal, netLiquidation);
     const monthly = Math.ceil(effectiveTotal / repayPeriodMonths);
     const isLiquidationAdjusted = effectiveTotal > disposableTotal;
-    const totalDebt = (client.debts ?? []).reduce((s, d) => s + (d.amount ?? 0), 0);
-    const repayRate = totalDebt > 0 ? Math.round((effectiveTotal / totalDebt) * 10000) / 100 : 0;
-    const creditorShares = (client.debts ?? []).map((d, i) => {
-        const share = totalDebt > 0 ? (d.amount ?? 0) / totalDebt : 0;
+    // 변제대상 채무: 무담보 전액 + 담보 부족액 (별제권 금액 제외)
+    const allDebts = client.debts ?? [];
+    const totalDebt = allDebts.reduce((s, d) => s + (d.amount ?? 0), 0);
+    // 변제 대상 금액 산출 (별제권 제외)
+    const repayTargetEntries = [];
+    for (const d of allDebts) {
+        if (d.type === "담보" && d.collateralValue) {
+            const sep = d.separateSecurityAmount
+                ?? calcSeparateSecurityAmount(d.amount ?? 0, d.collateralValue, d.seniorLien ?? 0);
+            const def = d.deficiencyAmount ?? calcDeficiencyAmount(d.amount ?? 0, sep);
+            if (def > 0) {
+                repayTargetEntries.push({ creditor: d.creditor ?? d.name ?? "", amount: def, isDeficiency: true });
+            }
+        }
+        else {
+            repayTargetEntries.push({ creditor: d.creditor ?? d.name ?? "", amount: d.amount ?? 0, isDeficiency: false });
+        }
+    }
+    const totalRepayTarget = repayTargetEntries.reduce((s, e) => s + e.amount, 0);
+    const repayRate = totalRepayTarget > 0 ? Math.round((effectiveTotal / totalRepayTarget) * 10000) / 100 : 0;
+    const creditorShares = repayTargetEntries.map((e, i) => {
+        const share = totalRepayTarget > 0 ? e.amount / totalRepayTarget : 0;
         const monthlyShare = Math.floor(monthly * share);
         const totalShare = monthlyShare * repayPeriodMonths;
         return {
             no: i + 1,
-            creditor: d.creditor ?? d.name ?? "",
-            debtAmount: formatKRW(d.amount ?? 0),
+            creditor: e.creditor + (e.isDeficiency ? " (부족액)" : ""),
+            debtAmount: formatKRW(e.amount),
             sharePercent: (share * 100).toFixed(2) + "%",
             monthlyShare: formatKRW(monthlyShare),
             totalShare: formatKRW(totalShare),
         };
     });
+    // 기존 단순 변제예정액표 (회차/변제일/변제금액/누적)
     const repaySchedule = [];
     const startDate = new Date();
     startDate.setDate(1);
@@ -358,6 +444,77 @@ function buildRepayPlanData(client) {
             cumulativeAmount: formatKRW(cumulative),
         });
     }
+    // 변제예정액표 (월별, 채권자별 안분) — 법원 필수 서류
+    const pc = client.priorityClaims ?? {};
+    const priorityDebtTotal = (pc.taxDelinquent ?? 0) + (pc.wageClaim ?? 0) + (pc.smallDeposit ?? 0);
+    // 안분 비율 계산
+    const totalRepayTargetNum = repayTargetEntries.reduce((s, e) => s + e.amount, 0);
+    const shares = {};
+    for (const e of repayTargetEntries) {
+        const key = e.creditor + (e.isDeficiency ? " (부족액)" : "");
+        shares[key] = totalRepayTargetNum > 0 ? e.amount / totalRepayTargetNum : 0;
+    }
+    const creditorNameList = repayTargetEntries.map((e) => e.creditor + (e.isDeficiency ? " (부족액)" : ""));
+    let remainingPriority = priorityDebtTotal;
+    const detailedSchedule = [];
+    const creditorTotals = {};
+    for (const cn of creditorNameList)
+        creditorTotals[cn] = 0;
+    let priorityGrandTotal = 0;
+    let grandTotal = 0;
+    const sYear = startDate.getFullYear();
+    const sMonth = startDate.getMonth() + 1;
+    for (let round = 1; round <= repayPeriodMonths; round++) {
+        const mIdx = sMonth + round - 1;
+        const year = sYear + Math.floor((mIdx - 1) / 12);
+        const month = ((mIdx - 1) % 12) + 1;
+        const payDateStr = `${year}.${String(month).padStart(2, "0")}`;
+        let priorityAmount = 0;
+        let generalBudget = monthly;
+        if (remainingPriority > 0) {
+            priorityAmount = Math.min(remainingPriority, monthly);
+            remainingPriority -= priorityAmount;
+            generalBudget = monthly - priorityAmount;
+        }
+        const creditorAmounts = {};
+        let roundTotal = priorityAmount;
+        // 안분 배당
+        let creditorSum = 0;
+        for (let ci = 0; ci < creditorNameList.length; ci++) {
+            const cn = creditorNameList[ci];
+            const amt = Math.floor(generalBudget * shares[cn]);
+            creditorAmounts[`c${ci}`] = formatKRW(amt);
+            creditorTotals[cn] += amt;
+            creditorSum += amt;
+            roundTotal += amt;
+        }
+        // 단수 차이 보정
+        const rounding = generalBudget - creditorSum;
+        if (rounding > 0 && creditorNameList.length > 0) {
+            const lastIdx = creditorNameList.length - 1;
+            const lastCn = creditorNameList[lastIdx];
+            const lastAmt = Math.floor(generalBudget * shares[lastCn]) + rounding;
+            creditorAmounts[`c${lastIdx}`] = formatKRW(lastAmt);
+            creditorTotals[lastCn] += rounding;
+            roundTotal += rounding;
+        }
+        priorityGrandTotal += priorityAmount;
+        grandTotal += roundTotal;
+        detailedSchedule.push({
+            round,
+            payDate: payDateStr,
+            priorityAmount: formatKRW(priorityAmount),
+            ...creditorAmounts,
+            total: formatKRW(roundTotal),
+        });
+    }
+    // 합계 행
+    const totalRowCreditors = {};
+    creditorNameList.forEach((cn, ci) => {
+        totalRowCreditors[`c${ci}`] = formatKRW(creditorTotals[cn]);
+    });
+    const startDateStr = detailedSchedule[0]?.payDate ?? "";
+    const endDateStr = detailedSchedule[detailedSchedule.length - 1]?.payDate ?? "";
     return {
         clientName: client.name ?? "",
         court: client.court ?? "",
@@ -376,6 +533,15 @@ function buildRepayPlanData(client) {
         repayRate: repayRate.toFixed(2) + "%",
         creditorShares,
         repaySchedule,
+        // 변제예정액표 (채권자별 상세)
+        detailedSchedule,
+        creditorNameList,
+        scheduleStartDate: startDateStr,
+        scheduleEndDate: endDateStr,
+        schedulePriorityTotal: formatKRW(priorityGrandTotal),
+        scheduleGrandTotal: formatKRW(grandTotal),
+        scheduleTotalRow: totalRowCreditors,
+        hasPriorityDebt: priorityDebtTotal > 0,
     };
 }
 function buildStatementData(client) {
@@ -462,6 +628,35 @@ function buildStatementData(client) {
         repayWillingness: stmt.repayWillingness ?? stmt.futureIncomePlan ?? "",
     };
 }
+function buildProhibitionOrderData(client) {
+    const evidenceList = [];
+    evidenceList.push("개인회생절차개시 신청서 사본 1부");
+    evidenceList.push("급여명세서 1부");
+    if (client.statement?.garnishment) {
+        evidenceList.push("압류결정문 사본 1부");
+    }
+    evidenceList.push("가족관계증명서 1부");
+    evidenceList.push("주민등록등본 1부");
+    let reason = "";
+    if (client.statement?.garnishment && client.statement?.garnishmentDetail) {
+        reason = `현재 ${client.statement.garnishmentDetail}에 의한 급여 압류가 진행 중이며, 이로 인해 최저 생계비에도 미치지 못하는 금액만으로 생활하고 있어 극심한 생활 곤란을 겪고 있습니다. `;
+    }
+    else {
+        reason = "현재 급여에 대한 압류가 진행 중이며, 이로 인해 최저 생계비에도 미치지 못하는 금액만으로 생활하고 있어 극심한 생활 곤란을 겪고 있습니다. ";
+    }
+    reason += `채무자는 가구원 ${client.family || 1}인 가구로서, 개인회생절차개시 신청을 하였으므로, 채무자회생법 제593조에 따라 개인회생채권에 기한 강제집행, 가압류, 가처분의 금지를 구합니다.`;
+    return {
+        court: client.court ?? "",
+        clientName: client.name ?? "",
+        clientSSN: maskSSN(client.ssn ?? ""),
+        clientAddr: client.address ?? "",
+        clientPhone: client.phone ?? "",
+        caseNumber: client.caseNumber ?? "(접수 후 기재)",
+        reason,
+        evidenceList,
+        today: today(),
+    };
+}
 // ---------------------------------------------------------------------------
 // Dispatch map
 // ---------------------------------------------------------------------------
@@ -472,6 +667,7 @@ const DATA_BUILDERS = {
     income_list: buildIncomeListData,
     repay_plan: buildRepayPlanData,
     statement: buildStatementData,
+    prohibition_order: buildProhibitionOrderData,
 };
 // ---------------------------------------------------------------------------
 // Template-based generators
@@ -545,7 +741,7 @@ async function generateDocxWithFallback(typeName, data) {
 // ---------------------------------------------------------------------------
 // Doc types & handler
 // ---------------------------------------------------------------------------
-const DOC_TYPES = ["debt_list", "asset_list", "income_list", "application", "repay_plan", "statement"];
+const DOC_TYPES = ["debt_list", "asset_list", "income_list", "application", "repay_plan", "statement", "prohibition_order"];
 async function handleDocGenerate(req, res) {
     try {
         const body = req.body;

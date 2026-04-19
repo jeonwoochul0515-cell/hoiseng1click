@@ -504,8 +504,8 @@ function FinalCTASection() {
 
           {/* 우측: 링크 */}
           <div className="flex items-center gap-6 text-base text-gray-500">
-            <a href="#" className="hover:text-gray-300 transition-colors">개인정보처리방침</a>
-            <a href="#" className="hover:text-gray-300 transition-colors">이용약관</a>
+            <Link to="/privacy" className="hover:text-gray-300 transition-colors">개인정보처리방침</Link>
+            <Link to="/terms" className="hover:text-gray-300 transition-colors">이용약관</Link>
             <a href="#" className="hover:text-gray-300 transition-colors">사업자정보</a>
           </div>
         </div>

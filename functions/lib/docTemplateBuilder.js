@@ -6,6 +6,7 @@ exports.createAssetListDoc = createAssetListDoc;
 exports.createIncomeListDoc = createIncomeListDoc;
 exports.createRepayPlanDoc = createRepayPlanDoc;
 exports.createStatementDoc = createStatementDoc;
+exports.createProhibitionOrderDoc = createProhibitionOrderDoc;
 exports.buildDocx = buildDocx;
 const docx_1 = require("docx");
 // ──────────────────────────────────────────────
@@ -204,8 +205,33 @@ async function createDebtListDoc(data) {
         emptyLine(),
         p(`무담보 채무 합계: ${fmt(data.unsecuredDebt)}원`),
         p(`담보 채무 합계: ${fmt(data.securedDebt)}원`),
-        ...signatureBlock(data.court, data.today, data.clientName),
     ];
+    // 별제권 정보 표시
+    if (data.totalSeparateSecurity && fmt(data.totalSeparateSecurity) !== "0") {
+        children.push(emptyLine());
+        children.push(sectionHeading("별제권부 채권 내역"));
+        children.push(p(`별제권 행사 예상액 합계: ${fmt(data.totalSeparateSecurity)}원`));
+        children.push(p(`부족액 합계 (일반채권 전환분): ${fmt(data.totalDeficiency ?? 0)}원`));
+        // 별제권 상세 테이블
+        const securedDebts = data.debts.filter((d) => d.type === "담보" && d.separateSecurityAmount);
+        if (securedDebts.length > 0) {
+            const secW = [600, 1200, 1200, 1500, 1500, 1500, 1500];
+            const secRows = [
+                headerRow(["순번", "채권자", "담보물", "채무총액", "별제권 행사액", "부족액", "비고"], secW),
+                ...securedDebts.map((d) => dataRow([
+                    String(d.no),
+                    d.creditor,
+                    d.collateralType ? `${d.collateralType}${d.collateralDesc ? `(${d.collateralDesc})` : ""}` : "",
+                    fmt(d.amount),
+                    fmt(d.separateSecurityAmount ?? 0),
+                    fmt(d.deficiencyAmount ?? 0),
+                    d.securedNote,
+                ], secW)),
+            ];
+            children.push(new docx_1.Table({ width: { size: 9000, type: docx_1.WidthType.DXA }, rows: secRows }));
+        }
+    }
+    children.push(...signatureBlock(data.court, data.today, data.clientName));
     const doc = makeDoc(children);
     return await docx_1.Packer.toBuffer(doc);
 }
@@ -453,7 +479,56 @@ async function createRepayPlanDoc(data) {
             children.push(p(`총 채무액: ${fmt(data.totalDebt)}원`));
         }
     }
-    children.push(sectionHeading("2. 채권자별 변제 비율"), new docx_1.Table({ width: { size: 9000, type: docx_1.WidthType.DXA }, rows: csRows }), sectionHeading("3. 변제예정액표"), new docx_1.Table({ width: { size: 8000, type: docx_1.WidthType.DXA }, rows: schRows }), ...signatureBlock(data.court, data.today, data.clientName));
+    children.push(sectionHeading("2. 채권자별 변제 비율"), new docx_1.Table({ width: { size: 9000, type: docx_1.WidthType.DXA }, rows: csRows }));
+    // 3. 변제예정액표 (채권자별 월별 안분 상세)
+    const credNames = data.creditorNameList ?? [];
+    const detSchedule = data.detailedSchedule ?? [];
+    if (credNames.length > 0 && detSchedule.length > 0) {
+        children.push(sectionHeading("3. 변제예정액표 (월별)"));
+        children.push(p(`변제기간: ${data.scheduleStartDate ?? ""} ~ ${data.scheduleEndDate ?? ""} (${data.repayPeriodMonths}개월)`));
+        children.push(p(`월 변제금: ${fmt(data.monthlyPayment)}원`));
+        children.push(emptyLine());
+        // 동적 컬럼: 회차 | 변제일 | 우선채권 | 채권자A | 채권자B | ... | 합계
+        const detHeaders = ["회차", "변제일"];
+        if (data.hasPriorityDebt)
+            detHeaders.push("우선채권");
+        detHeaders.push(...credNames);
+        detHeaders.push("합계");
+        // 컬럼 폭: 기본 600씩, 변제일은 900, 금액 컬럼은 1200
+        const detWidths = [600, 900];
+        if (data.hasPriorityDebt)
+            detWidths.push(1200);
+        for (let ci = 0; ci < credNames.length; ci++)
+            detWidths.push(1200);
+        detWidths.push(1200);
+        const detRows = [headerRow(detHeaders, detWidths)];
+        for (const row of detSchedule) {
+            const vals = [String(row.round), String(row.payDate ?? "")];
+            if (data.hasPriorityDebt)
+                vals.push(String(row.priorityAmount ?? "0원"));
+            for (let ci = 0; ci < credNames.length; ci++) {
+                vals.push(String(row[`c${ci}`] ?? "0원"));
+            }
+            vals.push(String(row.total ?? "0원"));
+            detRows.push(dataRow(vals, detWidths));
+        }
+        // 합계 행
+        const totalVals = ["", "합계"];
+        if (data.hasPriorityDebt)
+            totalVals.push(fmt(data.schedulePriorityTotal ?? 0));
+        const totalRowData = data.scheduleTotalRow ?? {};
+        for (let ci = 0; ci < credNames.length; ci++) {
+            totalVals.push(totalRowData[`c${ci}`] ?? "0원");
+        }
+        totalVals.push(fmt(data.scheduleGrandTotal ?? 0));
+        detRows.push(dataRow(totalVals, detWidths));
+        children.push(new docx_1.Table({ width: { size: Math.min(detWidths.reduce((a, b) => a + b, 0), 14000), type: docx_1.WidthType.DXA }, rows: detRows }));
+    }
+    else {
+        // 기존 단순 변제예정액표 폴백
+        children.push(sectionHeading("3. 변제예정액표"), new docx_1.Table({ width: { size: 8000, type: docx_1.WidthType.DXA }, rows: schRows }));
+    }
+    children.push(...signatureBlock(data.court, data.today, data.clientName));
     const doc = makeDoc(children);
     return await docx_1.Packer.toBuffer(doc);
 }
@@ -627,6 +702,45 @@ async function createStatementDoc(data) {
     const doc = makeDoc(children);
     return await docx_1.Packer.toBuffer(doc);
 }
+async function createProhibitionOrderDoc(data) {
+    const children = [
+        createTitle("금지명령 신청서"),
+        p("(채무자회생법 제593조)", { alignment: docx_1.AlignmentType.CENTER, before: 0, after: 300 }),
+        emptyLine(),
+        sectionHeading("1. 신청인(채무자) 인적사항"),
+        kvTable([
+            ["성명", data.clientName],
+            ["주민등록번호", data.clientSSN],
+            ["주소", data.clientAddr],
+            ["연락처", data.clientPhone],
+        ]),
+        emptyLine(),
+        sectionHeading("2. 사건번호"),
+        p(data.caseNumber || "(접수 후 기재)"),
+        emptyLine(),
+        sectionHeading("3. 신청 취지"),
+        p("채무자에 대한 개인회생채권에 기한 강제집행, 가압류, 가처분을 금지하여 주시기 바랍니다.", { bold: true }),
+        emptyLine(),
+        sectionHeading("4. 신청 이유"),
+        p(data.reason || "현재 급여에 대한 압류가 진행 중이며, 이로 인해 최저 생계비에도 미치지 못하는 금액만으로 생활하고 있어 극심한 생활 곤란을 겪고 있습니다. 개인회생절차개시 신청을 하였으므로, 채무자회생법 제593조에 따라 개인회생채권에 기한 강제집행 등의 금지를 구합니다."),
+        emptyLine(),
+        sectionHeading("5. 소명자료"),
+    ];
+    if (data.evidenceList.length > 0) {
+        data.evidenceList.forEach((evidence, i) => {
+            children.push(bullet(`${i + 1}. ${evidence}`));
+        });
+    }
+    else {
+        children.push(bullet("개인회생절차개시 신청서 사본 1부"));
+        children.push(bullet("급여명세서 1부"));
+        children.push(bullet("압류결정문 사본 1부"));
+        children.push(bullet("가족관계증명서 1부"));
+    }
+    children.push(...signatureBlock(data.court, data.today, data.clientName));
+    const doc = makeDoc(children);
+    return await docx_1.Packer.toBuffer(doc);
+}
 // ──────────────────────────────────────────────
 // Main dispatcher
 // ──────────────────────────────────────────────
@@ -644,6 +758,8 @@ async function buildDocx(docType, data) {
             return createRepayPlanDoc(data);
         case "statement":
             return createStatementDoc(data);
+        case "prohibition_order":
+            return createProhibitionOrderDoc(data);
         default:
             throw new Error(`Unknown document type: ${docType}`);
     }

@@ -169,36 +169,6 @@ async function handleStatementDataV2(req, res) {
             res.status(400).json({ error: "connectedId가 필요합니다" });
             return;
         }
-        // 샌드박스 모드: 데모 데이터 반환
-        const host = process.env.CODEF_API_HOST || "https://development.codef.io";
-        const isSandbox = !process.env.CODEF_CLIENT_ID || !process.env.CODEF_CLIENT_SECRET ||
-            host.includes("sandbox");
-        if (isSandbox) {
-            res.json({
-                newDebts: [
-                    { date: "20250815", creditor: "카카오뱅크", type: "신용대출", amount: 10000000, rate: 7.5 },
-                    { date: "20251102", creditor: "신한카드", type: "카드론", amount: 5000000, rate: 12.3 },
-                ],
-                largeTransfers: [
-                    { date: "20260110", account: "110-xxx-1234", amount: 5000000, recipient: "홍길동", memo: "가족 송금", category: "송금" },
-                    { date: "20260205", account: "110-xxx-1234", amount: 3000000, recipient: "부동산중개", memo: "보증금 반환", category: "이체" },
-                ],
-                cashWithdrawals: [
-                    { date: "20260115", account: "110-xxx-1234", amount: 2000000, memo: "생활비", method: "ATM" },
-                ],
-                largeCardUsage: [
-                    { date: "20260205", cardNo: "1234-xxxx-xxxx-5678", amount: 2500000, merchant: "○○인테리어", category: "생활서비스" },
-                    { date: "20260118", cardNo: "9876-xxxx-xxxx-4321", amount: 1500000, merchant: "○○가전", category: "가전/전자" },
-                ],
-                cancelledInsurance: [
-                    { company: "삼성생명", productName: "종신보험", cancelDate: "20260101", monthlyPremium: 150000, refundAmount: 3200000, status: "해지" },
-                ],
-                stockLosses: [
-                    { broker: "키움증권", stockName: "○○바이오", buyAmount: 5000000, sellAmount: 2800000, loss: 2200000, tradeDate: "20250930" },
-                ],
-            });
-            return;
-        }
         // 날짜 범위 (2년)
         const now = new Date();
         const ago2y = new Date(now);

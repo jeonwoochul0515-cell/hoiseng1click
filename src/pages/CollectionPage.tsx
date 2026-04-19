@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { useParams, useLocation } from 'react-router-dom';
+import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useCollectionStore } from '@/store/collectionStore';
@@ -26,29 +26,61 @@ const STEPS = [
 ];
 
 export default function CollectionPage() {
-  const { clientId } = useParams<{ clientId: string }>();
+  const { clientId: paramClientId } = useParams<{ clientId: string }>();
+  const location = useLocation();
   const office = useAuthStore((s) => s.office);
+  const individual = useAuthStore((s) => s.individual);
+  const userType = useAuthStore((s) => s.userType);
   const { step, result, reset, connectedId, authStatus, setStep } = useCollectionStore();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load client from Firestore (offices/{officeId}/clients/{clientId})
+  // 개인 모드 판별
+  const isIndividualPage = location.pathname.startsWith('/my');
+  const clientId = isIndividualPage ? 'default' : paramClientId;
+
+  // Load client from Firestore
   useEffect(() => {
     reset();
 
-    if (!clientId || !office) return;
+    if (isIndividualPage && individual) {
+      // 개인 모드: individuals/{uid}/cases/default
+      async function loadIndividualCase() {
+        try {
+          const snap = await getDoc(doc(db, 'individuals', individual!.id, 'cases', 'default'));
+          if (snap.exists()) {
+            const data = snap.data() as Client;
+            setClient(data);
+            if (data.connectedId) {
+              useCollectionStore.getState().setConnectedId(data.connectedId);
+            }
+          } else {
+            // 케이스가 없으면 개인 정보로 초기화
+            setClient({ name: individual!.name, phone: individual!.phone } as Client);
+          }
+          if (individual!.name) useCollectionStore.getState().setUserName(individual!.name);
+          if (individual!.phone) useCollectionStore.getState().setPhoneNo(individual!.phone);
+        } catch (err) {
+          console.error('케이스 로드 실패:', err);
+        } finally {
+          setLoading(false);
+        }
+      }
+      loadIndividualCase();
+      return;
+    }
+
+    if (!paramClientId || !office) return;
 
     async function loadClient() {
       try {
-        const snap = await getDoc(doc(db, 'offices', office!.id, 'clients', clientId!));
+        const snap = await getDoc(doc(db, 'offices', office!.id, 'clients', paramClientId!));
         if (snap.exists()) {
           const data = snap.data() as Client;
           setClient(data);
-          // 기존 connectedId가 있으면 store에 세팅 (재사용)
           if (data.connectedId) {
             useCollectionStore.getState().setConnectedId(data.connectedId);
           }
-          // 의뢰인 이름을 인증 정보에 자동 세팅
           if (data.name) {
             useCollectionStore.getState().setUserName(data.name);
           }
@@ -65,37 +97,54 @@ export default function CollectionPage() {
 
     loadClient();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, office]);
+  }, [paramClientId, office, individual, isIndividualPage]);
 
   // Save results to Firestore when collection is complete
   useEffect(() => {
-    if (!result || !clientId || !office) return;
+    if (!result || !clientId) return;
 
     async function saveResults() {
       try {
-        // 기존 수동 입력 데이터와 병합 (CODEF 수집 결과가 기존 데이터를 덮어쓰지 않도록)
-        const existingSnap = await getDoc(doc(db, 'offices', office!.id, 'clients', clientId!));
-        const existing = existingSnap.data();
-        const existingDebts = (existing?.debts ?? []).filter((d: any) => d.source !== 'codef');
-        const existingAssets = (existing?.assets ?? []).filter((a: any) => a.source !== 'codef');
-        const mergedDebts = [...existingDebts, ...result!.debts];
-        const mergedAssets = [...existingAssets, ...result!.assets];
-
-        await updateDoc(doc(db, 'offices', office!.id, 'clients', clientId!), {
-          debts: mergedDebts,
-          assets: mergedAssets,
+        const saveData = {
+          debts: result!.debts,
+          assets: result!.assets,
           collectionDone: true,
           status: 'drafting',
           connectedId: result!.connectedId,
           updatedAt: Timestamp.now(),
-        });
+        };
+
+        if (isIndividualPage && individual) {
+          // 개인 모드: individuals/{uid}/cases/default
+          const caseRef = doc(db, 'individuals', individual.id, 'cases', 'default');
+          const existingSnap = await getDoc(caseRef);
+          if (existingSnap.exists()) {
+            const existing = existingSnap.data();
+            const existingDebts = (existing?.debts ?? []).filter((d: any) => d.source !== 'codef');
+            const existingAssets = (existing?.assets ?? []).filter((a: any) => a.source !== 'codef');
+            saveData.debts = [...existingDebts, ...result!.debts];
+            saveData.assets = [...existingAssets, ...result!.assets];
+            await updateDoc(caseRef, saveData);
+          } else {
+            await setDoc(caseRef, { ...saveData, name: individual.name, phone: individual.phone, createdAt: Timestamp.now() });
+          }
+        } else if (office) {
+          // 사무소 모드
+          const existingSnap = await getDoc(doc(db, 'offices', office.id, 'clients', clientId!));
+          const existing = existingSnap.data();
+          const existingDebts = (existing?.debts ?? []).filter((d: any) => d.source !== 'codef');
+          const existingAssets = (existing?.assets ?? []).filter((a: any) => a.source !== 'codef');
+          saveData.debts = [...existingDebts, ...result!.debts];
+          saveData.assets = [...existingAssets, ...result!.assets];
+          await updateDoc(doc(db, 'offices', office.id, 'clients', clientId!), saveData);
+        }
       } catch (err) {
         console.error('수집 결과 저장 실패:', err);
       }
     }
 
     saveResults();
-  }, [result, clientId, office]);
+  }, [result, clientId, office, individual, isIndividualPage]);
 
   if (loading) {
     return (
@@ -105,7 +154,7 @@ export default function CollectionPage() {
     );
   }
 
-  if (!clientId) {
+  if (!clientId && !isIndividualPage) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] text-gray-500">
         의뢰인 ID가 없습니다.
@@ -117,10 +166,17 @@ export default function CollectionPage() {
     <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       {/* Page Header */}
       <div className="mx-auto max-w-3xl mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">개인회생 서류 자동수집</h1>
-        {client && (
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">
+          {isIndividualPage ? '금융데이터 수집' : '개인회생 서류 자동수집'}
+        </h1>
+        {client && !isIndividualPage && (
           <p className="text-sm text-gray-600">
             의뢰인: <span className="text-gray-900">{client.name}</span>
+          </p>
+        )}
+        {isIndividualPage && (
+          <p className="text-sm text-gray-600">
+            CODEF 인증 1회로 은행·카드·보험 정보를 자동으로 수집합니다
           </p>
         )}
       </div>

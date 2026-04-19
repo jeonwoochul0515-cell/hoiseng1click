@@ -13,6 +13,10 @@ service cloud.firestore {
       );
     }
 
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
     match /offices/{officeId} {
       allow create: if isSignedIn() && request.auth.uid == officeId;
       allow read: if isSignedIn() && (
@@ -43,8 +47,30 @@ service cloud.firestore {
       }
     }
 
+    // ── Individual (B2C) 개인 셀프신청 ──
+    match /individuals/{uid} {
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow read, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+
+      match /cases/{caseId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+
+      match /cases/{caseId}/documents/{docId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+    }
+
+    match /retainerRequests/{requestId} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
     match /intakeTokens/{tokenId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow create: if isSignedIn() && isOfficeMember(request.resource.data.officeId);
       allow update: if (isSignedIn() && isOfficeMember(resource.data.officeId))
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used'])

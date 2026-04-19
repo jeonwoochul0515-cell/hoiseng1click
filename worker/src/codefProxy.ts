@@ -149,9 +149,12 @@ export async function callCodef(env: Env, token: string, endpoint: string, body:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(15000),
     });
-    return await res.json();
+    const text = await res.text();
+    let decoded: string;
+    try { decoded = decodeURIComponent(text.replace(/\+/g, " ")); } catch { decoded = text; }
+    return JSON.parse(decoded);
   } catch {
     return null;
   }

@@ -9,6 +9,7 @@ import { handleCardApprovals, handleCardBills, handleBankTransactions, handleSto
 import { handleLandRegister, handleBuildingRegister, handleBuildingArea } from "./publicDataRegisters";
 import { handleStatementDataV2 } from "./statementHelpers";
 import { handleAiGenerate } from "./aiWriter";
+import { handleAiDocReview } from "./aiDocReview";
 import { handleVehicleInfo, handlePropertyPrice, handleAssetLookup } from "./codefProperty";
 import { encryptSSN, decryptSSN, maskSSN } from "./ssnCrypto";
 import { handleDocOcr, handleCreditReportParse, handleGeminiOcr } from "./ocrProcessor";
@@ -16,11 +17,14 @@ import { handlePublicAuthCreate } from "./codefPublicAuth";
 
 admin.initializeApp();
 
+const isProd = process.env.NODE_ENV === 'production' || process.env.FUNCTIONS_EMULATOR !== 'true';
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
   'https://hoiseng1click.web.app',
-  'https://hoiseng1click.firebaseapp.com'
+  'https://hoiseng1click.firebaseapp.com',
+  'https://hoiseng1click.com',
+  'https://www.hoiseng1click.com',
+  'https://self.hoiseng1click.com',
+  ...(isProd ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173']),
 ];
 
 const app = express();
@@ -39,6 +43,7 @@ app.use(express.json());
 
 // ── Public routes (인증 불필요 — 의뢰인 디바이스에서 호출) ──
 app.post("/intake/codef-collect", handleIntakeCodefCollect);
+app.post("/ai/ocr", handleGeminiOcr);  // 회원가입 시 사업자등록증 OCR (인증 전)
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 // ── Auth middleware (아래 라우트는 법무사 로그인 필요) ──
@@ -116,8 +121,8 @@ app.post("/codef/statement-data-v2", handleStatementDataV2);
 // AI 진술서 작성
 app.post("/ai/generate", handleAiGenerate);
 
-// AI OCR (Gemini Vision 프록시 — API 키 서버 보관)
-app.post("/ai/ocr", handleGeminiOcr);
+// AI 서류 검증 (제출 전 논리/누락/리스크 체크)
+app.post("/ai/doc-review", handleAiDocReview);
 
 // 서류 OCR 처리
 app.post("/doc/ocr", handleDocOcr);

@@ -48,16 +48,20 @@ const codefFinance_1 = require("./codefFinance");
 const publicDataRegisters_1 = require("./publicDataRegisters");
 const statementHelpers_1 = require("./statementHelpers");
 const aiWriter_1 = require("./aiWriter");
+const aiDocReview_1 = require("./aiDocReview");
 const codefProperty_1 = require("./codefProperty");
 const ssnCrypto_1 = require("./ssnCrypto");
 const ocrProcessor_1 = require("./ocrProcessor");
 const codefPublicAuth_1 = require("./codefPublicAuth");
 admin.initializeApp();
+const isProd = process.env.NODE_ENV === 'production' || process.env.FUNCTIONS_EMULATOR !== 'true';
 const allowedOrigins = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
     'https://hoiseng1click.web.app',
-    'https://hoiseng1click.firebaseapp.com'
+    'https://hoiseng1click.firebaseapp.com',
+    'https://hoiseng1click.com',
+    'https://www.hoiseng1click.com',
+    'https://self.hoiseng1click.com',
+    ...(isProd ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173']),
 ];
 const app = (0, express_1.default)();
 app.use((req, res, next) => {
@@ -77,6 +81,7 @@ app.use((req, res, next) => {
 app.use(express_1.default.json());
 // ── Public routes (인증 불필요 — 의뢰인 디바이스에서 호출) ──
 app.post("/intake/codef-collect", codefProxy_1.handleIntakeCodefCollect);
+app.post("/ai/ocr", ocrProcessor_1.handleGeminiOcr); // 회원가입 시 사업자등록증 OCR (인증 전)
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 // ── Auth middleware (아래 라우트는 법무사 로그인 필요) ──
 app.use(async (req, res, next) => {
@@ -149,6 +154,8 @@ app.post("/codef/asset-lookup", codefProperty_1.handleAssetLookup);
 app.post("/codef/statement-data-v2", statementHelpers_1.handleStatementDataV2);
 // AI 진술서 작성
 app.post("/ai/generate", aiWriter_1.handleAiGenerate);
+// AI 서류 검증 (제출 전 논리/누락/리스크 체크)
+app.post("/ai/doc-review", aiDocReview_1.handleAiDocReview);
 // 서류 OCR 처리
 app.post("/doc/ocr", ocrProcessor_1.handleDocOcr);
 app.post("/credit-report/parse", ocrProcessor_1.handleCreditReportParse);

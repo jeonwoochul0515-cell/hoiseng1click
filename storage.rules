@@ -1,20 +1,43 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // 법무사 업로드 서류 (인증 필요)
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOfficeMember(officeId) {
+      return isSignedIn() && (
+        request.auth.uid == officeId ||
+        request.auth.uid in firestore.get(/databases/(default)/documents/offices/$(officeId)).data.members
+      );
+    }
+
+    function isValidDocFile() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/jpeg|image/png|image/heic|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/haansofthwpx');
+    }
+
+    // 법무사 업로드 서류 (사무소별 격리)
     match /offices/{officeId}/clients/{clientId}/docs/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if isOfficeMember(officeId);
+      allow write: if isOfficeMember(officeId) && isValidDocFile();
     }
 
-    // 의뢰인 업로드 (비인증, 토큰 기반 경로 제한)
+    // 의뢰인(B2C/intake) 업로드 — 토큰 문서가 실존해야 쓰기 가능
     match /docs/{officeId}/{tokenId}/{fileName} {
-      allow write: if true;
-      allow read: if request.auth != null;
+      allow write: if request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/jpeg|image/png|image/heic')
+        && firestore.exists(/databases/(default)/documents/intakeTokens/$(tokenId))
+        && firestore.get(/databases/(default)/documents/intakeTokens/$(tokenId)).data.officeId == officeId;
+      allow read: if isOfficeMember(officeId);
     }
 
-    // 기타 파일은 인증 필요
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+    // B2C 개인 신청자 업로드 (본인 경로만)
+    match /individuals/{uid}/{allPaths=**} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid && isValidDocFile();
     }
+
+    // 그 외 경로는 기본 차단 (와일드카드 전체 허용 제거)
   }
 }
