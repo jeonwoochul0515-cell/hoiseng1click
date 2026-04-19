@@ -357,16 +357,44 @@ export default function ClientDetailPage() {
 
         {/* 서류생성 */}
         {tab === 5 && (
-          <div className="rounded-xl border border-gray-200 bg-white p-6">
-            <h2 className="mb-4 text-lg font-bold text-gray-900">서류생성</h2>
-            <p className="mb-4 text-sm text-gray-500">이 의뢰인의 데이터를 기반으로 법원 제출 서류를 생성합니다.</p>
-            <Link
-              to={`/documents?clientId=${client.id}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-medium text-black hover:bg-[#b8973e]"
-            >
-              <FileText className="h-4 w-4" />
-              서류 생성 페이지로 이동
-            </Link>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-gray-200 bg-white p-6">
+              <h2 className="mb-2 text-lg font-bold text-gray-900">법원 제출 서류 (개시신청)</h2>
+              <p className="mb-4 text-sm text-gray-500">개시신청서 + 첨부서류 6종 자동 생성</p>
+              <Link
+                to={`/documents?clientId=${client.id}`}
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-medium text-black hover:bg-[#b8973e]"
+              >
+                <FileText className="h-4 w-4" />
+                서류 생성 페이지로 이동
+              </Link>
+            </div>
+
+            <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 p-6">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
+                  <FileText className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">부가신청서 3종</h2>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    금지명령·중지명령·면제재산결정 신청서 — <strong>사건번호 부여 후</strong> 생성 가능
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-4 text-xs">
+                <span className="inline-flex items-center rounded bg-white px-2 py-1 text-red-600 font-medium">🚫 금지명령</span>
+                <span className="inline-flex items-center rounded bg-white px-2 py-1 text-amber-600 font-medium">⚠️ 중지명령</span>
+                <span className="inline-flex items-center rounded bg-white px-2 py-1 text-indigo-600 font-medium">🛡️ 면제재산결정</span>
+              </div>
+              <Link
+                to={`/clients/${client.id}/additional-applications`}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                <FileText className="h-4 w-4" />
+                부가신청서 생성 페이지로 이동
+              </Link>
+            </div>
           </div>
         )}
 

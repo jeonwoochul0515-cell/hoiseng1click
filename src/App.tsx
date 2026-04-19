@@ -37,6 +37,7 @@ const TermsPage = lazy(() => import('@/pages/TermsPage'));
 const MyCaseApplicationPage = lazy(() => import('@/pages/MyCaseApplicationPage'));
 const MyCreditorsPage = lazy(() => import('@/pages/MyCreditorsPage'));
 const MyAdditionalApplicationsPage = lazy(() => import('@/pages/MyAdditionalApplicationsPage'));
+const ClientAdditionalApplicationsPage = lazy(() => import('@/pages/ClientAdditionalApplicationsPage'));
 
 /** self.hoiseng1click.com 감지 */
 const isSelfDomain = typeof window !== 'undefined' && window.location.hostname.startsWith('self.');
@@ -148,6 +149,7 @@ export default function App() {
             <Route path="clients" element={<ClientsPage />} />
             <Route path="clients/:id" element={<ClientDetailPage />} />
             <Route path="clients/:clientId/statement" element={<StatementPage />} />
+            <Route path="clients/:clientId/additional-applications" element={<ClientAdditionalApplicationsPage />} />
             <Route path="collection" element={<Navigate to="/clients" replace />} />
             <Route path="collection/:clientId" element={<CollectionPage />} />
             <Route path="documents" element={<DocumentsPage />} />
