@@ -412,6 +412,25 @@ export default function IndividualDashboardPage() {
         </div>
       </button>
 
+      {/* 부가신청서 (금지/중지/면제재산) */}
+      <button
+        onClick={() => navigate('/my/additional-applications')}
+        className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left transition-all hover:border-indigo-400 hover:shadow-sm"
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500/10">
+            <ShieldCheck size={24} className="text-indigo-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">부가신청서 생성</p>
+            <p className="text-xs text-gray-500">
+              금지명령·중지명령·면제재산결정 신청서 3종을 사건번호 기반 자동 생성
+            </p>
+          </div>
+          <ChevronRight size={18} className="text-gray-400" />
+        </div>
+      </button>
+
       {/* 하단: 업그레이드 배너 */}
       {(!individualPlan || individualPlan === 'self') && (
         <div className="rounded-xl bg-gradient-to-r from-[#0D1B2A] to-[#1a3050] p-6 text-white">

@@ -36,6 +36,7 @@ const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const TermsPage = lazy(() => import('@/pages/TermsPage'));
 const MyCaseApplicationPage = lazy(() => import('@/pages/MyCaseApplicationPage'));
 const MyCreditorsPage = lazy(() => import('@/pages/MyCreditorsPage'));
+const MyAdditionalApplicationsPage = lazy(() => import('@/pages/MyAdditionalApplicationsPage'));
 
 /** self.hoiseng1click.com 감지 */
 const isSelfDomain = typeof window !== 'undefined' && window.location.hostname.startsWith('self.');
@@ -173,6 +174,7 @@ export default function App() {
             <Route path="my/upgrade" element={<IndividualUpgradePage />} />
             <Route path="my/discharge-check" element={<DischargeCheckPage />} />
             <Route path="my/application" element={<MyCaseApplicationPage />} />
+            <Route path="my/additional-applications" element={<MyAdditionalApplicationsPage />} />
           </Route>
 
           <Route path="*" element={<DashboardRedirect />} />
