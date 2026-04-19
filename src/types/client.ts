@@ -41,9 +41,13 @@ export interface Debt {
   overdueInterest?: number;
   accelerationDate?: string;
   collateral?: string;
-  creditorAddress?: string;
+  creditorAddress?: string;      // 도로명주소 기본
+  creditorAddressDetail?: string; // 도로명주소 상세 (동·호수 등)
+  creditorZipCode?: string;       // 우편번호 5자리 (전자소송 필수)
   creditorPhone?: string;
   creditorFax?: string;
+  creditorMobile?: string;        // 휴대전화번호
+  creditorEmail?: string;         // 이메일
   transferredFrom?: string;  // 원 채권자 (채권양도된 경우)
   transferDate?: string;     // 양도일
 

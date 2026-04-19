@@ -832,17 +832,99 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
                       </>
                     )}
                   </div>
-                  {/* 채권자 주소·전화 (자동입력 또는 수동) */}
-                  <div className="mt-2 grid grid-cols-3 gap-3">
-                    <Field label="채권자 주소" compact>
-                      <input value={debt.creditorAddress ?? ''} onChange={e => updateDebt(i, 'creditorAddress', e.target.value)} className="input-sm" placeholder="자동입력됨" />
-                    </Field>
-                    <Field label="채권자 전화" compact>
-                      <input value={debt.creditorPhone ?? ''} onChange={e => updateDebt(i, 'creditorPhone', e.target.value)} className="input-sm" placeholder="자동입력됨" />
-                    </Field>
-                    <Field label="채권자 팩스" compact>
-                      <input value={debt.creditorFax ?? ''} onChange={e => updateDebt(i, 'creditorFax', e.target.value)} className="input-sm" placeholder="선택" />
-                    </Field>
+                  {/* 채권자 연락처 — 전자소송 채권자기본정보 필수 */}
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-blue-900">📮 전자소송 채권자기본정보용 (우편번호 필수)</p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await openAddressSearch();
+                          if (res) {
+                            updateDebt(i, 'creditorZipCode', res.zonecode);
+                            updateDebt(i, 'creditorAddress', res.address);
+                          }
+                        }}
+                        className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-700"
+                      >
+                        <Search size={10} /> 주소 검색
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-6 gap-2">
+                      <Field label="우편번호" compact>
+                        <input
+                          value={debt.creditorZipCode ?? ''}
+                          onChange={e => updateDebt(i, 'creditorZipCode', e.target.value.replace(/\D/g, '').slice(0, 5))}
+                          className="input-sm"
+                          placeholder="5자리"
+                          maxLength={5}
+                        />
+                      </Field>
+                      <div className="col-span-5">
+                        <Field label="도로명주소" compact>
+                          <input
+                            value={debt.creditorAddress ?? ''}
+                            onChange={e => updateDebt(i, 'creditorAddress', e.target.value)}
+                            className="input-sm"
+                            placeholder="주소 검색 버튼 사용 권장"
+                          />
+                        </Field>
+                      </div>
+                      <div className="col-span-6">
+                        <Field label="상세주소 (동·호수 등)" compact>
+                          <input
+                            value={debt.creditorAddressDetail ?? ''}
+                            onChange={e => updateDebt(i, 'creditorAddressDetail', e.target.value)}
+                            className="input-sm"
+                            placeholder="예: 101동 101호"
+                          />
+                        </Field>
+                      </div>
+                      <div className="col-span-2">
+                        <Field label="휴대전화" compact>
+                          <input
+                            value={debt.creditorMobile ?? ''}
+                            onChange={e => updateDebt(i, 'creditorMobile', e.target.value)}
+                            className="input-sm"
+                            placeholder="010-1234-5678"
+                          />
+                        </Field>
+                      </div>
+                      <div className="col-span-2">
+                        <Field label="전화번호" compact>
+                          <input
+                            value={debt.creditorPhone ?? ''}
+                            onChange={e => updateDebt(i, 'creditorPhone', e.target.value)}
+                            className="input-sm"
+                            placeholder="지역번호 포함"
+                          />
+                        </Field>
+                      </div>
+                      <div className="col-span-2">
+                        <Field label="팩스" compact>
+                          <input
+                            value={debt.creditorFax ?? ''}
+                            onChange={e => updateDebt(i, 'creditorFax', e.target.value)}
+                            className="input-sm"
+                            placeholder="선택"
+                          />
+                        </Field>
+                      </div>
+                      <div className="col-span-6">
+                        <Field label="이메일" compact>
+                          <input
+                            type="email"
+                            value={debt.creditorEmail ?? ''}
+                            onChange={e => updateDebt(i, 'creditorEmail', e.target.value)}
+                            className="input-sm"
+                            placeholder="선택"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-[10px] text-blue-700">
+                      💡 전국대표번호(1588/1577/1566 등)는 전자소송에서 거부됩니다 — 지역번호(02-/031- 등) 또는 휴대전화로 입력하세요.
+                    </p>
                   </div>
                 </div>
               ))}

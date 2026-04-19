@@ -172,11 +172,20 @@ export function buildCreditorBasicInfoRows(debts: Debt[]): CreditorBasicInfoRow[
     const info = findCreditor(debt.creditor) as (ReturnType<typeof findCreditor> & { zipCode?: string; email?: string }) | null;
     const listNumber = idx + 1;
 
-    // 주소 분리
-    const rawAddr = debt.creditorAddress || info?.address || '';
-    const { addr1, addr2 } = splitRoadAddress(rawAddr);
+    // 주소 분리 — creditorAddressDetail이 명시된 경우 우선
+    let addr1: string;
+    let addr2: string;
+    if (debt.creditorAddress && debt.creditorAddressDetail) {
+      addr1 = debt.creditorAddress;
+      addr2 = debt.creditorAddressDetail;
+    } else {
+      const rawAddr = debt.creditorAddress || info?.address || '';
+      const split = splitRoadAddress(rawAddr);
+      addr1 = split.addr1;
+      addr2 = split.addr2;
+    }
 
-    // 메인 채권자 행
+    // 메인 채권자 행 — 의뢰인 입력값 우선, 폴백은 creditorDirectory
     rows.push({
       check: 'F',
       kind: '채권자',
@@ -186,11 +195,11 @@ export function buildCreditorBasicInfoRows(debts: Debt[]): CreditorBasicInfoRow[
       personalityType: inferPersonalityType(debt.creditor),
       roadAddress1: addr1,
       roadAddress2: addr2,
-      zipCode: normalizeZipCode(info?.zipCode),
-      mobile: '',
+      zipCode: normalizeZipCode(debt.creditorZipCode || info?.zipCode),
+      mobile: normalizePhone(debt.creditorMobile),
       phone: normalizePhone(debt.creditorPhone || info?.phone),
       fax: normalizePhone(debt.creditorFax || info?.fax),
-      email: info?.email ?? '',
+      email: debt.creditorEmail || info?.email || '',
     });
 
     // 보증인/대위변제자 행 추가
