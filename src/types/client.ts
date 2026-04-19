@@ -3,6 +3,30 @@ export type JobType = 'employed' | 'self' | 'freelance' | 'daily' | 'unemployed'
 export type DebtType = '무담보' | '담보' | '사채';
 export type AssetType = '부동산' | '차량' | '예금' | '보험' | '증권' | '기타';
 
+// 전자소송 개인회생 개시신청서 — 사건기본정보 타입
+export type IncomeType = 'salary' | 'business' | 'mixed'; // 급여/영업/혼합
+
+// 관련사건 (배우자·주채무자·보증·연대채무자가 이미 신청한 경우)
+export interface RelatedCase {
+  id: string;
+  relation: '배우자' | '주채무자' | '보증채무자' | '연대채무자' | '기타';
+  relationName: string;          // 관계인명
+  relationNameDetail?: string;   // 기타 관계 상세 (예: 자녀, 부모)
+  court: string;                 // 제출법원
+  caseYear: number;              // 사건번호 연도 (YYYY)
+  caseType: string;              // 사건번호 구분 (개회, 하회 등)
+  caseNumber: string;            // 사건번호 숫자
+}
+
+// 문서 공개(제출 문서 노출) 플래그
+export interface DocVisibility {
+  ssn?: boolean;         // 주민등록번호
+  phone?: boolean;       // 휴대전화번호
+  tel?: boolean;         // 전화번호
+  fax?: boolean;         // 팩스
+  email?: boolean;       // 이메일
+}
+
 export interface Debt {
   id: string;
   name: string;
@@ -233,4 +257,41 @@ export interface Client {
   };
   // 진술서
   statement?: StatementData;
+
+  // ── 전자소송 개인회생 개시신청서 양식 필드 ──
+  // 사건기본정보
+  incomeType?: IncomeType;              // 소득구분 (급여/영업/혼합)
+  repayStartDate?: string;              // 변제시작일자 (YYYY-MM-DD)
+  repayStartAfterAuthorization?: boolean; // 변제계획안 인가되는 날의 다음달 사용 여부
+  repayDayOfMonth?: number;             // 월변제일자 (1~31)
+  monthlyPaymentOverride?: number;      // 월변제금액 (수동 오버라이드, 없으면 자동계산)
+  refundBank?: string;                  // 환급은행 (드롭다운)
+  refundAccount?: string;               // 환급계좌번호 (하이픈 없음)
+  refundAccountHolder?: string;         // 예금주
+
+  // 당사자기본정보
+  nationality?: string;                 // 국적 (기본 '한국')
+  nameForeign?: string;                 // 외국어이름
+  residentAddress?: string;             // 주민등록지 주소
+  residentAddressDetail?: string;       // 주민등록지 상세주소
+  residentZonecode?: string;            // 주민등록지 우편번호
+  actualAddress?: string;               // 실거주지 주소 (주민등록지와 다를 경우)
+  actualAddressDetail?: string;
+  actualZonecode?: string;
+  sameAsResident?: boolean;             // 실거주지 = 주민등록지 여부
+  deliveryAddress?: string;             // 송달장소
+  deliveryAddressDetail?: string;
+  deliveryZonecode?: string;
+  sameDeliveryAsResident?: boolean;     // 송달장소 = 주민등록지 여부
+  tel?: string;                         // 일반 전화번호 (선택)
+  fax?: string;                         // 팩스 (선택)
+  email?: string;                       // 이메일
+  docVisibility?: DocVisibility;        // 제출문서 노출 플래그
+
+  // 관련사건목록
+  relatedCases?: RelatedCase[];
+
+  // 신청취지 / 신청이유
+  applicationPurpose?: string;          // 신청취지 (기본값 템플릿)
+  applicationReason?: string;           // 신청이유 (debtReason과 별개)
 }

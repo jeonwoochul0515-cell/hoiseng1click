@@ -26,50 +26,217 @@ export interface EcfsField {
   inputType: 'text' | 'select' | 'textarea' | 'file';
 }
 
-/** 신청인(채무자) 기본정보 필드 */
+/** 사건기본정보 필드 (전자소송 양식 기준) */
+export const CASE_BASIC_FIELDS: EcfsField[] = [
+  {
+    ecfsLabel: '소득구분',
+    ecfsLocation: '사건기본 > 사건정보 > 소득구분',
+    dataPath: 'client.incomeType',
+    inputType: 'select',
+    hint: '급여소득/영업소득/급여+영업소득 중 선택',
+  },
+  {
+    ecfsLabel: '변제기간',
+    ecfsLocation: '사건기본 > 사건정보 > 변제기간',
+    dataPath: 'client.repayPeriodMonths',
+    formatter: 'number',
+    inputType: 'text',
+    hint: '60개월 초과 불가',
+  },
+  {
+    ecfsLabel: '변제시작일자',
+    ecfsLocation: '사건기본 > 사건정보 > 변제시작일자',
+    dataPath: 'client.repayStartDate',
+    formatter: 'date',
+    inputType: 'text',
+    hint: '신청일로부터 2~3개월 후 이내',
+  },
+  {
+    ecfsLabel: '월변제일자',
+    ecfsLocation: '사건기본 > 사건정보 > 월변제일자',
+    dataPath: 'client.repayDayOfMonth',
+    formatter: 'number',
+    inputType: 'text',
+    hint: '1~28 권장 (말일 피함)',
+  },
+  {
+    ecfsLabel: '월변제금액',
+    ecfsLocation: '사건기본 > 사건정보 > 월변제금액',
+    dataPath: 'client.monthlyPaymentOverride',
+    formatter: 'number',
+    copyRaw: true,
+    inputType: 'text',
+    hint: '월평균수입 − 월평균생계비',
+  },
+  {
+    ecfsLabel: '환급은행',
+    ecfsLocation: '사건기본 > 사건정보 > 환급은행',
+    dataPath: 'client.refundBank',
+    inputType: 'select',
+  },
+  {
+    ecfsLabel: '환급계좌번호',
+    ecfsLocation: '사건기본 > 사건정보 > 환급계좌번호',
+    dataPath: 'client.refundAccount',
+    inputType: 'text',
+    hint: "'-' 없이 숫자만 입력",
+  },
+  {
+    ecfsLabel: '예금주',
+    ecfsLocation: '사건기본 > 사건정보 > 예금주',
+    dataPath: 'client.refundAccountHolder',
+    inputType: 'text',
+  },
+  {
+    ecfsLabel: '제출법원',
+    ecfsLocation: '사건기본 > 사건정보 > 제출법원',
+    dataPath: 'client.court',
+    inputType: 'select',
+    hint: '신청인의 보통재판적 소재지(주소지) 관할 지방법원',
+  },
+];
+
+/** 신청인(채무자) 기본정보 필드 — 전자소송 당사자목록 양식 기준 */
 export const APPLICANT_FIELDS: EcfsField[] = [
   {
-    ecfsLabel: '성명',
-    ecfsLocation: '신청인 정보 > 성명',
-    dataPath: 'client.name',
+    ecfsLabel: '당사자구분',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 당사자구분',
+    dataPath: 'const:채무자',
     inputType: 'text',
-    hint: '주민등록상 성명을 정확히 입력',
+    hint: '채무자 고정',
+  },
+  {
+    ecfsLabel: '인격구분',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 인격구분',
+    dataPath: 'const:자연인',
+    inputType: 'select',
+    hint: '자연인 고정',
+  },
+  {
+    ecfsLabel: '국적',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 국적',
+    dataPath: 'client.nationality',
+    inputType: 'select',
+    hint: '기본 한국',
   },
   {
     ecfsLabel: '주민등록번호',
-    ecfsLocation: '신청인 정보 > 주민등록번호',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 주민등록번호',
     dataPath: 'client.ssn',
     formatter: 'fullSsn',
     inputType: 'text',
-    hint: '하이픈(-) 포함 13자리',
+    hint: '앞/뒷 7자리 분리 입력. "제출문서에 보임" 체크 권장',
   },
   {
-    ecfsLabel: '주소',
-    ecfsLocation: '신청인 정보 > 주소',
-    dataPath: 'client.address',
+    ecfsLabel: '이름',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 이름',
+    dataPath: 'client.name',
     inputType: 'text',
-    hint: '주민등록등본상 주소와 일치해야 합니다',
+    hint: '명란에 주민번호·생년월일 입력 금지',
   },
   {
-    ecfsLabel: '전화번호',
-    ecfsLocation: '신청인 정보 > 전화번호',
+    ecfsLabel: '외국어이름',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 외국어이름',
+    dataPath: 'client.nameForeign',
+    inputType: 'text',
+    hint: '외국인/법인인 경우에만',
+  },
+  {
+    ecfsLabel: '주민등록지 주소',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 주민등록지 주소',
+    dataPath: 'client.residentAddress',
+    inputType: 'text',
+    hint: '동·호수 등 + (동명, 아파트/건물명)',
+  },
+  {
+    ecfsLabel: '실거주지 주소',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 실거주지 주소',
+    dataPath: 'client.actualAddress',
+    inputType: 'text',
+    hint: '주민등록지와 같으면 "위 주소와 동일" 체크',
+  },
+  {
+    ecfsLabel: '송달장소',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 송달장소',
+    dataPath: 'client.deliveryAddress',
+    inputType: 'text',
+    hint: '주민등록지와 같으면 "위 주소와 동일" 체크',
+  },
+  {
+    ecfsLabel: '휴대전화번호',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 연락처 > 휴대전화번호',
     dataPath: 'client.phone',
     formatter: 'phone',
     inputType: 'text',
-    hint: '연락 가능한 휴대폰 번호',
+    hint: '필수. 국가/지역코드 + 번호',
   },
   {
-    ecfsLabel: '직업',
-    ecfsLocation: '신청인 정보 > 직업',
-    dataPath: 'client.job',
+    ecfsLabel: '전화번호(선택)',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 연락처 > 전화번호',
+    dataPath: 'client.tel',
+    formatter: 'phone',
     inputType: 'text',
   },
   {
-    ecfsLabel: '관할법원',
-    ecfsLocation: '사건 정보 > 관할법원',
-    dataPath: 'client.court',
+    ecfsLabel: '팩스번호(선택)',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 연락처 > 팩스번호',
+    dataPath: 'client.fax',
+    formatter: 'phone',
+    inputType: 'text',
+  },
+  {
+    ecfsLabel: '이메일',
+    ecfsLocation: '당사자목록 > 당사자기본정보 > 이메일',
+    dataPath: 'client.email',
+    inputType: 'text',
+  },
+];
+
+/** 관련사건목록 필드 */
+export const RELATED_CASE_FIELDS: EcfsField[] = [
+  {
+    ecfsLabel: '관계',
+    ecfsLocation: '관련사건목록 > 관계',
+    dataPath: 'relatedCase.relation',
     inputType: 'select',
-    hint: '주소지 관할 법원 선택',
+    hint: '배우자/주채무자/보증채무자/연대채무자/기타',
+  },
+  {
+    ecfsLabel: '관계인명',
+    ecfsLocation: '관련사건목록 > 관계인명',
+    dataPath: 'relatedCase.relationName',
+    inputType: 'text',
+  },
+  {
+    ecfsLabel: '제출법원',
+    ecfsLocation: '관련사건목록 > 제출법원',
+    dataPath: 'relatedCase.court',
+    inputType: 'select',
+  },
+  {
+    ecfsLabel: '사건번호',
+    ecfsLocation: '관련사건목록 > 사건번호',
+    dataPath: 'relatedCase.caseNumber',
+    inputType: 'text',
+    hint: 'YYYY-구분-번호 형식',
+  },
+];
+
+/** 신청취지·신청이유 */
+export const APPLICATION_TEXT_FIELDS: EcfsField[] = [
+  {
+    ecfsLabel: '신청취지',
+    ecfsLocation: '신청취지 > 텍스트',
+    dataPath: 'client.applicationPurpose',
+    inputType: 'textarea',
+    hint: '기본: 「신청인에 대하여 개인회생절차를 개시한다」라는 결정을 구합니다.',
+  },
+  {
+    ecfsLabel: '신청이유',
+    ecfsLocation: '신청이유 > 리치텍스트',
+    dataPath: 'client.applicationReason',
+    inputType: 'textarea',
+    hint: '2000자 이내',
   },
 ];
 

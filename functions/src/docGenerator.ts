@@ -68,10 +68,38 @@ function calcNetLiquidation(client: any): number {
 function buildApplicationData(client: any): Record<string, unknown> {
   const totalDebt = (client.debts ?? []).reduce((s: number, d: any) => s + (d.amount ?? 0), 0);
   const creditorCount = (client.debts ?? []).length;
-  const monthly = calcMonthlyPayment(client);
+  const autoMonthly = calcMonthlyPayment(client);
+  const monthly = client.monthlyPaymentOverride ?? autoMonthly;
   const repayPeriodMonths = client.repayPeriodMonths || 36;
 
+  // 전자소송 양식 신규 필드
+  const incomeTypeLabel: Record<string, string> = {
+    salary: '급여소득으로 변제',
+    business: '영업소득으로 변제',
+    mixed: '급여소득 + 영업소득으로 변제',
+  };
+
+  // 주소 3종 (주민등록지 / 실거주지 / 송달장소)
+  const residentAddr = [client.residentAddress, client.residentAddressDetail]
+    .filter(Boolean).join(' ') || client.address || '';
+  const actualAddr = client.sameAsResident
+    ? residentAddr
+    : [client.actualAddress, client.actualAddressDetail].filter(Boolean).join(' ');
+  const deliveryAddr = client.sameDeliveryAsResident
+    ? residentAddr
+    : [client.deliveryAddress, client.deliveryAddressDetail].filter(Boolean).join(' ');
+
+  // 관련사건 목록
+  const relatedCases = (client.relatedCases ?? []).map((r: any, i: number) => ({
+    no: i + 1,
+    relation: r.relation ?? '',
+    relationName: r.relationName ?? '',
+    court: r.court ?? '',
+    caseFullNumber: `${r.caseYear ?? ''}${r.caseType ?? ''}${r.caseNumber ?? ''}`,
+  }));
+
   return {
+    // 기존 필드
     court: client.court ?? "",
     clientName: client.name ?? "",
     clientSSN: maskSSN(client.ssn ?? ""),
@@ -84,6 +112,37 @@ function buildApplicationData(client: any): Record<string, unknown> {
     repayPeriodMonths,
     monthlyPayment: formatKRW(monthly),
     today: today(),
+
+    // ── 전자소송 양식 필드 ──
+    // 사건기본정보
+    incomeType: incomeTypeLabel[client.incomeType] ?? '',
+    repayStartDate: client.repayStartDate ?? '',
+    repayStartAfterAuthorization: client.repayStartAfterAuthorization ?? false,
+    repayDayOfMonth: client.repayDayOfMonth ?? '',
+    refundBank: client.refundBank ?? '',
+    refundAccount: client.refundAccount ?? '',
+    refundAccountHolder: client.refundAccountHolder ?? client.name ?? '',
+
+    // 당사자정보
+    partyType: '채무자',
+    personalityType: '자연인',
+    nationality: client.nationality ?? '한국',
+    nameForeign: client.nameForeign ?? '',
+    residentAddr,
+    actualAddr,
+    deliveryAddr,
+    clientTel: client.tel ?? '',
+    clientFax: client.fax ?? '',
+    clientEmail: client.email ?? '',
+
+    // 관련사건목록
+    relatedCases,
+    relatedCaseCount: relatedCases.length,
+
+    // 신청취지 / 신청이유
+    applicationPurpose: client.applicationPurpose
+      ?? '「신청인에 대하여 개인회생절차를 개시한다」라는 결정을 구합니다.',
+    applicationReason: client.applicationReason ?? client.debtReason ?? '',
   };
 }
 

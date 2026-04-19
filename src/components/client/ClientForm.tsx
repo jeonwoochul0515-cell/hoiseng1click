@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import { OcrScanner, type OcrDocType } from './OcrScanner';
 import type { IdCardData, BankbookData } from '@/utils/ocr';
 import { toast } from '@/utils/toast';
+import { CaseApplicationSection, type CaseApplicationState } from './CaseApplicationSection';
 
 interface ClientFormProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ const JOB_TYPES: { value: JobType; label: string }[] = [
 const DEBT_TYPES: DebtType[] = ['무담보', '담보', '사채'];
 const ASSET_TYPES: AssetType[] = ['부동산', '차량', '예금', '보험', '증권', '기타'];
 
-const TAB_NAMES = ['기본정보', '채무내역', '재산내역', '소득/생계비', '수임료'] as const;
+const TAB_NAMES = ['기본정보', '채무내역', '재산내역', '소득/생계비', '수임료', '개시신청서'] as const;
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 11);
@@ -103,6 +104,9 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
   const [feeInstallment, setFeeInstallment] = useState(false);
   const [feeInstallmentMonths, setFeeInstallmentMonths] = useState(1);
   const [feePaidAmount, setFeePaidAmount] = useState(0);
+
+  // Tab 6: 개시신청서 (전자소송 양식)
+  const [caseApp, setCaseApp] = useState<CaseApplicationState>({});
 
   // 변제기간 변경 비교
   const [periodComparison, setPeriodComparison] = useState<PeriodChangeComparison | null>(null);
@@ -188,6 +192,39 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
       setFeeInstallment(client.feeInstallment ?? false);
       setFeeInstallmentMonths(client.feeInstallmentMonths ?? 1);
       setFeePaidAmount(client.feePaidAmount ?? 0);
+      // 개시신청서 탭 로드
+      setCaseApp({
+        incomeType: client.incomeType,
+        repayPeriodMonths: client.repayPeriodMonths,
+        repayStartDate: client.repayStartDate,
+        repayStartAfterAuthorization: client.repayStartAfterAuthorization,
+        repayDayOfMonth: client.repayDayOfMonth,
+        monthlyPaymentOverride: client.monthlyPaymentOverride,
+        refundBank: client.refundBank,
+        refundAccount: client.refundAccount,
+        refundAccountHolder: client.refundAccountHolder,
+        court: client.court,
+        nationality: client.nationality ?? '한국',
+        nameForeign: client.nameForeign,
+        residentAddress: client.residentAddress ?? client.address,
+        residentAddressDetail: client.residentAddressDetail,
+        residentZonecode: client.residentZonecode ?? client.zonecode,
+        actualAddress: client.actualAddress,
+        actualAddressDetail: client.actualAddressDetail,
+        actualZonecode: client.actualZonecode,
+        sameAsResident: client.sameAsResident ?? true,
+        deliveryAddress: client.deliveryAddress,
+        deliveryAddressDetail: client.deliveryAddressDetail,
+        deliveryZonecode: client.deliveryZonecode,
+        sameDeliveryAsResident: client.sameDeliveryAsResident ?? true,
+        tel: client.tel,
+        fax: client.fax,
+        email: client.email,
+        docVisibility: client.docVisibility ?? {},
+        relatedCases: client.relatedCases ?? [],
+        applicationPurpose: client.applicationPurpose,
+        applicationReason: client.applicationReason,
+      });
     } else {
       setName(''); setPhone(''); setSsn(''); setAddress(''); setZonecode('');
       setJob(''); setJobType('employed'); setFamily(1); setCourt(''); setMemo('');
@@ -198,6 +235,7 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
       setSelfRevenue1(0); setSelfRevenue2(0); setSelfExpense1(0); setSelfExpense2(0); setSelfTaxReportIncome(0);
       setFamilyMembers([]);
       setFee(0); setFeeInstallment(false); setFeeInstallmentMonths(1); setFeePaidAmount(0);
+      setCaseApp({ nationality: '한국', sameAsResident: true, sameDeliveryAsResident: true, relatedCases: [] });
     }
     setTab(0);
   }, [client, isOpen]);
@@ -248,10 +286,13 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
 
     try {
       const payload = {
-        name, phone, ssn, address, zonecode, job, jobType, family, court, memo,
+        name, phone, ssn, address, zonecode, job, jobType, family,
+        court: caseApp.court ?? court,
+        memo,
         income, income2, rent, education, medical,
         food, transport, telecom,
-        debtReason, repayPeriodMonths,
+        debtReason,
+        repayPeriodMonths: caseApp.repayPeriodMonths ?? repayPeriodMonths,
         selfEmployedIncome: jobType === 'self' ? {
           revenue1: selfRevenue1, revenue2: selfRevenue2,
           expense1: selfExpense1, expense2: selfExpense2,
@@ -266,6 +307,35 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
           ...a,
           value: Math.max(0, (a.rawValue ?? 0) * (a.liquidationRate ?? 1) - (a.mortgage ?? 0)),
         })),
+        // ── 개시신청서 탭 (전자소송 양식) ──
+        incomeType: caseApp.incomeType,
+        repayStartDate: caseApp.repayStartDate,
+        repayStartAfterAuthorization: caseApp.repayStartAfterAuthorization,
+        repayDayOfMonth: caseApp.repayDayOfMonth,
+        monthlyPaymentOverride: caseApp.monthlyPaymentOverride,
+        refundBank: caseApp.refundBank,
+        refundAccount: caseApp.refundAccount,
+        refundAccountHolder: caseApp.refundAccountHolder,
+        nationality: caseApp.nationality,
+        nameForeign: caseApp.nameForeign,
+        residentAddress: caseApp.residentAddress,
+        residentAddressDetail: caseApp.residentAddressDetail,
+        residentZonecode: caseApp.residentZonecode,
+        actualAddress: caseApp.actualAddress,
+        actualAddressDetail: caseApp.actualAddressDetail,
+        actualZonecode: caseApp.actualZonecode,
+        sameAsResident: caseApp.sameAsResident,
+        deliveryAddress: caseApp.deliveryAddress,
+        deliveryAddressDetail: caseApp.deliveryAddressDetail,
+        deliveryZonecode: caseApp.deliveryZonecode,
+        sameDeliveryAsResident: caseApp.sameDeliveryAsResident,
+        tel: caseApp.tel,
+        fax: caseApp.fax,
+        email: caseApp.email,
+        docVisibility: caseApp.docVisibility,
+        relatedCases: caseApp.relatedCases?.filter((r) => r.relationName || r.caseNumber),
+        applicationPurpose: caseApp.applicationPurpose,
+        applicationReason: caseApp.applicationReason,
       };
 
       if (isEdit && client) {
@@ -1202,6 +1272,22 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
                 </div>
               )}
             </div>
+          )}
+
+          {/* Tab 6: 개시신청서 (전자소송 양식) */}
+          {tab === 5 && (
+            <CaseApplicationSection
+              value={caseApp}
+              onChange={setCaseApp}
+              aiContext={{
+                name,
+                totalDebt: debtTotal,
+                debtCount: debts.length,
+                job,
+                income,
+                family,
+              }}
+            />
           )}
         </div>
 

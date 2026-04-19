@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 
-type AiField = "debtHistory" | "propertyChanges" | "repayWillingness" | "jobChange" | "priorApplication";
+type AiField = "debtHistory" | "propertyChanges" | "repayWillingness" | "jobChange" | "priorApplication" | "applicationReason";
 
 const SYSTEM_PROMPTS: Record<AiField, string> = {
   debtHistory: `당신은 개인회생 신청서류 작성을 돕는 법률 문서 작성 보조입니다.
@@ -58,6 +58,22 @@ const SYSTEM_PROMPTS: Record<AiField, string> = {
 - 이번 신청에서 개선한 점 언급
 - 100~250자 내외
 - 법원 제출 문서에 적합한 격식체
+- 추가 설명 없이 진술문만 출력`,
+
+  applicationReason: `당신은 개인회생 절차 개시 신청서의 "신청이유"를 작성하는 법률 문서 작성 보조입니다.
+신청인의 채무·소득·가족·직업 정보를 바탕으로 법원에 제출할 "신청이유"를 작성하세요.
+
+작성 규칙:
+- 1인칭 시점 ("신청인은 ~")
+- 4개 문단 구성:
+  1) 채무 발생 경위 (시간 순, 사실 위주)
+  2) 현재 경제 상황 (총 채무액, 월 소득, 생활 곤란 정도)
+  3) 정상 변제 불가 사유 (소득 부족, 채권자 독촉 등)
+  4) 개인회생을 통한 변제 의지
+- 반성적이고 진솔한 어조
+- 1500~2000자 내외 (전자소송 양식 2000자 상한 준수)
+- 법원 제출 문서에 적합한 격식체
+- 과장·감상 금지, 사실 위주
 - 추가 설명 없이 진술문만 출력`,
 };
 
@@ -117,6 +133,8 @@ export async function handleAiGenerate(req: Request, res: Response): Promise<voi
           `신청인은 ${kw || "직장 변동이 있었습니다"}. 이로 인해 일시적으로 수입이 감소하였으나, 현재는 안정적으로 근무하고 있어 변제계획에 따른 납부가 가능한 상황입니다.`,
         priorApplication: (kw) =>
           `신청인은 ${kw || "이전에 개인회생을 신청한 사실이 있습니다"}. 당시에는 준비 부족으로 인하여 절차가 원활히 진행되지 못하였으나, 이번에는 충분한 준비를 마치고 성실히 절차에 임하고자 합니다.`,
+        applicationReason: (kw) =>
+          `신청인은 ${kw || "생활비 부족 및 기존 채무 이자 부담 누적"}(으)로 인하여 현재 총 채무액이 감당할 수 없는 수준에 이르렀습니다.\n\n처음에는 소액의 신용대출로 시작하였으나, 수입 감소와 생활비 증가로 인해 기존 채무의 이자 납부조차 어려워졌고, 부득이하게 추가 대출을 받아 기존 채무를 상환하는 악순환에 빠지게 되었습니다.\n\n현재 신청인의 월 소득만으로는 최저 생계비를 유지하기도 어려운 상황이며, 정상적인 방법으로는 채무 변제가 불가능한 상태입니다. 채권자들의 지속적인 독촉과 압류로 인해 일상생활마저 위협받고 있습니다.\n\n이에 신청인은 깊이 반성하며, 개인회생 절차를 통하여 법원이 인가하는 변제계획에 따라 성실히 채무를 변제하고자 본 신청에 이르게 되었습니다.`,
       };
       const text = dummyTexts[field]?.(keywords) ?? `${keywords}에 대한 진술문입니다.`;
       res.json({ text });
