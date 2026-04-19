@@ -7,6 +7,8 @@ exports.createIncomeListDoc = createIncomeListDoc;
 exports.createRepayPlanDoc = createRepayPlanDoc;
 exports.createStatementDoc = createStatementDoc;
 exports.createProhibitionOrderDoc = createProhibitionOrderDoc;
+exports.createSuspensionOrderDoc = createSuspensionOrderDoc;
+exports.createExemptionDecisionDoc = createExemptionDecisionDoc;
 exports.buildDocx = buildDocx;
 const docx_1 = require("docx");
 // ──────────────────────────────────────────────
@@ -741,6 +743,90 @@ async function createProhibitionOrderDoc(data) {
     const doc = makeDoc(children);
     return await docx_1.Packer.toBuffer(doc);
 }
+async function createSuspensionOrderDoc(data) {
+    const children = [
+        createTitle("중지명령 신청서"),
+        p("(채무자회생법 제593조 제1항 제2호)", { alignment: docx_1.AlignmentType.CENTER, before: 0, after: 300 }),
+        emptyLine(),
+        sectionHeading("1. 신청인(채무자) 인적사항"),
+        kvTable([
+            ["성명", data.clientName],
+            ["주민등록번호", data.clientSSN],
+            ["주소", data.clientAddr],
+            ["연락처", data.clientPhone],
+        ]),
+        emptyLine(),
+        sectionHeading("2. 사건번호"),
+        p(data.caseNumber || "(접수 후 기재)"),
+        emptyLine(),
+        sectionHeading("3. 신청 취지"),
+        p("채무자에 대하여 진행 중인 아래의 강제집행, 가압류, 가처분 및 경매 절차를 중지하여 주시기 바랍니다.", { bold: true }),
+        emptyLine(),
+        sectionHeading("4. 중지 대상 절차"),
+    ];
+    if (data.hasProcedures && data.procedures.length > 0) {
+        data.procedures.forEach((proc, i) => {
+            children.push(bullet(`${i + 1}. ${proc}`));
+        });
+    }
+    else {
+        children.push(p("(해당 채권자의 강제집행·압류 내역 기재)"));
+    }
+    children.push(emptyLine(), sectionHeading("5. 신청 이유"), p(data.reason || "채무자는 개인회생절차 개시 신청을 하였으나, 진행 중인 강제집행 등으로 인해 최저생계비 유지가 불가능한 상황이므로, 채무자회생법 제593조 제1항 제2호에 따라 강제집행 등의 중지를 구합니다."), emptyLine(), sectionHeading("6. 소명자료"));
+    if (data.evidenceList.length > 0) {
+        data.evidenceList.forEach((evidence, i) => {
+            children.push(bullet(`${i + 1}. ${evidence}`));
+        });
+    }
+    else {
+        children.push(bullet("개인회생절차개시 신청서 사본 1부"));
+        children.push(bullet("압류결정문 사본 1부"));
+        children.push(bullet("급여명세서 1부"));
+    }
+    children.push(...signatureBlock(data.court, data.today, data.clientName));
+    const doc = makeDoc(children);
+    return await docx_1.Packer.toBuffer(doc);
+}
+async function createExemptionDecisionDoc(data) {
+    const children = [
+        createTitle("면제재산결정 신청서"),
+        p("(채무자회생법 제580조 제3항, 민사집행법 제195조)", { alignment: docx_1.AlignmentType.CENTER, before: 0, after: 300 }),
+        emptyLine(),
+        sectionHeading("1. 신청인(채무자) 인적사항"),
+        kvTable([
+            ["성명", data.clientName],
+            ["주민등록번호", data.clientSSN],
+            ["주소", data.clientAddr],
+            ["연락처", data.clientPhone],
+            ["가구원 수", `${data.familySize}명`],
+        ]),
+        emptyLine(),
+        sectionHeading("2. 사건번호"),
+        p(data.caseNumber || "(접수 후 기재)"),
+        emptyLine(),
+        sectionHeading("3. 신청 취지"),
+        p("채무자의 재산 중 아래 기재 재산을 면제재산으로 결정하여 주시기 바랍니다.", { bold: true }),
+        emptyLine(),
+        sectionHeading("4. 면제 대상 재산"),
+    ];
+    if (data.exemptionCount > 0) {
+        data.exemptionItems.forEach((item) => {
+            children.push(p(`${item.no}. ${item.name} (${item.type}) — ${item.value}`, { bold: true }), bullet(`   사유: ${item.reason}`));
+        });
+    }
+    else {
+        children.push(p("(면제 신청할 재산 내역을 기재)"));
+    }
+    children.push(emptyLine(), sectionHeading("5. 신청 이유"), p(data.reason), emptyLine(), sectionHeading("6. 소명자료"));
+    if (data.evidenceList.length > 0) {
+        data.evidenceList.forEach((evidence, i) => {
+            children.push(bullet(`${i + 1}. ${evidence}`));
+        });
+    }
+    children.push(...signatureBlock(data.court, data.today, data.clientName));
+    const doc = makeDoc(children);
+    return await docx_1.Packer.toBuffer(doc);
+}
 // ──────────────────────────────────────────────
 // Main dispatcher
 // ──────────────────────────────────────────────
@@ -760,6 +846,10 @@ async function buildDocx(docType, data) {
             return createStatementDoc(data);
         case "prohibition_order":
             return createProhibitionOrderDoc(data);
+        case "suspension_order":
+            return createSuspensionOrderDoc(data);
+        case "exemption_decision":
+            return createExemptionDecisionDoc(data);
         default:
             throw new Error(`Unknown document type: ${docType}`);
     }

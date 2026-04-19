@@ -442,6 +442,30 @@ export const ECFS_ATTACHMENTS: EcfsAttachment[] = [
     required: true,
   },
   {
+    category: '부가신청서',
+    ecfsLabel: '금지명령 신청서',
+    docType: 'prohibition_order',
+    recommendedFileName: '금지명령신청서.pdf',
+    required: false,
+    hint: '개시결정 전 강제집행 금지 — 개시신청과 함께 제출 권장',
+  },
+  {
+    category: '부가신청서',
+    ecfsLabel: '중지명령 신청서',
+    docType: 'suspension_order',
+    recommendedFileName: '중지명령신청서.pdf',
+    required: false,
+    hint: '이미 진행 중인 강제집행·압류 중지 — 해당 시에만',
+  },
+  {
+    category: '부가신청서',
+    ecfsLabel: '면제재산결정 신청서',
+    docType: 'exemption_decision',
+    recommendedFileName: '면제재산결정신청서.pdf',
+    required: false,
+    hint: '압류금지 기본 외 추가 면제재산 신청 — 해당 시에만',
+  },
+  {
     category: '첨부서류',
     ecfsLabel: '주민등록등본',
     docType: 'resident_cert',
@@ -507,6 +531,9 @@ const DOC_TYPE_FILENAMES: Record<string, string> = {
   income_list: '수입지출목록',
   repay_plan: '변제계획안',
   statement: '진술서',
+  prohibition_order: '금지명령신청서',
+  suspension_order: '중지명령신청서',
+  exemption_decision: '면제재산결정신청서',
 };
 
 /**

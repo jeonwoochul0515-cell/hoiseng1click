@@ -744,6 +744,95 @@ function buildProhibitionOrderData(client: any): Record<string, unknown> {
   };
 }
 
+// 중지명령신청서 — 이미 진행 중인 강제집행/압류/경매를 중지 (채무자회생법 제593조)
+function buildSuspensionOrderData(client: any): Record<string, unknown> {
+  const evidenceList: string[] = [];
+  evidenceList.push("개인회생절차개시 신청서 사본 1부");
+  evidenceList.push("압류결정문 사본 1부 (또는 집행문 사본)");
+  evidenceList.push("급여명세서 1부");
+  evidenceList.push("가족관계증명서 1부");
+  evidenceList.push("주민등록등본 1부");
+
+  // 중지 대상 절차들 (진술서 데이터 활용)
+  const procedures: string[] = [];
+  if (client.statement?.garnishmentDetail) {
+    procedures.push(client.statement.garnishmentDetail);
+  }
+  // 채무에 연결된 판결채권/연체 기반 추정
+  const hasLawsuit = (client.debts ?? []).some(
+    (d: any) => d.debtCategory === "판결채권" || d.type === "담보",
+  );
+  if (hasLawsuit) {
+    procedures.push("채권자들이 제기한 강제집행 및 가압류 절차");
+  }
+
+  const reason =
+    `채무자는 개인회생절차 개시 신청을 하였으나, 현재 다음과 같은 강제집행·가압류·경매 절차가 진행 중이어서 생활에 중대한 위협을 받고 있습니다.\n\n` +
+    (procedures.length > 0
+      ? procedures.map((p, i) => `  ${i + 1}. ${p}`).join("\n")
+      : "  1. 채권자의 급여 압류 및 예금 압류") +
+    `\n\n이로 인해 채무자 및 가구원 ${client.family || 1}인의 최저생계비 유지가 불가능한 상황이므로, ` +
+    `채무자회생법 제593조 제1항 제2호에 따라 위 강제집행 등의 중지를 구합니다.`;
+
+  return {
+    court: client.court ?? "",
+    clientName: client.name ?? "",
+    clientSSN: maskSSN(client.ssn ?? ""),
+    clientAddr: client.address ?? "",
+    clientPhone: client.phone ?? "",
+    caseNumber: client.caseNumber ?? "(접수 후 기재)",
+    procedures,
+    hasProcedures: procedures.length > 0,
+    reason,
+    evidenceList,
+    today: today(),
+  };
+}
+
+// 면제재산결정신청서 — 민사집행법 압류금지재산 외 추가 면제재산 신청
+function buildExemptionDecisionData(client: any): Record<string, unknown> {
+  const evidenceList: string[] = [];
+  evidenceList.push("개인회생절차개시 신청서 사본 1부");
+  evidenceList.push("재산목록 사본 1부");
+  evidenceList.push("가족관계증명서 1부");
+  evidenceList.push("주민등록등본 1부");
+
+  // 면제재산 추정 (재산목록에서 생계 필수품 성격)
+  const exemptionItems = (client.assets ?? [])
+    .filter((a: any) => {
+      // 기본 압류금지 재산은 제외, 추가 필요한 것만
+      if (a.type === "예금" && a.rawValue <= 1_850_000) return false;
+      if (a.type === "차량" && a.rawValue <= 8_000_000) return false;
+      return a.type === "기타" || a.source === "manual";
+    })
+    .map((a: any, i: number) => ({
+      no: i + 1,
+      name: a.name,
+      type: a.type,
+      value: formatKRW(a.rawValue),
+      reason: "채무자 및 가구원의 생계 유지에 필수",
+    }));
+
+  const reason =
+    `채무자는 개인회생절차 개시 신청을 하였으며, 재산목록에 기재한 재산 중 아래 재산은 채무자와 그 피부양자의 생활에 필수불가결한 것이므로 ` +
+    `민사집행법 제195조 및 채무자회생법 제580조 제3항에 따라 면제재산으로 결정하여 주시기 바랍니다.`;
+
+  return {
+    court: client.court ?? "",
+    clientName: client.name ?? "",
+    clientSSN: maskSSN(client.ssn ?? ""),
+    clientAddr: client.address ?? "",
+    clientPhone: client.phone ?? "",
+    caseNumber: client.caseNumber ?? "(접수 후 기재)",
+    familySize: client.family || 1,
+    exemptionItems,
+    exemptionCount: exemptionItems.length,
+    reason,
+    evidenceList,
+    today: today(),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Dispatch map
 // ---------------------------------------------------------------------------
@@ -756,6 +845,8 @@ const DATA_BUILDERS: Record<string, (client: any) => Record<string, unknown>> = 
   repay_plan: buildRepayPlanData,
   statement: buildStatementData,
   prohibition_order: buildProhibitionOrderData,
+  suspension_order: buildSuspensionOrderData,
+  exemption_decision: buildExemptionDecisionData,
 };
 
 // ---------------------------------------------------------------------------
@@ -835,7 +926,7 @@ async function generateDocxWithFallback(typeName: string, data: Record<string, u
 // Doc types & handler
 // ---------------------------------------------------------------------------
 
-const DOC_TYPES = ["debt_list", "asset_list", "income_list", "application", "repay_plan", "statement", "prohibition_order"] as const;
+const DOC_TYPES = ["debt_list", "asset_list", "income_list", "application", "repay_plan", "statement", "prohibition_order", "suspension_order", "exemption_decision"] as const;
 
 export async function handleDocGenerate(req: Request, res: Response) {
   try {
