@@ -28,7 +28,8 @@ import {
   type ChecklistItem,
   type EcfsGuideStep,
 } from '@/utils/ecfsFieldMap';
-import { generateCreditorCsv, generateAssetCsv, downloadCsv } from '@/utils/ecfsCsv';
+import { generateCreditorCsv, generateAssetCsv, generateCreditorBasicInfoCsv, downloadCsv } from '@/utils/ecfsCsv';
+import { toast } from '@/utils/toast';
 
 // ─────────────────────────────────────────────────
 // 복사 버튼 컴포넌트
@@ -705,52 +706,120 @@ export default function EcfsHelperPage() {
             </div>
           </div>
 
-          {/* 전자소송용 CSV 일괄입력 */}
+          {/* 전자소송 정식 양식 CSV 일괄등록 */}
+          <div className="rounded-xl bg-white border-2 border-green-500 overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center rounded-full bg-green-600 text-white px-2 py-0.5 text-[10px] font-bold">공식 양식</span>
+                <h3 className="text-sm font-bold text-gray-900">전자소송 채권자기본정보 CSV (일괄등록)</h3>
+              </div>
+              <p className="text-xs text-gray-600">
+                대법원 전자소송 포털 <strong>공식 견본파일</strong>(13컬럼) 그대로 생성합니다.
+                개인회생 채권자기본정보 일괄등록에 바로 사용 가능합니다.
+              </p>
+            </div>
+
+            {/* 채권자기본정보 CSV (정식) */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <FileText size={20} className="text-green-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">채권자기본정보 CSV (13컬럼 정식)</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    체크 · 구분 · 채권자목록번호 · 구분번호 · 채권자명 · 인격구분 · 주소1/2 · 우편번호 · 휴대전화/전화/팩스/이메일
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    채권자 {clientData.debts.length}건 · 보증인 자동 추가 · 최대 5,000명
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (clientData.debts.length === 0) {
+                    toast.warning('채권자 정보가 없습니다');
+                    return;
+                  }
+                  const { csv, warnings } = generateCreditorBasicInfoCsv(clientData.debts);
+                  if (warnings.length > 0) {
+                    const preview = warnings.slice(0, 3).join('\n');
+                    const more = warnings.length > 3 ? `\n...외 ${warnings.length - 3}건` : '';
+                    toast.warning(`검증 경고 ${warnings.length}건\n${preview}${more}`);
+                  }
+                  downloadCsv(csv, `채권자기본정보_${clientData.name}.csv`);
+                }}
+                disabled={clientData.debts.length === 0}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-bold transition-colors ${
+                  clientData.debts.length === 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                <Download size={14} /> 공식 CSV 다운로드
+              </button>
+            </div>
+
+            {/* 업로드 안내 (공식 양식) */}
+            <div className="px-5 py-4 bg-green-50">
+              <p className="text-xs font-semibold text-green-800 mb-2">전자소송 일괄등록 방법</p>
+              <ol className="space-y-1.5 text-xs text-green-700">
+                <li className="flex items-start gap-2">
+                  <span className="shrink-0 font-bold">1.</span>
+                  <span>전자소송 포털 → 개인회생 신청 → <strong>채권자기본정보 일괄등록</strong> 메뉴 이동</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="shrink-0 font-bold">2.</span>
+                  <span>위에서 받은 공식 CSV 파일 업로드</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="shrink-0 font-bold">3.</span>
+                  <span>자동 입력된 내용 확인 후 저장 — 체크 항목 기본값 "F" 유지</span>
+                </li>
+              </ol>
+              <div className="mt-3 pt-3 border-t border-green-200 text-[11px] text-green-600 leading-relaxed">
+                💡 <strong>인격구분 자동 추정</strong>: 채권자명에서 "은행/카드/보험/주식회사/(주)" 등 키워드를 감지해 법인/자연인/비법인을 자동 판별합니다. 필요 시 전자소송에서 수정 가능.
+              </div>
+            </div>
+          </div>
+
+          {/* 기존 내부용 CSV (회계 상세) */}
           <div className="rounded-xl bg-white border border-gray-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h3 className="text-sm font-bold text-gray-900">전자소송 CSV 일괄입력</h3>
-              <p className="text-xs text-gray-500 mt-1">
-                전자소송 채권자목록/재산목록 입력 화면에서 "CSV 일괄입력" 버튼을 누르고 아래 파일을 업로드하면 자동 입력됩니다.
+            <div className="px-5 py-3 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-gray-700">내부 검토용 CSV (참고)</h3>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                회계 상세(원금/이자/지연손해금/별제권/부족액 등) 포함 — 사무소 내부 검토·백업용
               </p>
             </div>
             <div className="divide-y divide-gray-100">
-              {/* 채권자목록 CSV */}
-              <div className="flex items-center justify-between px-5 py-3.5">
+              <div className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-3">
-                  <FileText size={18} className="text-green-600" />
+                  <FileText size={16} className="text-gray-500" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">채권자목록 CSV</p>
-                    <p className="text-[10px] text-gray-400">
-                      채권자 {clientData.debts.length}건 | 전자소송 일괄입력용
-                    </p>
+                    <p className="text-xs font-medium text-gray-700">채권자 상세 CSV (회계)</p>
+                    <p className="text-[10px] text-gray-400">채권자 {clientData.debts.length}건</p>
                   </div>
                 </div>
                 <button
                   onClick={() => {
                     if (clientData.debts.length === 0) return;
                     const csv = generateCreditorCsv(clientData.debts);
-                    downloadCsv(csv, `채권자목록_${clientData.name}.csv`);
+                    downloadCsv(csv, `채권자상세_${clientData.name}.csv`);
                   }}
                   disabled={clientData.debts.length === 0}
-                  className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  className={`inline-flex items-center gap-1 rounded px-2.5 py-1.5 text-[11px] font-medium ${
                     clientData.debts.length === 0
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-700 text-white hover:bg-gray-800'
                   }`}
                 >
-                  <Download size={12} /> CSV 다운로드
+                  <Download size={11} /> 다운로드
                 </button>
               </div>
-
-              {/* 재산목록 CSV */}
-              <div className="flex items-center justify-between px-5 py-3.5">
+              <div className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-3">
-                  <FileText size={18} className="text-green-600" />
+                  <FileText size={16} className="text-gray-500" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">재산목록 CSV</p>
-                    <p className="text-[10px] text-gray-400">
-                      재산 {clientData.assets.length}건 | 전자소송 일괄입력용
-                    </p>
+                    <p className="text-xs font-medium text-gray-700">재산목록 CSV</p>
+                    <p className="text-[10px] text-gray-400">재산 {clientData.assets.length}건</p>
                   </div>
                 </div>
                 <button
@@ -760,38 +829,15 @@ export default function EcfsHelperPage() {
                     downloadCsv(csv, `재산목록_${clientData.name}.csv`);
                   }}
                   disabled={clientData.assets.length === 0}
-                  className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  className={`inline-flex items-center gap-1 rounded px-2.5 py-1.5 text-[11px] font-medium ${
                     clientData.assets.length === 0
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-700 text-white hover:bg-gray-800'
                   }`}
                 >
-                  <Download size={12} /> CSV 다운로드
+                  <Download size={11} /> 다운로드
                 </button>
               </div>
-            </div>
-
-            {/* CSV 업로드 안내 */}
-            <div className="px-5 py-4 bg-green-50 border-t border-green-100">
-              <p className="text-xs font-semibold text-green-800 mb-2">전자소송에서 CSV 업로드하는 방법</p>
-              <ol className="space-y-1.5 text-xs text-green-700">
-                <li className="flex items-start gap-2">
-                  <span className="shrink-0 font-bold">1.</span>
-                  <span>전자소송 로그인 후 개인회생 신청서 작성 화면으로 이동</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="shrink-0 font-bold">2.</span>
-                  <span>채권자목록(또는 재산목록) 입력 화면에서 <strong>"CSV 일괄입력"</strong> 버튼 클릭</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="shrink-0 font-bold">3.</span>
-                  <span>위에서 다운받은 CSV 파일을 선택하여 업로드</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="shrink-0 font-bold">4.</span>
-                  <span>자동 입력된 데이터를 확인 후 저장</span>
-                </li>
-              </ol>
             </div>
           </div>
 
