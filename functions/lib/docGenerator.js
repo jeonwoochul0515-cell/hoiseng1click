@@ -680,6 +680,35 @@ function buildStatementData(client) {
         repayWillingness: stmt.repayWillingness ?? stmt.futureIncomePlan ?? "",
     };
 }
+// 법원 이관 매핑 (전자소송 안내 반영)
+//   서울중앙 2017.3.1~ → 서울회생법원
+//   수원·부산 2023.3.1~ → 수원·부산회생법원
+//   광주·대전·대구 2026.3.1~ → 각 회생법원
+function getRehabilitationCourt(originalCourt, filingDate) {
+    if (!originalCourt)
+        return "";
+    const rules = [
+        { from: "서울중앙지방법원", to: "서울회생법원", transitionDate: "2017-03-01" },
+        { from: "수원지방법원", to: "수원회생법원", transitionDate: "2023-03-01" },
+        { from: "부산지방법원", to: "부산회생법원", transitionDate: "2023-03-01" },
+        { from: "광주지방법원", to: "광주회생법원", transitionDate: "2026-03-01" },
+        { from: "대전지방법원", to: "대전회생법원", transitionDate: "2026-03-01" },
+        { from: "대구지방법원", to: "대구회생법원", transitionDate: "2026-03-01" },
+    ];
+    const date = filingDate ? new Date(filingDate) : new Date();
+    const rule = rules.find((r) => r.from === originalCourt);
+    if (!rule)
+        return originalCourt;
+    return date >= new Date(rule.transitionDate) ? rule.to : originalCourt;
+}
+// 부가신청서 사건번호 검증 (금지/중지/면제재산에서 사용)
+function requireCaseNumber(client, docType) {
+    const caseNumber = client.caseNumber?.trim();
+    if (!caseNumber) {
+        throw new Error(`${docType}은(는) 개시신청서가 접수되어 사건번호가 부여된 뒤에만 제출할 수 있습니다. client.caseNumber를 입력해주세요.`);
+    }
+    return caseNumber;
+}
 function buildProhibitionOrderData(client) {
     const evidenceList = [];
     evidenceList.push("개인회생절차개시 신청서 사본 1부");
@@ -698,7 +727,9 @@ function buildProhibitionOrderData(client) {
     }
     reason += `채무자는 가구원 ${client.family || 1}인 가구로서, 개인회생절차개시 신청을 하였으므로, 채무자회생법 제593조에 따라 개인회생채권에 기한 강제집행, 가압류, 가처분의 금지를 구합니다.`;
     return {
-        court: client.court ?? "",
+        // 부가신청서는 회생법원으로 이관된 경우 자동 변환
+        court: getRehabilitationCourt(client.court, client.filingDate),
+        originalCourt: client.court ?? "",
         clientName: client.name ?? "",
         clientSSN: maskSSN(client.ssn ?? ""),
         clientAddr: client.address ?? "",
@@ -711,6 +742,7 @@ function buildProhibitionOrderData(client) {
 }
 // 중지명령신청서 — 이미 진행 중인 강제집행/압류/경매를 중지 (채무자회생법 제593조)
 function buildSuspensionOrderData(client) {
+    requireCaseNumber(client, "중지명령신청서");
     const evidenceList = [];
     evidenceList.push("개인회생절차개시 신청서 사본 1부");
     evidenceList.push("압류결정문 사본 1부 (또는 집행문 사본)");
@@ -734,12 +766,13 @@ function buildSuspensionOrderData(client) {
         `\n\n이로 인해 채무자 및 가구원 ${client.family || 1}인의 최저생계비 유지가 불가능한 상황이므로, ` +
         `채무자회생법 제593조 제1항 제2호에 따라 위 강제집행 등의 중지를 구합니다.`;
     return {
-        court: client.court ?? "",
+        court: getRehabilitationCourt(client.court, client.filingDate),
+        originalCourt: client.court ?? "",
         clientName: client.name ?? "",
         clientSSN: maskSSN(client.ssn ?? ""),
         clientAddr: client.address ?? "",
         clientPhone: client.phone ?? "",
-        caseNumber: client.caseNumber ?? "(접수 후 기재)",
+        caseNumber: client.caseNumber,
         procedures,
         hasProcedures: procedures.length > 0,
         reason,
@@ -749,6 +782,7 @@ function buildSuspensionOrderData(client) {
 }
 // 면제재산결정신청서 — 민사집행법 압류금지재산 외 추가 면제재산 신청
 function buildExemptionDecisionData(client) {
+    requireCaseNumber(client, "면제재산결정신청서");
     const evidenceList = [];
     evidenceList.push("개인회생절차개시 신청서 사본 1부");
     evidenceList.push("재산목록 사본 1부");
@@ -774,12 +808,13 @@ function buildExemptionDecisionData(client) {
     const reason = `채무자는 개인회생절차 개시 신청을 하였으며, 재산목록에 기재한 재산 중 아래 재산은 채무자와 그 피부양자의 생활에 필수불가결한 것이므로 ` +
         `민사집행법 제195조 및 채무자회생법 제580조 제3항에 따라 면제재산으로 결정하여 주시기 바랍니다.`;
     return {
-        court: client.court ?? "",
+        court: getRehabilitationCourt(client.court, client.filingDate),
+        originalCourt: client.court ?? "",
         clientName: client.name ?? "",
         clientSSN: maskSSN(client.ssn ?? ""),
         clientAddr: client.address ?? "",
         clientPhone: client.phone ?? "",
-        caseNumber: client.caseNumber ?? "(접수 후 기재)",
+        caseNumber: client.caseNumber,
         familySize: client.family || 1,
         exemptionItems,
         exemptionCount: exemptionItems.length,

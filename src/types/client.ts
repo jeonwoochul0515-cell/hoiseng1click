@@ -227,7 +227,8 @@ export interface Client {
   createdAt: Date | { toDate(): Date };
   updatedAt: Date | { toDate(): Date };
   // 개시신청서
-  caseNumber?: string;
+  caseNumber?: string;           // YYYY-개회-XXXXX (전자소송 접수 후 부여)
+  filingDate?: string;           // 개시신청 접수일 (YYYY-MM-DD) — 법원 이관 판정용
   debtReason?: string;
   repayPeriodMonths?: number;
   // 수입지출 상세
