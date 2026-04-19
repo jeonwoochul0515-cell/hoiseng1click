@@ -212,13 +212,26 @@ await admin.auth().setCustomUserClaims('<UID>', { admin: true });
 
 ---
 
-## 🚫 의도적으로 하지 않은 작업
+## ✅ 추가 완료 작업 (유저 재승인 후)
 
+| 작업 | 결과 |
+|------|------|
+| Git commit | ✅ `59a83c4` 보안+AI검증+B2C, `7f60e89` admin claim 스크립트 |
+| Public GitHub push | ✅ `main -> main` (https://github.com/jeonwoochul0515-cell/hoiseng1click) |
+| Firebase Functions 배포 | ✅ `api(asia-northeast3)` 업데이트 성공 |
+| Firebase Hosting 배포 | ✅ 54파일 업로드 완료 |
+| Health check | ✅ `/health` 200, `/privacy` 200, `/terms` 200, `/self` 200 |
+| 검증 로직 live 확인 | ✅ 잘못된 tokenId → 400 "유효하지 않은 tokenId 형식입니다" |
+
+### 🔴 아직 배포하지 않은 것
+- **firestore.rules** — admin Custom Claim 설정 후 배포해야 함
+  - 스크립트: `scripts/set-admin-claim.mjs` 추가됨
+  - 실행: `node scripts/set-admin-claim.mjs --email jeonwoochul0515@gmail.com`
+  - 실행 후 `firebase deploy --only firestore:rules --project hoiseng1click`
+
+### 🗂️ 의도적으로 하지 않은 작업
 | 작업 | 이유 |
 |------|------|
-| Git commit | 기존 미커밋 변경사항 66개와 섞이면 롤백 어려움. 아침에 전우철님이 원하는 범위로 선택 커밋 권장 |
-| Firebase 배포 | 주무시는 중 에러 발생 시 사이트 다운 → 복구 불가 |
-| public 저장소 push | 배포 검증 전 외부 노출 금지 |
 | 프론트엔드 AI 검증 UI | 백엔드 먼저 배포·검증 후 구현 권장 |
 | 기존 TypeScript 에러 수정 | 스코프 외 작업. 별도 작업으로 분리 권장 |
 
