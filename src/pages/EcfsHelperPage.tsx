@@ -645,17 +645,76 @@ export default function EcfsHelperPage() {
       {/* ─── 탭 3: 파일 준비 ─── */}
       {activeTab === 'files' && (
         <div className="space-y-6">
+          {/* 전자소송 2단계 제출 흐름 안내 */}
+          <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200 p-5">
+            <div className="flex items-start gap-3 mb-4">
+              <Info size={20} className="text-indigo-600 mt-0.5 shrink-0" />
+              <div>
+                <h2 className="text-sm font-bold text-indigo-900 mb-1">
+                  📋 전자소송 제출 2단계 흐름
+                </h2>
+                <p className="text-xs text-indigo-700 leading-relaxed">
+                  대법원 전자소송 포털은 <strong>"파일첨부 방식"</strong>으로 제출합니다.
+                  <strong> 사건정보 + 채권자기본정보</strong>만 e-Form으로 직접 입력하고,
+                  나머지 모든 서류는 <strong>첨부파일</strong>로 업로드합니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              {/* 1단계 — e-Form */}
+              <div className="rounded-lg bg-white border border-indigo-300 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white text-[11px] font-bold">1</span>
+                  <h3 className="text-sm font-bold text-indigo-900">e-Form 직접 입력 (2개)</h3>
+                </div>
+                <ul className="text-xs text-indigo-700 space-y-1.5 pl-8">
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-indigo-500 mt-0.5">•</span>
+                    <span><strong>사건정보</strong> — 소득구분·변제기간·환급계좌·당사자·관련사건·신청취지</span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-indigo-500 mt-0.5">•</span>
+                    <span><strong>채권자기본정보</strong> — 공식 13컬럼 CSV 일괄등록</span>
+                  </li>
+                </ul>
+                <p className="text-[10px] text-indigo-500 mt-2 pl-8 italic">
+                  회생1click → "개시신청서" 탭 + 아래 CSV 다운로드
+                </p>
+              </div>
+
+              {/* 2단계 — 첨부파일 */}
+              <div className="rounded-lg bg-white border border-indigo-300 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white text-[11px] font-bold">2</span>
+                  <h3 className="text-sm font-bold text-indigo-900">첨부파일 제출 (6종)</h3>
+                </div>
+                <ul className="text-xs text-indigo-700 space-y-1 pl-8">
+                  <li>• <strong>채권자목록</strong> (상세 원금·이자·담보)</li>
+                  <li>• <strong>재산목록</strong></li>
+                  <li>• <strong>수입지출목록</strong></li>
+                  <li>• <strong>변제계획안</strong></li>
+                  <li>• <strong>개인회생 신청서</strong> (본문)</li>
+                  <li>• <strong>진술서</strong></li>
+                </ul>
+                <p className="text-[10px] text-indigo-500 mt-2 pl-8 italic">
+                  회생1click → PDF/HWPX 자동 생성
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 첨부파일 안내 */}
           <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
             <div className="flex gap-2">
               <Info size={16} className="text-blue-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-blue-800">
-                  전자소송에는 PDF 형식이 권장됩니다
+                  첨부파일 권장 형식
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
-                  DOCX/HWPX 파일은 자동으로 PDF로 변환됩니다.
-                  파일명은 법원 권장 형식으로 자동 설정됩니다.
-                  파일당 최대 크기: 50MB
+                  PDF 우선, HWPX/DOCX도 가능. 파일명은 법원 권장 형식(서류명_신청인성명.pdf)으로 자동 설정.
+                  파일당 최대 50MB.
                 </p>
               </div>
             </div>
@@ -664,9 +723,12 @@ export default function EcfsHelperPage() {
           {/* 자동 생성 서류 5종 + 진술서 */}
           <div className="rounded-xl bg-white border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
-              <h3 className="text-sm font-bold text-gray-900">자동 생성 서류 (6종)</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center rounded-full bg-indigo-600 text-white px-2 py-0.5 text-[10px] font-bold">2단계 · 첨부파일</span>
+                <h3 className="text-sm font-bold text-gray-900">자동 생성 서류 (6종)</h3>
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                회생클릭에서 자동 생성된 서류입니다. PDF로 다운로드하여 전자소송에 첨부하세요.
+                회생1click이 자동 생성한 서류입니다. PDF로 다운로드하여 전자소송에 <strong>첨부파일로</strong> 업로드하세요.
               </p>
             </div>
             <div className="divide-y divide-gray-100">
@@ -706,16 +768,17 @@ export default function EcfsHelperPage() {
             </div>
           </div>
 
-          {/* 전자소송 정식 양식 CSV 일괄등록 */}
+          {/* 전자소송 정식 양식 CSV 일괄등록 — 1단계 e-Form */}
           <div className="rounded-xl bg-white border-2 border-green-500 overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="inline-flex items-center rounded-full bg-indigo-600 text-white px-2 py-0.5 text-[10px] font-bold">1단계 · e-Form</span>
                 <span className="inline-flex items-center rounded-full bg-green-600 text-white px-2 py-0.5 text-[10px] font-bold">공식 양식</span>
                 <h3 className="text-sm font-bold text-gray-900">전자소송 채권자기본정보 CSV (일괄등록)</h3>
               </div>
               <p className="text-xs text-gray-600">
-                대법원 전자소송 포털 <strong>공식 견본파일</strong>(13컬럼) 그대로 생성합니다.
-                개인회생 채권자기본정보 일괄등록에 바로 사용 가능합니다.
+                전자소송 e-Form 입력 시 <strong>채권자기본정보 일괄등록</strong>에 사용합니다.
+                대법원 공식 견본파일(13컬럼) 그대로 생성되어 바로 업로드 가능.
               </p>
             </div>
 
