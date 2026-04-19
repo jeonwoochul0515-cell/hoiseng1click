@@ -13,6 +13,8 @@ import { OcrScanner, type OcrDocType } from './OcrScanner';
 import type { IdCardData, BankbookData } from '@/utils/ocr';
 import { toast } from '@/utils/toast';
 import { CaseApplicationSection, type CaseApplicationState } from './CaseApplicationSection';
+import { listMyCreditors, addOrBumpMyCreditor, type MyCreditor } from '@/api/myCreditors';
+import { inferPersonalityType } from '@/utils/ecfsCsv';
 
 interface ClientFormProps {
   isOpen: boolean;
@@ -107,6 +109,66 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
 
   // Tab 6: 개시신청서 (전자소송 양식)
   const [caseApp, setCaseApp] = useState<CaseApplicationState>({});
+
+  // "내 채권자" 템플릿
+  const [myCreditors, setMyCreditors] = useState<MyCreditor[]>([]);
+  const [showMyCreditorPicker, setShowMyCreditorPicker] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !office?.id) return;
+    listMyCreditors(office.id)
+      .then(setMyCreditors)
+      .catch(() => setMyCreditors([]));
+  }, [isOpen, office?.id]);
+
+  const applyMyCreditor = (index: number, mc: MyCreditor) => {
+    setDebts((prev) =>
+      prev.map((d, i) =>
+        i !== index
+          ? d
+          : {
+              ...d,
+              creditor: mc.name,
+              creditorZipCode: mc.zipCode ?? d.creditorZipCode,
+              creditorAddress: mc.address ?? d.creditorAddress,
+              creditorAddressDetail: mc.addressDetail ?? d.creditorAddressDetail,
+              creditorPhone: mc.phone ?? d.creditorPhone,
+              creditorMobile: mc.mobile ?? d.creditorMobile,
+              creditorFax: mc.fax ?? d.creditorFax,
+              creditorEmail: mc.email ?? d.creditorEmail,
+            },
+      ),
+    );
+    setShowMyCreditorPicker(null);
+  };
+
+  const saveAsMyCreditor = async (index: number) => {
+    if (!office?.id) return;
+    const d = debts[index];
+    if (!d.creditor?.trim()) {
+      toast.warning('채권자명을 먼저 입력해주세요');
+      return;
+    }
+    try {
+      await addOrBumpMyCreditor(office.id, {
+        name: d.creditor,
+        personalityType: inferPersonalityType(d.creditor),
+        zipCode: d.creditorZipCode,
+        address: d.creditorAddress,
+        addressDetail: d.creditorAddressDetail,
+        phone: d.creditorPhone,
+        mobile: d.creditorMobile,
+        fax: d.creditorFax,
+        email: d.creditorEmail,
+      });
+      // 목록 갱신
+      const updated = await listMyCreditors(office.id);
+      setMyCreditors(updated);
+      toast.success(`"${d.creditor}" 내 채권자에 저장됨`);
+    } catch (err: any) {
+      toast.error(err?.message ?? '저장 실패');
+    }
+  };
 
   // 변제기간 변경 비교
   const [periodComparison, setPeriodComparison] = useState<PeriodChangeComparison | null>(null);
@@ -266,8 +328,11 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
       return {
         ...d,
         creditorAddress: d.creditorAddress || ci.address,
+        creditorAddressDetail: d.creditorAddressDetail || ci.addressDetail || '',
+        creditorZipCode: d.creditorZipCode || ci.zipCode || '',
         creditorPhone: d.creditorPhone || ci.phone,
         creditorFax: d.creditorFax || ci.fax || '',
+        creditorEmail: d.creditorEmail || ci.email || '',
       };
     }));
   };
@@ -834,22 +899,67 @@ export function ClientForm({ isOpen, onClose, client, onSave }: ClientFormProps)
                   </div>
                   {/* 채권자 연락처 — 전자소송 채권자기본정보 필수 */}
                   <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-                    <div className="mb-2 flex items-center justify-between">
+                    <div className="mb-2 flex items-center justify-between flex-wrap gap-2">
                       <p className="text-xs font-semibold text-blue-900">📮 전자소송 채권자기본정보용 (우편번호 필수)</p>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const res = await openAddressSearch();
-                          if (res) {
-                            updateDebt(i, 'creditorZipCode', res.zonecode);
-                            updateDebt(i, 'creditorAddress', res.address);
-                          }
-                        }}
-                        className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-700"
-                      >
-                        <Search size={10} /> 주소 검색
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowMyCreditorPicker(showMyCreditorPicker === i ? null : i)}
+                          className="flex items-center gap-1 rounded bg-purple-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-purple-700"
+                        >
+                          ⭐ 내 채권자 ({myCreditors.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => saveAsMyCreditor(i)}
+                          className="flex items-center gap-1 rounded bg-amber-500 px-2 py-1 text-[10px] font-medium text-white hover:bg-amber-600"
+                          title="이 채권자를 내 채권자에 저장"
+                        >
+                          💾 저장
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const res = await openAddressSearch();
+                            if (res) {
+                              updateDebt(i, 'creditorZipCode', res.zonecode);
+                              updateDebt(i, 'creditorAddress', res.address);
+                            }
+                          }}
+                          className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-700"
+                        >
+                          <Search size={10} /> 주소 검색
+                        </button>
+                      </div>
                     </div>
+
+                    {/* 내 채권자 드롭다운 */}
+                    {showMyCreditorPicker === i && (
+                      <div className="mb-2 rounded border border-purple-300 bg-white p-2 max-h-48 overflow-y-auto">
+                        {myCreditors.length === 0 ? (
+                          <p className="text-[11px] text-gray-500 p-2 text-center">
+                            저장된 채권자가 없습니다. "💾 저장" 버튼으로 추가하세요.
+                          </p>
+                        ) : (
+                          <div className="space-y-1">
+                            {myCreditors.map((mc) => (
+                              <button
+                                key={mc.id}
+                                type="button"
+                                onClick={() => applyMyCreditor(i, mc)}
+                                className="w-full text-left px-2 py-1.5 rounded hover:bg-purple-50 text-[11px]"
+                              >
+                                <span className="font-medium text-gray-900">{mc.name}</span>
+                                {mc.address && <span className="text-gray-500 ml-2">{mc.address}</span>}
+                                {(mc.useCount ?? 0) > 1 && (
+                                  <span className="ml-2 text-[10px] text-purple-600">×{mc.useCount}회</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="grid grid-cols-6 gap-2">
                       <Field label="우편번호" compact>
                         <input

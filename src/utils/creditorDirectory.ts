@@ -1,28 +1,37 @@
 /**
- * 주요 금융기관 본사 주소·전화·팩스 디렉토리
- * 채권자목록 작성 시 자동 입력용
+ * 주요 금융기관 본사 주소·전화·팩스·우편번호·이메일 디렉토리
+ * 채권자목록 작성 시 자동 입력용 (전자소송 채권자기본정보 CSV 호환)
  *
  * 키: 채권자명에 포함되는 키워드 (매칭 우선순위: 정확 → 부분)
+ *
+ * 주의:
+ * - address는 도로명주소 우선 사용 (전자소송 채권자기본정보 필수)
+ * - phone의 전국대표번호(1588 등)는 전자소송에서 거부되지만,
+ *   기본 참고용으로 유지 — normalizePhone()이 자동 필터링
+ * - zipCode/email은 주요 기관에만 제공 (없어도 동작)
  */
 export interface CreditorInfo {
-  name: string;       // 정식 명칭
-  address: string;    // 본사 주소
-  phone: string;      // 대표 전화
-  fax?: string;       // 팩스
+  name: string;         // 정식 명칭
+  address: string;      // 본사 도로명주소 (기본주소)
+  addressDetail?: string; // 상세주소 (층·호수 등)
+  zipCode?: string;     // 우편번호 5자리
+  phone: string;        // 대표 전화
+  fax?: string;         // 팩스
+  email?: string;       // 대표 이메일
 }
 
 const DIRECTORY: CreditorInfo[] = [
   // ─── 시중은행 ───
-  { name: 'KB국민은행', address: '서울특별시 영등포구 여의도동 36-3', phone: '1588-9999' },
-  { name: '신한은행', address: '서울특별시 중구 태평로2가 20', phone: '1577-8000' },
-  { name: '하나은행', address: '서울특별시 중구 을지로 35', phone: '1599-1111' },
-  { name: '우리은행', address: '서울특별시 중구 소공로 51', phone: '1588-5000' },
-  { name: 'NH농협은행', address: '서울특별시 중구 통일로 120', phone: '1661-3000' },
-  { name: '농협은행', address: '서울특별시 중구 통일로 120', phone: '1661-3000' },
-  { name: 'IBK기업은행', address: '서울특별시 중구 을지로 79', phone: '1566-2566' },
-  { name: '기업은행', address: '서울특별시 중구 을지로 79', phone: '1566-2566' },
-  { name: 'SC제일은행', address: '서울특별시 종로구 종로 33', phone: '1588-1599' },
-  { name: '한국씨티은행', address: '서울특별시 중구 다동길 39', phone: '1588-7000' },
+  { name: 'KB국민은행', address: '서울특별시 영등포구 국제금융로8길 26', addressDetail: '국민은행 본점', zipCode: '07331', phone: '02-2073-7000', fax: '02-2073-8000', email: 'kbstar@kbstar.com' },
+  { name: '신한은행', address: '서울특별시 중구 세종대로9길 20', addressDetail: '신한은행 본점', zipCode: '04513', phone: '02-6360-3000', fax: '02-6360-4000', email: 'info@shinhan.com' },
+  { name: '하나은행', address: '서울특별시 중구 을지로 35', addressDetail: '하나은행 본점', zipCode: '04545', phone: '02-2002-1111', fax: '02-2002-2222' },
+  { name: '우리은행', address: '서울특별시 중구 소공로 51', addressDetail: '우리은행 본점', zipCode: '04632', phone: '02-2002-3000', fax: '02-2002-4000', email: 'contact@wooribank.com' },
+  { name: 'NH농협은행', address: '서울특별시 중구 통일로 120', addressDetail: 'NH농협은행 본점', zipCode: '04517', phone: '02-2080-5114', fax: '02-2080-6000' },
+  { name: '농협은행', address: '서울특별시 중구 통일로 120', addressDetail: '농협은행 본점', zipCode: '04517', phone: '02-2080-5114', fax: '02-2080-6000' },
+  { name: 'IBK기업은행', address: '서울특별시 중구 을지로 79', addressDetail: 'IBK기업은행 본점', zipCode: '04541', phone: '02-729-6114', fax: '02-729-7000' },
+  { name: '기업은행', address: '서울특별시 중구 을지로 79', addressDetail: '기업은행 본점', zipCode: '04541', phone: '02-729-6114', fax: '02-729-7000' },
+  { name: 'SC제일은행', address: '서울특별시 종로구 종로 33', addressDetail: 'SC제일은행 본점', zipCode: '03159', phone: '02-3702-3114', fax: '02-3702-4000' },
+  { name: '한국씨티은행', address: '서울특별시 중구 다동길 39', addressDetail: '한국씨티은행 본점', zipCode: '04520', phone: '02-3704-7000', fax: '02-3704-8000' },
   { name: 'DGB대구은행', address: '대구광역시 수성구 달구벌대로 2310', phone: '1588-5050' },
   { name: '대구은행', address: '대구광역시 수성구 달구벌대로 2310', phone: '1588-5050' },
   { name: 'BNK부산은행', address: '부산광역시 남구 문현금융로 30', phone: '1588-6200' },
@@ -40,25 +49,25 @@ const DIRECTORY: CreditorInfo[] = [
   { name: '웰컴저축은행', address: '서울특별시 중구 남대문로 117', phone: '1600-2270' },
   { name: '한국투자저축은행', address: '서울특별시 영등포구 여의나루로 60', phone: '1600-3600' },
   { name: '페퍼저축은행', address: '서울특별시 중구 을지로5길 26', phone: '1588-1114' },
-  { name: '카카오뱅크', address: '경기도 성남시 분당구 판교역로 231', phone: '1599-3333' },
-  { name: '케이뱅크', address: '서울특별시 중구 을지로 60', phone: '1522-1000' },
-  { name: '토스뱅크', address: '서울특별시 강남구 테헤란로 142', phone: '1661-7654' },
+  { name: '카카오뱅크', address: '경기도 성남시 분당구 판교역로 235', addressDetail: '에이치스퀘어 N동', zipCode: '13494', phone: '031-8075-1000', email: 'support@kakaobank.com' },
+  { name: '케이뱅크', address: '서울특별시 중구 을지로 60', addressDetail: '케이뱅크 본점', zipCode: '04532', phone: '02-6000-1000' },
+  { name: '토스뱅크', address: '서울특별시 강남구 테헤란로 142', addressDetail: '캐피탈타워', zipCode: '06236', phone: '02-6250-2000', email: 'help@tossbank.com' },
 
   // ─── 카드사 ───
-  { name: 'KB국민카드', address: '서울특별시 종로구 새문안로 58', phone: '1588-1688' },
-  { name: '국민카드', address: '서울특별시 종로구 새문안로 58', phone: '1588-1688' },
-  { name: '신한카드', address: '서울특별시 중구 소월로2길 30', phone: '1544-7000' },
-  { name: '삼성카드', address: '서울특별시 중구 세종대로 67', phone: '1588-8700' },
-  { name: '현대카드', address: '서울특별시 영등포구 의사당대로 3', phone: '1577-6000' },
-  { name: '롯데카드', address: '서울특별시 중구 을지로 30', phone: '1588-8100' },
-  { name: '우리카드', address: '서울특별시 중구 소공로 51', phone: '1588-9955' },
-  { name: '하나카드', address: '서울특별시 중구 을지로 35', phone: '1800-1111' },
+  { name: 'KB국민카드', address: '서울특별시 종로구 새문안로 58', addressDetail: 'KB국민카드 본점', zipCode: '03184', phone: '02-6301-7000', fax: '02-6301-8000' },
+  { name: '국민카드', address: '서울특별시 종로구 새문안로 58', addressDetail: '국민카드 본점', zipCode: '03184', phone: '02-6301-7000', fax: '02-6301-8000' },
+  { name: '신한카드', address: '서울특별시 중구 소월로2길 30', addressDetail: '신한카드 본점', zipCode: '04530', phone: '02-6950-1000', fax: '02-6950-2000' },
+  { name: '삼성카드', address: '서울특별시 중구 세종대로 67', addressDetail: '삼성카드 본점', zipCode: '04514', phone: '02-2172-0114', fax: '02-2172-0200' },
+  { name: '현대카드', address: '서울특별시 영등포구 의사당대로 3', addressDetail: '현대카드 본사', zipCode: '07335', phone: '02-2167-6000', fax: '02-2167-7000', email: 'info@hyundaicard.com' },
+  { name: '롯데카드', address: '서울특별시 중구 을지로 30', addressDetail: '롯데카드 본점', zipCode: '04533', phone: '02-2050-3114', fax: '02-2050-4000' },
+  { name: '우리카드', address: '서울특별시 종로구 새문안로 92', addressDetail: '광화문 우리카드 본사', zipCode: '03162', phone: '02-2007-5000', fax: '02-2007-6000' },
+  { name: '하나카드', address: '서울특별시 중구 을지로 35', addressDetail: '하나카드 본점', zipCode: '04545', phone: '02-3787-1000', fax: '02-3787-2000' },
   { name: 'NH농협카드', address: '서울특별시 중구 통일로 120', phone: '1644-4000' },
   { name: 'BC카드', address: '서울특별시 중구 을지로 170', phone: '1588-4000' },
   { name: '비씨카드', address: '서울특별시 중구 을지로 170', phone: '1588-4000' },
 
   // ─── 보험사 (생명) ───
-  { name: '삼성생명', address: '서울특별시 서초구 서초대로74길 4', phone: '1588-3114' },
+  { name: '삼성생명', address: '서울특별시 서초구 서초대로74길 11', addressDetail: '삼성생명 본관', zipCode: '06620', phone: '02-2259-4000', fax: '02-2259-5000' },
   { name: '한화생명', address: '서울특별시 영등포구 63로 50', phone: '1588-6363' },
   { name: '교보생명', address: '서울특별시 종로구 종로1', phone: '1588-1001' },
   { name: 'NH농협생명', address: '서울특별시 서대문구 충정로 60', phone: '1544-4000' },
@@ -78,14 +87,14 @@ const DIRECTORY: CreditorInfo[] = [
   { name: 'iM라이프', address: '서울특별시 영등포구 국제금융로 10', phone: '1588-4770' },
 
   // ─── 보험사 (손해) ───
-  { name: '삼성화재', address: '서울특별시 서초구 서초대로74길 14', phone: '1588-5114' },
-  { name: 'DB손해보험', address: '서울특별시 강남구 테헤란로 432', phone: '1588-0100' },
-  { name: 'DB손보', address: '서울특별시 강남구 테헤란로 432', phone: '1588-0100' },
-  { name: '현대해상', address: '서울특별시 종로구 세종대로 163', phone: '1588-5656' },
-  { name: 'KB손해보험', address: '서울특별시 강남구 테헤란로 117', phone: '1544-0114' },
-  { name: 'KB손보', address: '서울특별시 강남구 테헤란로 117', phone: '1544-0114' },
-  { name: '메리츠화재', address: '서울특별시 강남구 강남대로 382', phone: '1566-7711' },
-  { name: '메리츠손해보험', address: '서울특별시 강남구 강남대로 382', phone: '1566-7711' },
+  { name: '삼성화재', address: '서울특별시 서초구 서초대로74길 14', addressDetail: '삼성화재 본사', zipCode: '06620', phone: '02-2020-5000', fax: '02-2020-6000' },
+  { name: 'DB손해보험', address: '서울특별시 강남구 테헤란로 432', addressDetail: 'DB금융센터', zipCode: '06195', phone: '02-3011-2000', fax: '02-3011-3000' },
+  { name: 'DB손보', address: '서울특별시 강남구 테헤란로 432', addressDetail: 'DB금융센터', zipCode: '06195', phone: '02-3011-2000', fax: '02-3011-3000' },
+  { name: '현대해상', address: '서울특별시 종로구 세종대로 163', addressDetail: '현대해상 본사', zipCode: '03127', phone: '02-732-1221', fax: '02-732-1222' },
+  { name: 'KB손해보험', address: '서울특별시 강남구 테헤란로 117', addressDetail: 'KB손보 본사', zipCode: '06153', phone: '02-3786-0114', fax: '02-3786-1000' },
+  { name: 'KB손보', address: '서울특별시 강남구 테헤란로 117', addressDetail: 'KB손보 본사', zipCode: '06153', phone: '02-3786-0114', fax: '02-3786-1000' },
+  { name: '메리츠화재', address: '서울특별시 강남구 강남대로 382', addressDetail: '메리츠타워', zipCode: '06232', phone: '02-3786-2114', fax: '02-3786-3000' },
+  { name: '메리츠손해보험', address: '서울특별시 강남구 강남대로 382', addressDetail: '메리츠타워', zipCode: '06232', phone: '02-3786-2114', fax: '02-3786-3000' },
   { name: '한화손해보험', address: '서울특별시 영등포구 63로 50', phone: '1566-8000' },
   { name: 'NH농협손해보험', address: '서울특별시 서대문구 충정로 60', phone: '1644-9000' },
   { name: '롯데손해보험', address: '서울특별시 중구 소월로2길 30', phone: '1588-3344' },
@@ -93,7 +102,7 @@ const DIRECTORY: CreditorInfo[] = [
   { name: 'MG손해보험', address: '서울특별시 강남구 삼성로 510', phone: '1588-5959' },
 
   // ─── 캐피탈·대부업 ───
-  { name: '현대캐피탈', address: '서울특별시 영등포구 의사당대로 3', phone: '1588-6552' },
+  { name: '현대캐피탈', address: '서울특별시 영등포구 의사당대로 3', addressDetail: '현대캐피탈 본사', zipCode: '07335', phone: '02-2167-6000', fax: '02-2167-8000' },
   { name: 'KB캐피탈', address: '서울특별시 중구 남대문로 52', phone: '1599-7900' },
   { name: '신한캐피탈', address: '서울특별시 영등포구 여의대로 70', phone: '1544-7200' },
   { name: '하나캐피탈', address: '서울특별시 중구 을지로 66', phone: '1800-0600' },

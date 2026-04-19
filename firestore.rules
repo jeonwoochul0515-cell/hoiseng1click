@@ -45,6 +45,11 @@ service cloud.firestore {
       match /clients/{clientId}/documents/{docId} {
         allow read, write: if isOfficeMember(officeId);
       }
+
+      // 내 채권자 템플릿 (사무소별 자주 쓰는 채권자 저장)
+      match /myCreditors/{creditorId} {
+        allow read, write: if isOfficeMember(officeId);
+      }
     }
 
     // ── Individual (B2C) 개인 셀프신청 ──
