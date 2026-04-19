@@ -117,28 +117,51 @@ export function normalizeZipCode(zip: string | undefined): string {
   return digits.length === 5 ? digits : '';
 }
 
-/** 전화번호에서 특수문자 제거 후 하이픈 표준형식 */
+/**
+ * 전화번호 정규화 (전자소송 양식 호환)
+ *
+ * 전자소송은 휴대전화(01X-XXXX-XXXX) 또는 지역번호(0XX-XXX(X)-XXXX)만 허용.
+ * 전국대표번호(1588/1577/1566/1599/1661 등 8자리)와 특수번호(126 등)는 거부됨.
+ *
+ * @returns 허용 포맷이면 하이픈 정규화 문자열, 거부 포맷이면 빈 문자열
+ */
 export function normalizePhone(phone: string | undefined): string {
   if (!phone) return '';
   const digits = String(phone).replace(/\D/g, '');
   if (!digits) return '';
-  // 휴대폰
+
+  // 전자소송 거부: 전국대표번호 (15XX-XXXX / 16XX-XXXX / 18XX-XXXX, 8자리)
+  if (/^1[5-8]\d{2}\d{4}$/.test(digits)) return '';
+  // 전자소송 거부: 특수번호 (110, 126, 131 등 짧은 번호)
+  if (digits.length < 9) return '';
+
+  // 휴대전화 (010/011/016/017/018/019 + 7~8자리)
   if (/^01[016789]\d{7,8}$/.test(digits)) {
     return digits.length === 11
       ? `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
       : `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
-  // 서울
-  if (/^02/.test(digits)) {
+  // 서울 지역번호 02 (9~10자리)
+  if (/^02\d{7,8}$/.test(digits)) {
     return digits.length === 10
       ? `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6)}`
       : `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5)}`;
   }
-  // 기타 지역
-  if (digits.length >= 9) {
-    return `${digits.slice(0, 3)}-${digits.slice(3, digits.length - 4)}-${digits.slice(-4)}`;
+  // 기타 지역번호 0XX (10~11자리)
+  if (/^0[3-6]\d\d{7,8}$/.test(digits)) {
+    return digits.length === 11
+      ? `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+      : `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
-  return digits;
+  // 070 인터넷전화
+  if (/^070\d{7,8}$/.test(digits)) {
+    return digits.length === 11
+      ? `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+      : `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+
+  // 기타(외국 번호 등) → 전자소송 비호환으로 판단하여 제거
+  return '';
 }
 
 /** Debt 리스트를 전자소송 채권자기본정보 행으로 변환 */
@@ -232,6 +255,8 @@ export function generateCreditorBasicInfoCsv(debts: Debt[]): { csv: string; warn
     if (/\d{6}-?\d{7}/.test(r.creditorName)) {
       warnings.push(`#${i + 1} "${r.creditorName}" 채권자명에 주민번호 형식이 포함되어 있습니다.`);
     }
+    // 전화번호가 원본에는 있었으나 정규화 후 빈값이면(=전국대표번호/특수번호) 안내
+    // 단, 이미 normalizePhone에서 걸러진 후라 여기서는 최종 필드만 검증
     if (missing.length > 0) {
       warnings.push(`#${i + 1} "${r.creditorName || '(이름 없음)'}" — 누락: ${missing.join(', ')}`);
     }
