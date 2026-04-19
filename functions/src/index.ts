@@ -234,3 +234,6 @@ app.post("/crypto/migrate-ssn", async (req, res) => {
 });
 
 export const api = onRequest({ region: "asia-northeast3", invoker: "public", timeoutSeconds: 120 }, app);
+
+// ── 주간 자동 백업: myCreditors → Cloud Storage ──
+export { backupMyCreditorsWeekly } from "./myCreditorsBackup";

@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.api = void 0;
+exports.backupMyCreditorsWeekly = exports.api = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const express_1 = __importDefault(require("express"));
@@ -274,4 +274,7 @@ app.post("/crypto/migrate-ssn", async (req, res) => {
     }
 });
 exports.api = (0, https_1.onRequest)({ region: "asia-northeast3", invoker: "public", timeoutSeconds: 120 }, app);
+// ── 주간 자동 백업: myCreditors → Cloud Storage ──
+var myCreditorsBackup_1 = require("./myCreditorsBackup");
+Object.defineProperty(exports, "backupMyCreditorsWeekly", { enumerable: true, get: function () { return myCreditorsBackup_1.backupMyCreditorsWeekly; } });
 //# sourceMappingURL=index.js.map

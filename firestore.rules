@@ -73,6 +73,12 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // 공유 채권자 디렉토리 (모든 로그인 사용자 읽기 / admin만 쓰기)
+    match /sharedCreditors/{creditorId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /intakeTokens/{tokenId} {
       allow get: if true;
       allow list: if false;

@@ -1,0 +1,221 @@
+{
+  "description": "sharedCreditors 컬렉션 시드 데이터 - Firestore import 또는 관리자 콘솔에서 일괄 추가용",
+  "collection": "sharedCreditors",
+  "note": "document ID는 name에서 공백 제거 + 소문자. admin custom claim 필요.",
+  "documents": [
+    {
+      "id": "kb국민은행",
+      "data": {
+        "name": "KB국민은행",
+        "personalityType": "법인",
+        "zipCode": "07331",
+        "address": "서울특별시 영등포구 국제금융로8길 26",
+        "addressDetail": "국민은행 본점",
+        "phone": "02-2073-7000",
+        "fax": "02-2073-8000",
+        "email": "kbstar@kbstar.com",
+        "verified": true,
+        "category": "은행"
+      }
+    },
+    {
+      "id": "신한은행",
+      "data": {
+        "name": "신한은행",
+        "personalityType": "법인",
+        "zipCode": "04513",
+        "address": "서울특별시 중구 세종대로9길 20",
+        "addressDetail": "신한은행 본점",
+        "phone": "02-6360-3000",
+        "fax": "02-6360-4000",
+        "email": "info@shinhan.com",
+        "verified": true,
+        "category": "은행"
+      }
+    },
+    {
+      "id": "하나은행",
+      "data": {
+        "name": "하나은행",
+        "personalityType": "법인",
+        "zipCode": "04545",
+        "address": "서울특별시 중구 을지로 35",
+        "addressDetail": "하나은행 본점",
+        "phone": "02-2002-1111",
+        "fax": "02-2002-2222",
+        "verified": true,
+        "category": "은행"
+      }
+    },
+    {
+      "id": "우리은행",
+      "data": {
+        "name": "우리은행",
+        "personalityType": "법인",
+        "zipCode": "04632",
+        "address": "서울특별시 중구 소공로 51",
+        "addressDetail": "우리은행 본점",
+        "phone": "02-2002-3000",
+        "fax": "02-2002-4000",
+        "email": "contact@wooribank.com",
+        "verified": true,
+        "category": "은행"
+      }
+    },
+    {
+      "id": "nh농협은행",
+      "data": {
+        "name": "NH농협은행",
+        "personalityType": "법인",
+        "zipCode": "04517",
+        "address": "서울특별시 중구 통일로 120",
+        "addressDetail": "NH농협은행 본점",
+        "phone": "02-2080-5114",
+        "fax": "02-2080-6000",
+        "verified": true,
+        "category": "은행"
+      }
+    },
+    {
+      "id": "카카오뱅크",
+      "data": {
+        "name": "카카오뱅크",
+        "personalityType": "법인",
+        "zipCode": "13494",
+        "address": "경기도 성남시 분당구 판교역로 235",
+        "addressDetail": "에이치스퀘어 N동",
+        "phone": "031-8075-1000",
+        "email": "support@kakaobank.com",
+        "verified": true,
+        "category": "은행"
+      }
+    },
+    {
+      "id": "토스뱅크",
+      "data": {
+        "name": "토스뱅크",
+        "personalityType": "법인",
+        "zipCode": "06236",
+        "address": "서울특별시 강남구 테헤란로 142",
+        "addressDetail": "캐피탈타워",
+        "phone": "02-6250-2000",
+        "email": "help@tossbank.com",
+        "verified": true,
+        "category": "은행"
+      }
+    },
+    {
+      "id": "kb국민카드",
+      "data": {
+        "name": "KB국민카드",
+        "personalityType": "법인",
+        "zipCode": "03184",
+        "address": "서울특별시 종로구 새문안로 58",
+        "addressDetail": "KB국민카드 본점",
+        "phone": "02-6301-7000",
+        "fax": "02-6301-8000",
+        "verified": true,
+        "category": "카드"
+      }
+    },
+    {
+      "id": "현대카드",
+      "data": {
+        "name": "현대카드",
+        "personalityType": "법인",
+        "zipCode": "07335",
+        "address": "서울특별시 영등포구 의사당대로 3",
+        "addressDetail": "현대카드 본사",
+        "phone": "02-2167-6000",
+        "fax": "02-2167-7000",
+        "email": "info@hyundaicard.com",
+        "verified": true,
+        "category": "카드"
+      }
+    },
+    {
+      "id": "삼성생명",
+      "data": {
+        "name": "삼성생명",
+        "personalityType": "법인",
+        "zipCode": "06620",
+        "address": "서울특별시 서초구 서초대로74길 11",
+        "addressDetail": "삼성생명 본관",
+        "phone": "02-2259-4000",
+        "fax": "02-2259-5000",
+        "verified": true,
+        "category": "보험"
+      }
+    },
+    {
+      "id": "삼성화재",
+      "data": {
+        "name": "삼성화재",
+        "personalityType": "법인",
+        "zipCode": "06620",
+        "address": "서울특별시 서초구 서초대로74길 14",
+        "addressDetail": "삼성화재 본사",
+        "phone": "02-2020-5000",
+        "fax": "02-2020-6000",
+        "verified": true,
+        "category": "보험"
+      }
+    },
+    {
+      "id": "대한민국국세청",
+      "data": {
+        "name": "대한민국 국세청",
+        "personalityType": "국가",
+        "zipCode": "30128",
+        "address": "세종특별자치시 노을6로 8-14",
+        "addressDetail": "국세청",
+        "phone": "044-204-2200",
+        "fax": "044-204-3000",
+        "verified": true,
+        "category": "공공"
+      }
+    },
+    {
+      "id": "국민건강보험공단",
+      "data": {
+        "name": "국민건강보험공단",
+        "personalityType": "법인",
+        "zipCode": "26464",
+        "address": "강원특별자치도 원주시 건강로 32",
+        "addressDetail": "건강보험공단 본부",
+        "phone": "033-736-0114",
+        "fax": "033-736-0200",
+        "verified": true,
+        "category": "공공"
+      }
+    },
+    {
+      "id": "국민연금공단",
+      "data": {
+        "name": "국민연금공단",
+        "personalityType": "법인",
+        "zipCode": "54870",
+        "address": "전라북도 전주시 덕진구 기지로 180",
+        "addressDetail": "국민연금공단 본부",
+        "phone": "063-713-6114",
+        "fax": "063-713-6200",
+        "verified": true,
+        "category": "공공"
+      }
+    },
+    {
+      "id": "한국자산관리공사",
+      "data": {
+        "name": "한국자산관리공사",
+        "personalityType": "법인",
+        "zipCode": "48401",
+        "address": "부산광역시 남구 문현금융로 40",
+        "addressDetail": "한국자산관리공사 본사",
+        "phone": "051-610-2700",
+        "fax": "051-610-2800",
+        "verified": true,
+        "category": "공공"
+      }
+    }
+  ]
+}

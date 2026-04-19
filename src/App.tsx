@@ -35,6 +35,7 @@ const DischargeCheckPage = lazy(() => import('@/pages/DischargeCheckPage'));
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const TermsPage = lazy(() => import('@/pages/TermsPage'));
 const MyCaseApplicationPage = lazy(() => import('@/pages/MyCaseApplicationPage'));
+const MyCreditorsPage = lazy(() => import('@/pages/MyCreditorsPage'));
 
 /** self.hoiseng1click.com 감지 */
 const isSelfDomain = typeof window !== 'undefined' && window.location.hostname.startsWith('self.');
@@ -154,6 +155,7 @@ export default function App() {
               <Route path="liquidation" element={<LiquidationPage />} />
             </Route>
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="settings/my-creditors" element={<MyCreditorsPage />} />
           </Route>
 
           {/* admin 페이지는 별도 페이지 내 권한 체크 (userType 무관) */}
