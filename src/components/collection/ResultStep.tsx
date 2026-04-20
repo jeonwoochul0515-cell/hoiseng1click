@@ -3,7 +3,7 @@ import { useCollectionStore } from '@/store/collectionStore';
 import { formatKRW } from '@/utils/formatter';
 import { calcRepaymentPlan } from '@/utils/calculator';
 import { useNavigate } from 'react-router-dom';
-import { FileText, PlusCircle } from 'lucide-react';
+import { FileText, PlusCircle, AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
 
 interface ResultStepProps {
   clientId: string;
@@ -46,19 +46,98 @@ export default function ResultStep({ clientId }: ResultStepProps) {
     );
   }
 
+  // 수집 현황 (신규 응답 포맷)
+  const meta = result as any;
+  const successOrgsList: string[] = meta.successOrgsList ?? [];
+  const emptyDataOrgsList: string[] = meta.emptyDataOrgsList ?? [];
+  const skippedOrgs: Array<{ organization: string; code: string; message: string }> = meta.skippedOrgs ?? [];
+  const requestedOrgs = summary.requestedOrgs ?? (successOrgsList.length + skippedOrgs.length);
+  const hasCollectionInfo = requestedOrgs > 0;
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {/* 🆕 수집 현황 알림 */}
+      {hasCollectionInfo && (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+            <Info size={16} className="text-blue-500" />
+            <h3 className="text-sm font-semibold text-gray-900">수집 현황</h3>
+          </div>
+          <div className="grid grid-cols-4 divide-x divide-gray-100">
+            <div className="p-3 text-center">
+              <div className="text-xs text-gray-500">요청</div>
+              <div className="text-lg font-bold text-gray-900">{requestedOrgs}</div>
+            </div>
+            <div className="p-3 text-center">
+              <div className="text-xs text-gray-500">인증 성공</div>
+              <div className="text-lg font-bold text-emerald-600">{successOrgsList.length}</div>
+            </div>
+            <div className="p-3 text-center">
+              <div className="text-xs text-gray-500">데이터 수집</div>
+              <div className="text-lg font-bold text-blue-600">{summary.dataOrgs ?? 0}</div>
+            </div>
+            <div className="p-3 text-center">
+              <div className="text-xs text-gray-500">스킵</div>
+              <div className="text-lg font-bold text-amber-600">{skippedOrgs.length}</div>
+            </div>
+          </div>
+
+          {/* 상세 리스트 */}
+          {(successOrgsList.length > 0 || emptyDataOrgsList.length > 0 || skippedOrgs.length > 0) && (
+            <div className="px-5 py-3 border-t border-gray-100 text-xs space-y-2">
+              {emptyDataOrgsList.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={13} className="text-amber-500 mt-0.5 shrink-0" />
+                  <div className="text-gray-700">
+                    <span className="font-medium">인증 성공 · 데이터 0건</span>{' '}
+                    <span className="text-gray-500">({emptyDataOrgsList.join(', ')})</span>
+                    <span className="block text-[10px] text-gray-400 mt-0.5">
+                      해당 기관에 채무·자산이 실제로 없거나, 공동인증서가 해당 기관에 등록되지 않았을 수 있습니다
+                    </span>
+                  </div>
+                </div>
+              )}
+              {skippedOrgs.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <XCircle size={13} className="text-red-500 mt-0.5 shrink-0" />
+                  <div className="text-gray-700">
+                    <span className="font-medium">스킵된 기관</span>
+                    <ul className="mt-1 space-y-0.5">
+                      {skippedOrgs.map((o, i) => (
+                        <li key={i} className="text-gray-500">
+                          <span className="font-medium text-gray-700">{o.organization}</span>
+                          <span className="ml-2 text-[10px]">[{o.code}]</span>
+                          <span className="ml-2">{o.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              {successOrgsList.length > 0 && (summary.dataOrgs ?? 0) > 0 && (
+                <div className="flex items-start gap-2">
+                  <CheckCircle size={13} className="text-emerald-500 mt-0.5 shrink-0" />
+                  <div className="text-gray-500">
+                    데이터 수집된 기관: <span className="text-gray-700">{Array.from(new Set([...debts.map((d: any) => d.creditor), ...assets.map((a: any) => a.meta?.bankName ?? a.name)])).filter(Boolean).join(', ')}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 p-6">
           <p className="text-sm text-gray-600 mb-1">총 채무</p>
-          <p className="text-2xl font-bold text-red-400">{formatKRW(summary.totalDebt)}</p>
-          <p className="text-xs text-gray-500 mt-1">{summary.totalDebtCount}건</p>
+          <p className="text-2xl font-bold text-red-400">{formatKRW(summary.totalDebt ?? summary.debtTotal)}</p>
+          <p className="text-xs text-gray-500 mt-1">{summary.totalDebtCount ?? summary.debtCount}건</p>
         </div>
         <div className="rounded-xl bg-[var(--color-bg-card)] border border-gray-200 p-6">
           <p className="text-sm text-gray-600 mb-1">총 재산</p>
-          <p className="text-2xl font-bold text-emerald-400">{formatKRW(summary.totalAsset)}</p>
-          <p className="text-xs text-gray-500 mt-1">{summary.totalAssetCount}건</p>
+          <p className="text-2xl font-bold text-emerald-400">{formatKRW(summary.totalAsset ?? summary.assetTotal)}</p>
+          <p className="text-xs text-gray-500 mt-1">{summary.totalAssetCount ?? summary.assetCount}건</p>
         </div>
       </div>
 

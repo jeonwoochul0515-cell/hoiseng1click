@@ -427,18 +427,50 @@ async function collectWithCodef(
   const debts = parseDebts(g(bankLoans), g(cardLoans));
   const assets = parseAssets(g(bankAccounts), g(insurance));
 
+  // 수집 결과 분석 — 사용자가 수집 결과를 이해하기 쉽도록
+  const requestedCount = accountList.length;
+  const successOrgs = successList.map((s: any) => s.organization as string).filter(Boolean);
+  const skippedOrgsFull = errorList.map((e: any) => ({
+    organization: e.organization,
+    code: e.code,
+    message: e.message,
+  }));
+
+  // 실제 데이터 있는 기관 집계 (debts/assets의 meta에서 추출)
+  const orgsWithData = new Set<string>();
+  for (const d of debts) {
+    const orgName = (d as any).creditor ?? (d as any).source;
+    if (orgName) orgsWithData.add(String(orgName));
+  }
+  for (const a of assets) {
+    const orgName = (a as any).meta?.bankName ?? (a as any).meta?.insurerName ?? (a as any).name;
+    if (orgName) orgsWithData.add(String(orgName));
+  }
+
+  // 인증 성공했지만 데이터 없는 기관 = 전체 성공 - 데이터 있는 기관
+  const emptyDataOrgs = successOrgs.filter((o: string) => !Array.from(orgsWithData).some((d: string) => d.includes(o) || o.includes(d)));
+
   return {
-    connectedId: cid, debts, assets,
+    connectedId: cid,
+    debts,
+    assets,
     summary: {
-      debtCount: debts.length, debtTotal: debts.reduce((s, d) => s + d.amount, 0),
-      assetCount: assets.length, assetTotal: assets.reduce((s, a) => s + a.value, 0),
+      debtCount: debts.length,
+      debtTotal: debts.reduce((s, d) => s + d.amount, 0),
+      assetCount: assets.length,
+      assetTotal: assets.reduce((s, a) => s + a.value, 0),
+      // 🆕 기관별 수집 현황
+      requestedOrgs: requestedCount,              // 요청한 기관 수
+      successOrgs: successOrgs.length,            // 인증 성공 기관 수
+      skippedOrgs: skippedOrgsFull.length,        // 스킵된 기관 수
+      dataOrgs: orgsWithData.size,                // 실제 데이터 수집된 기관 수
+      emptyDataOrgs: emptyDataOrgs.length,        // 성공했지만 데이터 0건 기관 수
     },
-    ...(errorList.length > 0 && {
-      skippedOrgs: errorList.map((e: any) => ({
-        organization: e.organization,
-        code: e.code,
-        message: e.message,
-      })),
+    // 🆕 상세 기관 목록
+    successOrgsList: successOrgs,
+    emptyDataOrgsList: emptyDataOrgs,
+    ...(skippedOrgsFull.length > 0 && {
+      skippedOrgs: skippedOrgsFull,
     }),
   };
 }
