@@ -55,10 +55,12 @@ export function isValidName(raw: string): boolean {
   return /^[가-힣a-zA-Z\s]+$/.test(trimmed);
 }
 
-// CODEF 로그인 ID — 20자 이하 영숫자/일부 특수문자
+// CODEF 로그인 ID — 50자 이하, 제어문자 금지
+// 공동인증서(PFX/cert) 방식은 ID가 빈 문자열이어도 정상 (인증서가 식별자)
+// 간편인증/ID PW 방식은 실제 ID 필요
 export function isValidLoginId(raw: string): boolean {
   if (typeof raw !== "string") return false;
-  if (raw.length < 1 || raw.length > 50) return false;
+  if (raw.length > 50) return false;
   // 제어문자 금지
   return !/[\x00-\x1f\x7f]/.test(raw);
 }
@@ -77,16 +79,27 @@ export function isValidBankName(raw: string): boolean {
   return /^[가-힣a-zA-Z0-9()\s·]+$/.test(trimmed);
 }
 
-// loginType — 화이트리스트
+// loginType — CODEF 스펙상 허용 값 (codefProxy LOGIN_TYPE_MAP과 일치)
+// - cert / finCert: 공동인증서/금융인증서 (PFX, certFile 사용, id 선택)
+// - kakao / pass / naver / payco / samsung / kb / shinhan / toss: 간편인증
+// - id: ID/PW 방식 (id+password 필수)
+// 대소문자 모두 허용
 const ALLOWED_LOGIN_TYPES = new Set([
-  "SIMPLE", "CERT", "ID", "simple", "cert", "id",
-  "KAKAO", "NAVER", "PASS", "PAYCO", "SAMSUNG", "KB", "SHINHAN", "TOSS",
+  "cert", "finCert", "kakao", "pass", "naver", "payco",
+  "samsung", "kb", "shinhan", "toss",
+  "id", "CERT", "FINCERT", "KAKAO", "PASS", "NAVER", "PAYCO",
+  "SAMSUNG", "KB", "SHINHAN", "TOSS", "ID",
+  "SIMPLE", "simple",
 ]);
 export function isValidLoginType(raw: string): boolean {
   return typeof raw === "string" && ALLOWED_LOGIN_TYPES.has(raw);
 }
 
 // CODEF credentials 종합 검증
+// 인증 방식별 필수 필드가 다름:
+// - cert/finCert: password(인증서암호) + pfxFile(PFX 파일) — id 선택
+// - kakao/pass 등 간편인증: 사용자 입력 id + password
+// - id: id + password 필수
 export function validateCredentials(
   credentials: unknown,
 ): asserts credentials is { loginType: string; id: string; password: string; pfxFile?: string } {
@@ -94,11 +107,12 @@ export function validateCredentials(
     throw new ValidationError("credentials 객체가 필요합니다");
   }
   const c = credentials as Record<string, unknown>;
-  if (!isValidLoginType(String(c.loginType ?? ""))) {
-    throw new ValidationError("허용되지 않은 loginType 입니다");
+  const loginType = String(c.loginType ?? "");
+  if (!isValidLoginType(loginType)) {
+    throw new ValidationError(`허용되지 않은 loginType 입니다: "${loginType}"`);
   }
   if (!isValidLoginId(String(c.id ?? ""))) {
-    throw new ValidationError("유효하지 않은 로그인 ID 형식입니다");
+    throw new ValidationError("유효하지 않은 로그인 ID 형식입니다 (제어문자 포함 또는 50자 초과)");
   }
   if (!isValidPassword(String(c.password ?? ""))) {
     throw new ValidationError("유효하지 않은 비밀번호 형식입니다");
@@ -109,6 +123,15 @@ export function validateCredentials(
   // pfxFile base64 크기 상한 (~1MB)
   if (typeof c.pfxFile === "string" && c.pfxFile.length > 1_500_000) {
     throw new ValidationError("pfxFile 크기가 너무 큽니다");
+  }
+  // 공동인증서 방식(cert/finCert)은 pfxFile 필수
+  const isCertAuth = loginType === "cert" || loginType === "finCert" || loginType === "CERT" || loginType === "FINCERT";
+  if (isCertAuth && !c.pfxFile) {
+    throw new ValidationError("공동인증서 방식은 pfxFile이 필요합니다");
+  }
+  // ID/PW 방식은 id 필수
+  if ((loginType === "id" || loginType === "ID") && !String(c.id ?? "").trim()) {
+    throw new ValidationError("ID/PW 방식은 로그인 ID가 필요합니다");
   }
 }
 
