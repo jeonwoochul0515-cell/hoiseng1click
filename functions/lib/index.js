@@ -93,7 +93,12 @@ app.use(async (req, res, next) => {
     }
     try {
         const decoded = await admin.auth().verifyIdToken(token);
-        req.user = { uid: decoded.uid, email: decoded.email ?? "", plan: decoded.plan ?? "starter" };
+        req.user = {
+            uid: decoded.uid,
+            email: decoded.email ?? "",
+            plan: decoded.plan ?? "starter",
+            admin: decoded.admin === true,
+        };
         next();
     }
     catch {
@@ -120,6 +125,22 @@ app.post("/admin/upload-template", async (req, res) => {
 });
 app.post("/codef/collect", codefProxy_1.handleCodefCollect);
 app.post("/codef/test-connection", codefProxy_1.handleCodefTestConnection);
+// CODEF 인증 진단 — admin 전용. API팀에 공유할 마스킹 정보 반환
+app.get("/codef/diagnose", async (req, res) => {
+    const user = req.user;
+    if (!user?.admin) {
+        // 토큰에 admin claim이 없으면 거부
+        res.status(403).json({ error: "관리자 권한 필요" });
+        return;
+    }
+    try {
+        const result = await (0, codefProxy_1.diagnoseCodefAuth)();
+        res.json(result);
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 app.post("/codef/simple-auth/start", codefProxy_1.handleSimpleAuthStart);
 app.post("/codef/simple-auth/complete", codefProxy_1.handleSimpleAuthComplete);
 app.post("/codef/statement-data", codefProxy_1.handleStatementData);

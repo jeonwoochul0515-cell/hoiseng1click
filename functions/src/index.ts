@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import { onRequest } from "firebase-functions/v2/https";
 import express from "express";
-import { handleCodefCollect, handleIntakeCodefCollect, handleStatementData, handleSimpleAuthStart, handleSimpleAuthComplete, handleCodefTestConnection } from "./codefProxy";
+import { handleCodefCollect, handleIntakeCodefCollect, handleStatementData, handleSimpleAuthStart, handleSimpleAuthComplete, handleCodefTestConnection, diagnoseCodefAuth } from "./codefProxy";
 import { handlePropertyLookup, handleVehicleLookup } from "./publicDataProxy";
 import { handleDocGenerate } from "./docGenerator";
 import { handleIncomeProof, handleWithholdingTax, handleBusinessRegistration, handleHealthInsurance, handleHealthInsurancePremium, handleNationalPension, handlePublicDataCollect, handleResidentRegistration, handleResidentAbstract, handleFamilyRelation, handlePropertyRegistry, handleTaxPaymentCert, handleWageStatement, handleVatCert, handleFinancialStatement, handleLocalTaxAssessment, handleLocalTaxPayment, handleVehicleRegistration, handleLocalTaxCert, handleNationalTaxCert, handleFourInsurance } from "./codefPublic";
@@ -56,7 +56,12 @@ app.use(async (req, res, next) => {
   }
   try {
     const decoded = await admin.auth().verifyIdToken(token);
-    (req as any).user = { uid: decoded.uid, email: decoded.email ?? "", plan: decoded.plan ?? "starter" };
+    (req as any).user = {
+      uid: decoded.uid,
+      email: decoded.email ?? "",
+      plan: decoded.plan ?? "starter",
+      admin: decoded.admin === true,
+    };
     next();
   } catch {
     res.status(401).json({ error: "인증 실패" });
@@ -80,6 +85,22 @@ app.post("/admin/upload-template", async (req, res) => {
 
 app.post("/codef/collect", handleCodefCollect);
 app.post("/codef/test-connection", handleCodefTestConnection);
+
+// CODEF 인증 진단 — admin 전용. API팀에 공유할 마스킹 정보 반환
+app.get("/codef/diagnose", async (req, res) => {
+  const user = (req as any).user as { uid: string; email: string; admin?: boolean } | undefined;
+  if (!user?.admin) {
+    // 토큰에 admin claim이 없으면 거부
+    res.status(403).json({ error: "관리자 권한 필요" });
+    return;
+  }
+  try {
+    const result = await diagnoseCodefAuth();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.post("/codef/simple-auth/start", handleSimpleAuthStart);
 app.post("/codef/simple-auth/complete", handleSimpleAuthComplete);
 app.post("/codef/statement-data", handleStatementData);

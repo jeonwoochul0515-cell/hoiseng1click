@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getToken = getToken;
+exports.diagnoseCodefAuth = diagnoseCodefAuth;
 exports.encryptRSA = encryptRSA;
 exports.callCodef = callCodef;
 exports.handleCodefCollect = handleCodefCollect;
@@ -62,9 +63,13 @@ async function getToken() {
     if (cachedToken && cachedToken.expiry > Date.now()) {
         return cachedToken.token;
     }
-    const clientId = process.env.CODEF_CLIENT_ID ?? "";
-    const clientSecret = process.env.CODEF_CLIENT_SECRET ?? "";
-    const creds = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    // 환경변수에서 공백·줄바꿈·BOM·제어문자 제거 (CODEF API팀 권고사항)
+    const clientId = (process.env.CODEF_CLIENT_ID ?? "").trim().replace(/[\r\n\t\uFEFF]/g, "");
+    const clientSecret = (process.env.CODEF_CLIENT_SECRET ?? "").trim().replace(/[\r\n\t\uFEFF]/g, "");
+    if (!clientId || !clientSecret) {
+        throw new Error(`CODEF credentials 누락: clientId=${clientId ? "OK" : "MISSING"}, clientSecret=${clientSecret ? "OK" : "MISSING"}`);
+    }
+    const creds = Buffer.from(`${clientId}:${clientSecret}`, "utf-8").toString("base64");
     const res = await fetch(OAUTH_URL, {
         method: "POST",
         headers: {
@@ -74,7 +79,18 @@ async function getToken() {
         body: "grant_type=client_credentials&scope=read",
     });
     if (!res.ok) {
-        throw new Error(`CODEF OAuth failed: ${res.status} ${res.statusText}`);
+        const body = await res.text().catch(() => "");
+        console.error("[CODEF OAuth] 실패", {
+            status: res.status,
+            statusText: res.statusText,
+            body: body.slice(0, 500),
+            clientIdLength: clientId.length,
+            clientIdPreview: `${clientId.slice(0, 4)}...${clientId.slice(-4)}`,
+            secretLength: clientSecret.length,
+            credsLength: creds.length,
+            hasWhitespace: /\s/.test(clientId) || /\s/.test(clientSecret),
+        });
+        throw new Error(`CODEF OAuth failed: ${res.status} ${res.statusText} — ${body.slice(0, 200)}`);
     }
     const data = (await res.json());
     if (!data.access_token) {
@@ -82,6 +98,55 @@ async function getToken() {
     }
     cachedToken = { token: data.access_token, expiry: Date.now() + 6 * 24 * 60 * 60 * 1000 };
     return cachedToken.token;
+}
+// CODEF 인증 진단 — API팀에 공유할 마스킹된 정보 생성
+async function diagnoseCodefAuth() {
+    const rawId = process.env.CODEF_CLIENT_ID ?? "";
+    const rawSecret = process.env.CODEF_CLIENT_SECRET ?? "";
+    const clientId = rawId.trim().replace(/[\r\n\t\uFEFF]/g, "");
+    const clientSecret = rawSecret.trim().replace(/[\r\n\t\uFEFF]/g, "");
+    const creds = Buffer.from(`${clientId}:${clientSecret}`, "utf-8").toString("base64");
+    const authHeader = `Basic ${creds}`;
+    // 앞 4·뒤 4 문자코드 (BOM/비가시문자 탐지)
+    const charCodes = [
+        ...Array.from(rawId.slice(0, 4)).map((c) => c.charCodeAt(0)),
+        -1, // separator
+        ...Array.from(rawId.slice(-4)).map((c) => c.charCodeAt(0)),
+    ];
+    const result = {
+        clientIdLength: clientId.length,
+        clientIdPreview: `${clientId.slice(0, 4)}...${clientId.slice(-4)}`,
+        clientIdCharCodes: charCodes,
+        rawIdLength: rawId.length,
+        rawIdDifferent: rawId !== clientId,
+        secretLength: clientSecret.length,
+        secretPreview: `${clientSecret.slice(0, 4)}...${clientSecret.slice(-4)}`,
+        credsBase64Preview: `${creds.slice(0, 10)}...${creds.slice(-6)}`,
+        credsBase64Length: creds.length,
+        hasWhitespace: /\s/.test(clientId) || /\s/.test(clientSecret),
+        hasSpecialChars: /[^\x20-\x7E]/.test(clientId) || /[^\x20-\x7E]/.test(clientSecret),
+        authHeaderPreview: `Basic ${creds.slice(0, 10)}...${creds.slice(-6)}`,
+        oauthUrl: OAUTH_URL,
+        requestBody: "grant_type=client_credentials&scope=read",
+    };
+    // 실제 호출해서 응답 받기
+    try {
+        const res = await fetch(OAUTH_URL, {
+            method: "POST",
+            headers: {
+                Authorization: authHeader,
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: "grant_type=client_credentials&scope=read",
+        });
+        result.responseStatus = res.status;
+        const body = await res.text();
+        result.responseBody = body.slice(0, 500);
+    }
+    catch (err) {
+        result.responseBody = `[요청 실패] ${err.message}`;
+    }
+    return result;
 }
 // ---------------------------------------------------------------------------
 // RSA 암호화
