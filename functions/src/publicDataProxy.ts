@@ -90,6 +90,30 @@ export async function handlePropertyLookup(req: Request, res: Response) {
     } catch { /* fallback */ }
   }
 
+  // ── 2-b) 단독/다가구 실거래가 API 호출 ──
+  if (apiKey && propertyType === "house") {
+    try {
+      const result = await fetchSingleHouseTradePrice(apiKey, address, area);
+      if (result) { res.json(result); return; }
+    } catch { /* fallback */ }
+  }
+
+  // ── 2-c) 연립/다세대 실거래가 API 호출 ──
+  if (apiKey && propertyType === "rowhouse") {
+    try {
+      const result = await fetchRowHouseTradePrice(apiKey, address, area);
+      if (result) { res.json(result); return; }
+    } catch { /* fallback */ }
+  }
+
+  // ── 2-d) 오피스텔 실거래가 API 호출 ──
+  if (apiKey && propertyType === "officetel") {
+    try {
+      const result = await fetchOfficetelTradePrice(apiKey, address, area);
+      if (result) { res.json(result); return; }
+    } catch { /* fallback */ }
+  }
+
   // ── 3) 시뮬레이션 폴백 ──
   fallbackSimulation(res, address, area);
 }
@@ -238,6 +262,140 @@ async function fetchAptTradePrice(apiKey: string, address: string, area: number)
         address,
         area,
         propertyType: "apt",
+        liquidation75: Math.floor(estimatedOfficialPrice * 0.75),
+        source: "api_trade" as const,
+        dealYmd,
+        sampleCount: prices.length,
+      };
+    } catch {
+      clearTimeout(timeout);
+      continue;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * 주소 기반 단독/다가구 매매 실거래가 API
+ * — 연면적 기준으로 매칭, 단독주택 공시가격 현실화율은 약 60%
+ */
+async function fetchSingleHouseTradePrice(apiKey: string, address: string, area: number) {
+  return fetchTradeByType({
+    apiKey, address, area,
+    endpoint: "https://apis.data.go.kr/1613000/RTMSDataSvcSHTrade/getRTMSDataSvcSHTrade",
+    areaField: "totalFloorAr",
+    areaTolerance: 15,
+    officialRate: 0.6,
+    propertyType: "house",
+  });
+}
+
+/**
+ * 주소 기반 연립/다세대 매매 실거래가 API
+ */
+async function fetchRowHouseTradePrice(apiKey: string, address: string, area: number) {
+  return fetchTradeByType({
+    apiKey, address, area,
+    endpoint: "https://apis.data.go.kr/1613000/RTMSDataSvcRHTrade/getRTMSDataSvcRHTrade",
+    areaField: "excluUseAr",
+    areaTolerance: 10,
+    officialRate: 0.65,
+    propertyType: "rowhouse",
+  });
+}
+
+/**
+ * 주소 기반 오피스텔 매매 실거래가 API
+ */
+async function fetchOfficetelTradePrice(apiKey: string, address: string, area: number) {
+  return fetchTradeByType({
+    apiKey, address, area,
+    endpoint: "https://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade",
+    areaField: "excluUseAr",
+    areaTolerance: 10,
+    officialRate: 0.7,
+    propertyType: "officetel",
+  });
+}
+
+/** 공통 실거래가 조회 루틴 (단독/연립/오피스텔) */
+async function fetchTradeByType(opts: {
+  apiKey: string;
+  address: string;
+  area: number;
+  endpoint: string;
+  areaField: string;        // API 응답의 면적 필드명
+  areaTolerance: number;    // 면적 허용 오차 (㎡)
+  officialRate: number;     // 실거래가 → 공시가격 추정 비율
+  propertyType: string;
+}) {
+  const lawdCd = extractLawdCd(opts.address);
+  if (!lawdCd) return null;
+
+  const now = new Date();
+  const months: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  for (const dealYmd of months) {
+    const params = new URLSearchParams({
+      serviceKey: opts.apiKey,
+      LAWD_CD: lawdCd,
+      DEAL_YMD: dealYmd,
+      pageNo: "1",
+      numOfRows: "50",
+    });
+
+    const url = `${opts.endpoint}?${params}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const r = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!r.ok) continue;
+
+      const text = await r.text();
+      const items = parseXmlItems(text);
+      if (items.length === 0) continue;
+
+      const dongName = extractDong(opts.address);
+
+      let matched = items.filter((item) => {
+        const itemArea = parseFloat(item[opts.areaField] ?? "0");
+        const areaMatch = Math.abs(itemArea - opts.area) <= opts.areaTolerance;
+        const dongMatch = dongName ? (item.umdNm ?? "").includes(dongName) : true;
+        return areaMatch && dongMatch;
+      });
+
+      if (matched.length === 0) {
+        matched = items.filter((item) => {
+          const itemArea = parseFloat(item[opts.areaField] ?? "0");
+          return Math.abs(itemArea - opts.area) <= opts.areaTolerance + 5;
+        });
+      }
+
+      if (matched.length === 0) continue;
+
+      const prices = matched
+        .map((item) => Number(String(item.dealAmount ?? "0").replace(/,/g, "").trim()) * 10000)
+        .filter((p) => p > 0);
+
+      if (prices.length === 0) continue;
+
+      prices.sort((a, b) => a - b);
+      const median = prices[Math.floor(prices.length / 2)];
+      const estimatedOfficialPrice = Math.floor(median * opts.officialRate);
+
+      return {
+        rawPrice: estimatedOfficialPrice,
+        marketPrice: median,
+        address: opts.address,
+        area: opts.area,
+        propertyType: opts.propertyType,
         liquidation75: Math.floor(estimatedOfficialPrice * 0.75),
         source: "api_trade" as const,
         dealYmd,
