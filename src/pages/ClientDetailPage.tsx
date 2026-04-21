@@ -362,7 +362,7 @@ export default function ClientDetailPage() {
               <h2 className="mb-2 text-lg font-bold text-gray-900">법원 제출 서류 (개시신청)</h2>
               <p className="mb-4 text-sm text-gray-500">개시신청서 + 첨부서류 6종 자동 생성</p>
               <Link
-                to={`/documents?clientId=${client.id}`}
+                to={`/docs-gen?clientId=${client.id}`}
                 className="inline-flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2.5 text-sm font-medium text-black hover:bg-[#b8973e]"
               >
                 <FileText className="h-4 w-4" />

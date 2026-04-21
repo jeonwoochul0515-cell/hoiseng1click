@@ -315,7 +315,7 @@ export default function IndividualDashboardPage() {
           {DOCUMENT_TYPES.map((docType) => (
             <button
               key={docType.id}
-              onClick={() => navigate('/my/documents')}
+              onClick={() => navigate('/my/docs')}
               className="group flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition-all hover:border-brand-gold hover:bg-brand-gold/5"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-gold/10">

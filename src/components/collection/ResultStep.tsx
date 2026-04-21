@@ -368,7 +368,7 @@ export default function ResultStep({ clientId }: ResultStepProps) {
           재산 추가 입력
         </button>
         <button
-          onClick={() => navigate(`/documents?clientId=${clientId}`)}
+          onClick={() => navigate(`/docs-gen?clientId=${clientId}`)}
           className="flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-semibold
             bg-[var(--color-brand-gold)] text-[var(--color-brand-navy)] hover:brightness-110 transition-colors"
         >

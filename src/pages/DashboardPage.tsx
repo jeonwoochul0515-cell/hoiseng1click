@@ -480,7 +480,7 @@ export default function DashboardPage() {
                 {docMissing.map((c) => (
                   <li key={c.id} className="flex items-center justify-between text-sm">
                     <span className="text-gray-700">{c.name}</span>
-                    <button onClick={() => navigate(`/documents?clientId=${c.id}`)} className="text-xs text-amber-400 hover:underline">서류 생성</button>
+                    <button onClick={() => navigate(`/docs-gen?clientId=${c.id}`)} className="text-xs text-amber-400 hover:underline">서류 생성</button>
                   </li>
                 ))}
               </ul>

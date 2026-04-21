@@ -32,7 +32,7 @@ const officeNavItems: NavItem[] = [
   { icon: Home, label: '대시보드', to: '/dashboard' },
   { icon: Users, label: '의뢰인 관리', to: '/clients' },
   { icon: BarChart3, label: '청산가치', to: '/liquidation', proOnly: true },
-  { icon: FileText, label: '서류 생성', to: '/documents' },
+  { icon: FileText, label: '서류 생성', to: '/docs-gen' },
   { icon: Monitor, label: '전자소송 제출', to: '/ecfs-helper' },
   { icon: Settings, label: '설정', to: '/settings' },
   { icon: ShieldCheck, label: '관리자', to: '/admin', adminOnly: true },
@@ -40,7 +40,7 @@ const officeNavItems: NavItem[] = [
 
 const individualNavItems: NavItem[] = [
   { icon: Home, label: '내 현황', to: '/my' },
-  { icon: FileText, label: '서류 생성', to: '/my/documents' },
+  { icon: FileText, label: '서류 생성', to: '/my/docs' },
   { icon: Monitor, label: '전자소송 제출', to: '/my/ecfs-helper' },
   { icon: MapPin, label: '법원 접수 가이드', to: '/my/court-guide' },
   { icon: Settings, label: '설정', to: '/my/settings' },
@@ -117,7 +117,7 @@ export default function Sidebar() {
                 end={item.to === '/dashboard' || item.to === '/my'}
                 onClick={closeSidebar}
                 id={
-                  item.to === '/documents'
+                  item.to === '/docs-gen'
                     ? 'sidebar-nav-documents'
                     : item.to === '/settings'
                       ? 'sidebar-nav-settings'

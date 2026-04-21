@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
@@ -17,7 +17,6 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const ClientsPage = lazy(() => import('@/pages/ClientsPage'));
 const ClientDetailPage = lazy(() => import('@/pages/ClientDetailPage'));
 const CollectionPage = lazy(() => import('@/pages/CollectionPage'));
-const DocumentsPage = lazy(() => import('@/pages/DocumentsPage'));
 const LiquidationPage = lazy(() => import('@/pages/LiquidationPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const StatementPage = lazy(() => import('@/pages/StatementPage'));
@@ -65,6 +64,12 @@ function AuthGuard() {
   }
   if (!user) return <Navigate to="/login" replace />;
   return <AppLayout />;
+}
+
+/** 쿼리스트링을 보존한 채 리다이렉트 */
+function RedirectPreservingQuery({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={{ pathname: to, search: location.search }} replace />;
 }
 
 /** userType에 따라 적절한 대시보드로 리다이렉트 */
@@ -156,7 +161,7 @@ export default function App() {
             <Route path="clients/:clientId/additional-applications" element={<ClientAdditionalApplicationsPage />} />
             <Route path="collection" element={<Navigate to="/clients" replace />} />
             <Route path="collection/:clientId" element={<CollectionPage />} />
-            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="documents" element={<RedirectPreservingQuery to="/docs-gen" />} />
             <Route path="ecfs-helper" element={<EcfsHelperPage />} />
             <Route element={<PlanGuard requirePro />}>
               <Route path="liquidation" element={<LiquidationPage />} />
@@ -173,7 +178,7 @@ export default function App() {
             <Route path="my" element={<IndividualDashboardPage />} />
             <Route path="my/court-guide" element={<CourtGuidePage />} />
             <Route path="my/ecfs-helper" element={<EcfsHelperPage />} />
-            <Route path="my/documents" element={<DocumentsPage />} />
+            <Route path="my/documents" element={<RedirectPreservingQuery to="/my/docs" />} />
             <Route path="my/collection" element={<CollectionPage />} />
             <Route path="my/statement" element={<StatementPage />} />
             <Route path="my/settings" element={<SettingsPage />} />
