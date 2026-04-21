@@ -15,6 +15,7 @@ import {
   Phone,
   X,
 } from 'lucide-react';
+import HeroDocDemo from '@/components/docgen/HeroDocDemo';
 
 /* ───────────────────────────────────────────
    컬러 시스템 — 틸 + 웜화이트 + 코랄
@@ -97,6 +98,9 @@ function HeroSection() {
             구글 계정으로 10초 만에 시작 · 개인정보 암호화
           </p>
         </div>
+
+        {/* 라이브 문서 생성 데모 */}
+        <HeroDocDemo />
 
         {/* 신뢰 수치 */}
         <div className="mx-auto mt-16 grid max-w-md grid-cols-3 gap-6">

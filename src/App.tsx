@@ -39,6 +39,10 @@ const MyCreditorsPage = lazy(() => import('@/pages/MyCreditorsPage'));
 const MyAdditionalApplicationsPage = lazy(() => import('@/pages/MyAdditionalApplicationsPage'));
 const ClientAdditionalApplicationsPage = lazy(() => import('@/pages/ClientAdditionalApplicationsPage'));
 
+// 문서 중심 UX (신규)
+const DocsHubPage = lazy(() => import('@/pages/docs/DocsHubPage'));
+const DocGeneratePage = lazy(() => import('@/pages/docs/DocGeneratePage'));
+
 /** self.hoiseng1click.com 감지 */
 const isSelfDomain = typeof window !== 'undefined' && window.location.hostname.startsWith('self.');
 
@@ -177,6 +181,15 @@ export default function App() {
             <Route path="my/discharge-check" element={<DischargeCheckPage />} />
             <Route path="my/application" element={<MyCaseApplicationPage />} />
             <Route path="my/additional-applications" element={<MyAdditionalApplicationsPage />} />
+            {/* 문서 중심 UX (B2C) */}
+            <Route path="my/docs" element={<DocsHubPage />} />
+            <Route path="my/docs/:docType" element={<DocGeneratePage />} />
+          </Route>
+
+          {/* B2B도 문서 중심 UX 접근 가능 */}
+          <Route element={<OfficeOnlyGuard />}>
+            <Route path="docs-gen" element={<DocsHubPage />} />
+            <Route path="docs-gen/:docType" element={<DocGeneratePage />} />
           </Route>
 
           <Route path="*" element={<DashboardRedirect />} />

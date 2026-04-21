@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, ArrowLeft, ArrowRight, RotateCcw, ChevronRight } from 'lucide-react';
+import { listDocTemplates } from '@/data/docTemplates';
 
 /* ───────────────────────────────────────────
    컬러 시스템 — 틸 + 웜화이트 + 코랄
@@ -550,6 +551,34 @@ function ResultScreen({
           <p className="mt-2 text-sm text-[#636E72]">
             위 사항들은 개인회생 진행에 영향을 줄 수 있지만, 반드시 불가능하다는 의미는 아닙니다.
             전문가 상담을 통해 정확한 판단을 받아보시는 것을 권장합니다.
+          </p>
+        </div>
+      )}
+
+      {/* 필요한 5종 문서 미리보기 */}
+      {(diagnosis.result === 'green' || diagnosis.result === 'yellow') && (
+        <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-[#2D3436] mb-1">
+            당신에게 필요한 5종 서류
+          </h3>
+          <p className="text-sm text-[#636E72] mb-5">
+            회생클릭이 공동인증서 한 번으로 아래 서류를 자동 작성합니다.
+          </p>
+          <div className="grid grid-cols-5 gap-2">
+            {listDocTemplates().map((t) => (
+              <div
+                key={t.type}
+                className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-gray-50 border border-gray-100"
+              >
+                <div className="text-2xl">{t.icon}</div>
+                <div className="text-[10px] text-center text-[#636E72] leading-tight line-clamp-2">
+                  {t.title.replace('개인회생절차 ', '').replace('및 ', '').replace(' 목록', '')}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-[#636E72] text-center">
+            🕐 평균 10분 · 전부 자동으로 채워집니다
           </p>
         </div>
       )}
