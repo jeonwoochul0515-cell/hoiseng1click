@@ -10,6 +10,8 @@ import CollectStep from '@/components/collection/CollectStep';
 import ResultStep from '@/components/collection/ResultStep';
 import ChecklistStep from '@/components/collection/ChecklistStep';
 import SupplementStep from '@/components/collection/SupplementStep';
+import PublicCollectStep from '@/components/collection/PublicCollectStep';
+import PropertyValuationStep from '@/components/collection/PropertyValuationStep';
 import type { Client } from '@/types/client';
 
 /** 렌더 중 setState 방지를 위한 리다이렉트 컴포넌트 */
@@ -22,7 +24,9 @@ const STEPS = [
   { num: 1, label: '동의' },
   { num: 2, label: '인증 및 수집' },
   { num: 3, label: '서류 보완' },
-  { num: 4, label: '확인 및 생성' },
+  { num: 4, label: '공공자료' },
+  { num: 5, label: '부동산' },
+  { num: 6, label: '확인 및 생성' },
 ];
 
 export default function CollectionPage() {
@@ -244,7 +248,21 @@ export default function CollectionPage() {
             <SupplementStep onComplete={() => setStep(4)} />
           </div>
         )}
-        {step === 4 && <ResultStep clientId={clientId} />}
+        {step === 4 && (
+          <PublicCollectStep
+            clientId={clientId}
+            onBack={() => setStep(3)}
+            onNext={() => setStep(5)}
+          />
+        )}
+        {step === 5 && (
+          <PropertyValuationStep
+            clientId={clientId}
+            onBack={() => setStep(4)}
+            onNext={() => setStep(6)}
+          />
+        )}
+        {step === 6 && <ResultStep clientId={clientId} />}
       </div>
     </div>
   );

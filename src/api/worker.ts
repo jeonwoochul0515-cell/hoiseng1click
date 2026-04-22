@@ -228,6 +228,73 @@ export const workerApi = {
     });
   },
 
+  // ── VWORLD 공시가격 · 지오코딩 ──
+
+  /** 주소 → PNU(19자리) 변환 (VWORLD 지오코더 경유) */
+  addressToPnu(address: string) {
+    return request<{
+      success: boolean;
+      pnu: string | null;
+      address: string;
+      message?: string;
+    }>('/public/address-to-pnu', {
+      method: 'POST', body: JSON.stringify({ address }),
+    });
+  },
+
+  /** 공동주택 공시가격 조회 (VWORLD) */
+  getAptPrice(opts: { pnu?: string; stdrYear?: string; address?: string }) {
+    return request<{
+      rawPrice: number;
+      address: string;
+      pnu: string;
+      stdrYear: string;
+      standardDate: string;
+      propertyType: 'apt';
+      liquidation75: number;
+      source: 'vworld' | 'no_data' | 'no_pnu';
+      message?: string;
+    }>('/public/apt-price', {
+      method: 'POST', body: JSON.stringify(opts),
+    });
+  },
+
+  /** 개별단독주택 공시가격 조회 (VWORLD) */
+  getHousePrice(opts: { pnu?: string; stdrYear?: string; address?: string }) {
+    return request<{
+      rawPrice: number;
+      address: string;
+      pnu: string;
+      stdrYear: string;
+      standardDate: string;
+      propertyType: 'house';
+      liquidation75: number;
+      source: 'vworld' | 'no_data' | 'no_pnu';
+      message?: string;
+    }>('/public/house-price', {
+      method: 'POST', body: JSON.stringify(opts),
+    });
+  },
+
+  /** 개별공시지가 조회 (VWORLD) — 원/㎡ 단위, area 가 있으면 총액(rawPrice)도 리턴 */
+  getLandPrice(opts: { pnu?: string; stdrYear?: string; address?: string; area?: number }) {
+    return request<{
+      rawPrice: number;            // area 가 있으면 총액, 없으면 unitPrice 와 동일
+      unitPrice?: number;
+      area?: number;
+      address: string;
+      pnu: string;
+      stdrYear: string;
+      standardDate: string;
+      propertyType: 'land';
+      liquidation75: number;
+      source: 'vworld' | 'no_data' | 'no_pnu';
+      message?: string;
+    }>('/public/land-price', {
+      method: 'POST', body: JSON.stringify(opts),
+    });
+  },
+
   // 통합 재산 조회 (차량 + 부동산 한번에)
   assetLookup(
     vehicles: Array<{ carNumber: string; ownerName?: string; ownerBirthDate?: string }>,

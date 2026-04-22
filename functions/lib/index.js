@@ -146,6 +146,10 @@ app.post("/codef/simple-auth/complete", codefProxy_1.handleSimpleAuthComplete);
 app.post("/codef/statement-data", codefProxy_1.handleStatementData);
 app.get("/public/property", publicDataProxy_1.handlePropertyLookup);
 app.get("/public/vehicle", publicDataProxy_1.handleVehicleLookup);
+// [Phase B-1] data.go.kr 공시가격 3종 (CODEF 유료 API 대체)
+app.post("/public/apt-price", publicDataProxy_1.handleAptOfficialPrice);
+app.post("/public/house-price", publicDataProxy_1.handleHouseOfficialPrice);
+app.post("/public/land-price", publicDataProxy_1.handleLandOfficialPrice);
 app.post("/doc/generate", docGenerator_1.handleDocGenerate);
 // 공공기관 CODEF
 app.post("/codef/public-collect", codefPublic_1.handlePublicDataCollect);
@@ -196,6 +200,9 @@ app.post("/public/vehicle-registration", codefPublic_1.handleVehicleRegistration
 app.post("/public/local-tax-cert", codefPublic_1.handleLocalTaxCert);
 app.post("/public/national-tax-cert", codefPublic_1.handleNationalTaxCert);
 app.post("/public/four-insurance", codefPublic_1.handleFourInsurance);
+// ── 신규 (CODEF 변경신청): 대법원 나의사건검색 / 홈택스 전자세금계산서 ──
+app.post("/public/case-search", codefPublic_1.handleCaseSearch);
+app.post("/public/tax-invoice", codefPublic_1.handleTaxInvoice);
 // ── SSN 암호화/복호화 (주민등록번호 보호) ──
 app.post("/crypto/encrypt-ssn", (req, res) => {
     try {

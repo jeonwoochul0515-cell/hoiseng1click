@@ -145,6 +145,14 @@ export interface Asset {
     brokerName?: string;
     stockName?: string;
     valuationBasis?: string;
+    // ── 부동산 자동발견/공시가격 (신규) ──
+    pnu?: string;                    // 19자리 부동산 고유번호
+    stdrYear?: string;               // 공시 기준연도 (YYYY)
+    standardDate?: string;           // 공시일자 (YYYY-MM-DD)
+    buildingName?: string;           // 아파트/건물명
+    priceSource?: 'vworld' | 'data_go_kr' | 'manual';
+    mortgageHolders?: string[];      // 근저당권자 목록
+    registryFetchedAt?: string;      // 등기부 조회 시점 (ISO 8601)
   };
 }
 
@@ -291,6 +299,12 @@ export interface Client {
     taxDelinquent?: number;
     wageClaim?: number;
     smallDeposit?: number;
+  };
+  // 조세 체납 요약 (상세는 debts[] 에 "국세청"/"지자체" 채권자 Debt 로 저장)
+  taxDelinquency?: {
+    totalNational: number;      // 국세 체납 총액 (원)
+    totalLocal: number;         // 지방세 체납 총액 (원)
+    lastFetchedAt?: string;     // 마지막 조회 시점 (ISO 8601)
   };
   // 진술서
   statement?: StatementData;

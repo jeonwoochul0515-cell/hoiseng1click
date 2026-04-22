@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import { onRequest } from "firebase-functions/v2/https";
 import express from "express";
 import { handleCodefCollect, handleIntakeCodefCollect, handleStatementData, handleSimpleAuthStart, handleSimpleAuthComplete, handleCodefTestConnection, diagnoseCodefAuth } from "./codefProxy";
-import { handlePropertyLookup, handleVehicleLookup, handleAptOfficialPrice, handleHouseOfficialPrice, handleLandOfficialPrice } from "./publicDataProxy";
+import { handlePropertyLookup, handleVehicleLookup, handleAptOfficialPrice, handleHouseOfficialPrice, handleLandOfficialPrice, handleAddressToPnu } from "./publicDataProxy";
 import { handleDocGenerate } from "./docGenerator";
 import { handleIncomeProof, handleWithholdingTax, handleBusinessRegistration, handleHealthInsurance, handleHealthInsurancePremium, handleNationalPension, handlePublicDataCollect, handleResidentRegistration, handleResidentAbstract, handleFamilyRelation, handlePropertyRegistry, handleTaxPaymentCert, handleWageStatement, handleVatCert, handleFinancialStatement, handleLocalTaxAssessment, handleLocalTaxPayment, handleVehicleRegistration, handleLocalTaxCert, handleNationalTaxCert, handleFourInsurance, handleCaseSearch, handleTaxInvoice } from "./codefPublic";
 import { handleCardApprovals, handleCardBills, handleBankTransactions, handleStockAccounts, handleStockAssets, handleStockTransactions, handleExtendedFinanceCollect } from "./codefFinance";
@@ -111,6 +111,7 @@ app.get("/public/vehicle", handleVehicleLookup);
 app.post("/public/apt-price", handleAptOfficialPrice);
 app.post("/public/house-price", handleHouseOfficialPrice);
 app.post("/public/land-price", handleLandOfficialPrice);
+app.post("/public/address-to-pnu", handleAddressToPnu);
 
 app.post("/doc/generate", handleDocGenerate);
 

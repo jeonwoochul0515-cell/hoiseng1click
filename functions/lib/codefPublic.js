@@ -21,6 +21,8 @@ exports.handleVehicleRegistration = handleVehicleRegistration;
 exports.handleLocalTaxCert = handleLocalTaxCert;
 exports.handleNationalTaxCert = handleNationalTaxCert;
 exports.handleFourInsurance = handleFourInsurance;
+exports.handleCaseSearch = handleCaseSearch;
+exports.handleTaxInvoice = handleTaxInvoice;
 const codefProxy_1 = require("./codefProxy");
 // ---------------------------------------------------------------------------
 // 응답 파싱 헬퍼
@@ -660,6 +662,181 @@ async function handleFourInsurance(req, res) {
     }
     catch (err) {
         res.status(500).json({ error: err.message ?? "4대보험 조회 실패" });
+    }
+}
+/** 사건번호 문자열에서 사건유형 분류 */
+function classifyCaseType(caseNumber) {
+    if (!caseNumber)
+        return "기타";
+    // 개회/하회 = 회생, 하단/하합/하파 = 파산, 가단/가합/가소 = 민사, 드단/드합/느단 = 가사, 고단/고합/노/도 = 형사
+    if (/개회|하회|회/.test(caseNumber))
+        return "회생";
+    if (/하단|하합|하파|파/.test(caseNumber))
+        return "파산";
+    if (/드단|드합|느단|느합|가소|가단(?=가사)/.test(caseNumber))
+        return "가사";
+    if (/가단|가합|차|나|다/.test(caseNumber))
+        return "민사";
+    if (/고단|고합|노|도|감/.test(caseNumber))
+        return "형사";
+    return "기타";
+}
+function parseCaseSearch(data) {
+    const d = data;
+    const list = d?.resCaseList ?? d?.resList ?? d?.resCases ?? [];
+    const cases = [];
+    if (Array.isArray(list)) {
+        for (const item of list) {
+            const caseNumber = item.resCaseNumber ?? item.resCaseNo ?? item.caseNumber ?? "";
+            cases.push({
+                caseNumber,
+                court: item.resCourtName ?? item.resCourt ?? item.courtName ?? "",
+                caseType: classifyCaseType(caseNumber),
+                status: item.resStatus ?? item.resProgressStatus ?? item.resCaseStatus ?? "",
+                filingDate: item.resFilingDate ?? item.resReceiptDate ?? item.resRegisterDate ?? "",
+                lastAction: item.resLastAction ?? item.resLastActionDate ?? undefined,
+            });
+        }
+    }
+    return cases;
+}
+/**
+ * 대법원 나의사건검색
+ * TODO(CODEF 승인 후): 정확한 엔드포인트 경로 확정 필요.
+ *   현재는 "/v1/kr/public/ef/case-search" 로 추정 (기존 ef/ 계열 패턴 따름).
+ *   승인 후 실제 CODEF 응답 샘플로 경로와 응답 필드명 재확인.
+ */
+async function handleCaseSearch(req, res) {
+    try {
+        const { connectedId, identity, userName, authType } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId가 필요합니다" });
+            return;
+        }
+        const token = await (0, codefProxy_1.getToken)();
+        // TODO: 승인 후 정확한 엔드포인트 경로로 교체 (대안: "/v1/kr/public/ph/court/case-list")
+        const result = await (0, codefProxy_1.callCodef)(token, "/v1/kr/public/ef/case-search", {
+            connectedId,
+            identity: identity ?? "",
+            userName: userName ?? "",
+            authType: authType ?? "0",
+        });
+        const codefResult = result;
+        if (codefResult?.result?.code !== "CF-00000") {
+            res.status(502).json({
+                error: codefResult?.result?.message ?? "나의사건검색 조회 실패",
+                code: codefResult?.result?.code,
+            });
+            return;
+        }
+        const data = codefResult?.data;
+        const cases = parseCaseSearch(data);
+        res.json({ success: true, data: { cases, raw: data } });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "나의사건검색 조회 실패" });
+    }
+}
+function parseTaxInvoice(data, type) {
+    const d = data;
+    const list = d?.resInvoiceList ?? d?.resTaxInvoiceList ?? d?.resList ?? [];
+    const invoices = [];
+    const monthlyTotal = {};
+    let totalSupply = 0;
+    let totalVat = 0;
+    let totalAmount = 0;
+    if (Array.isArray(list)) {
+        for (const item of list) {
+            const supply = Number(item.resSupplyAmount ?? item.resSupplyPrice ?? 0);
+            const vat = Number(item.resVatAmount ?? item.resTaxAmount ?? 0);
+            const total = Number(item.resTotalAmount ?? supply + vat);
+            const date = item.resIssueDate ?? item.resInvoiceDate ?? item.resDate ?? "";
+            invoices.push({
+                date,
+                invoiceNo: item.resInvoiceNo ?? item.resInvoiceNumber ?? "",
+                supplyAmount: supply,
+                vatAmount: vat,
+                totalAmount: total,
+                counterparty: item.resCounterpartyName ?? item.resTradingPartnerName ?? item.resBusinessName ?? "",
+                counterpartyBizNum: item.resCounterpartyBizNo ?? item.resTradingPartnerBizNo ?? item.resBusinessNo ?? "",
+                approvalNo: item.resApprovalNo ?? item.resApprovalNumber ?? "",
+                type,
+            });
+            // 월별 집계 (YYYYMM)
+            if (date && date.length >= 6) {
+                const ym = date.slice(0, 6);
+                if (!monthlyTotal[ym]) {
+                    monthlyTotal[ym] = { supplyAmount: 0, vatAmount: 0, totalAmount: 0, count: 0 };
+                }
+                monthlyTotal[ym].supplyAmount += supply;
+                monthlyTotal[ym].vatAmount += vat;
+                monthlyTotal[ym].totalAmount += total;
+                monthlyTotal[ym].count += 1;
+            }
+            totalSupply += supply;
+            totalVat += vat;
+            totalAmount += total;
+        }
+    }
+    return {
+        type,
+        invoices,
+        monthlyTotal,
+        totalSupply,
+        totalVat,
+        totalAmount,
+        count: invoices.length,
+        raw: data,
+    };
+}
+/**
+ * 국세청(홈택스) — 전자세금계산서 목록
+ * type: 'sales' = 매출, 'purchase' = 매입
+ * 자영업자 가드: businessNumber 필수
+ */
+async function handleTaxInvoice(req, res) {
+    try {
+        const { connectedId, identity, userName, businessNumber, startDate, endDate, type } = req.body;
+        if (!connectedId) {
+            res.status(400).json({ error: "connectedId가 필요합니다" });
+            return;
+        }
+        if (!businessNumber) {
+            res.status(400).json({ error: "사업자등록번호 필요" });
+            return;
+        }
+        const invoiceType = type === 'purchase' ? 'purchase' : 'sales';
+        // 기본값: 최근 12개월
+        const now = new Date();
+        const ago12m = new Date(now);
+        ago12m.setFullYear(now.getFullYear() - 1);
+        const defaultStart = ago12m.toISOString().slice(0, 10).replace(/-/g, "");
+        const defaultEnd = now.toISOString().slice(0, 10).replace(/-/g, "");
+        const endpoint = invoiceType === 'sales'
+            ? "/v1/kr/public/nt/tax-invoice/sales-list"
+            : "/v1/kr/public/nt/tax-invoice/purchase-list";
+        const token = await (0, codefProxy_1.getToken)();
+        const result = await (0, codefProxy_1.callCodef)(token, endpoint, {
+            connectedId,
+            identity: identity ?? "",
+            userName: userName ?? "",
+            businessNo: businessNumber,
+            startDate: startDate ?? defaultStart,
+            endDate: endDate ?? defaultEnd,
+        });
+        const codefResult = result;
+        if (codefResult?.result?.code !== "CF-00000") {
+            res.status(502).json({
+                error: codefResult?.result?.message ?? "전자세금계산서 조회 실패",
+                code: codefResult?.result?.code,
+            });
+            return;
+        }
+        const data = codefResult?.data;
+        res.json({ success: true, data: parseTaxInvoice(data, invoiceType) });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message ?? "전자세금계산서 조회 실패" });
     }
 }
 //# sourceMappingURL=codefPublic.js.map
