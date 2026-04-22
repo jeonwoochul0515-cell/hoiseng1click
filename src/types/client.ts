@@ -87,6 +87,38 @@ export interface Debt {
   isSubrogationClaim?: boolean;     // 이 채무가 구상채권인지
   originalCreditor?: string;       // 원 채권자 (구상채권의 경우)
   originalDebtAmount?: number;     // 원 채무 금액
+
+  // 카드 청구 상세 (Q2 card-bills merge)
+  cardBillingDetail?: {
+    installmentBalance: number;   // 할부잔액
+    revolvingBalance: number;     // 리볼빙 잔액
+    cardLoanBalance: number;      // 카드론 잔액
+    overdueAmount: number;        // 연체금액
+    nextPaymentDate?: string;     // 다음 결제일 (YYYY-MM-DD)
+  };
+}
+
+// 진행중 대법원 사건
+export interface CourtCase {
+  caseNumber: string;        // 예: "2024개회1234"
+  court: string;             // 예: "서울회생법원"
+  caseType: '회생' | '파산' | '민사' | '가사' | '형사' | '기타';
+  status: string;            // 진행상태
+  filingDate: string;        // YYYY-MM-DD
+  lastAction?: string;
+}
+
+// 전자세금계산서
+export interface TaxInvoiceEntry {
+  date: string;              // YYYYMMDD
+  invoiceNo: string;
+  supplyAmount: number;      // 공급가액
+  vatAmount: number;         // 세액
+  totalAmount: number;
+  counterparty: string;
+  counterpartyBizNum: string;
+  approvalNo: string;
+  type: 'sales' | 'purchase';
 }
 
 export interface Asset {
@@ -295,6 +327,12 @@ export interface Client {
 
   // 관련사건목록
   relatedCases?: RelatedCase[];
+
+  // CODEF 대법원 나의사건검색 결과
+  activeCourtCases?: CourtCase[];
+
+  // CODEF 홈택스 전자세금계산서 목록
+  taxInvoices?: TaxInvoiceEntry[];
 
   // 신청취지 / 신청이유
   applicationPurpose?: string;          // 신청취지 (기본값 템플릿)

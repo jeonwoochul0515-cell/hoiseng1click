@@ -1,6 +1,33 @@
 import type { Request, Response } from "express";
 
 // ──────────────────────────────────────────────
+// [Phase B-2] VWORLD 국가중점데이터 API — 공시가격 3종
+// data.go.kr "(WMS/WFS/속성정보)" 시리즈의 실제 서비스 제공자.
+// 응답 포맷은 구 data.go.kr NSDI 와 동일 (host 와 key 파라미터 이름만 차이).
+// 호출 시 Referer 헤더 필수 (VWORLD 인증키 등록 URL 과 일치).
+// ──────────────────────────────────────────────
+const VWORLD_PRICE_API = {
+  APT: "https://api.vworld.kr/ned/data/getApartHousingPriceAttr",
+  HOUSE: "https://api.vworld.kr/ned/data/getIndvdHousingPriceAttr",
+  LAND: "https://api.vworld.kr/ned/data/getIndvdLandPriceAttr",
+} as const;
+const VWORLD_REFERER = "https://hoiseng1click.web.app";
+
+// 응답 공시가격 필드명
+const PRICE_FIELD = {
+  APT: "pblntfPc",       // 공동주택: 공시가격(원)
+  HOUSE: "pblntfPc",     // 개별주택: 공시가격(원)
+  LAND: "pblntfPclnd",   // 개별지가: 공시지가(원/㎡)
+} as const;
+
+// (구) data.go.kr 경로 — 활용신청 안 된 상태라 미사용. 참조용 보존.
+const DATA_GO_KR_PRICE_API = {
+  APT: "https://apis.data.go.kr/1611000/nsdi/ApartHousingPriceService/attr/getApartHousingPriceAttr",
+  HOUSE: "https://apis.data.go.kr/1611000/nsdi/IndvdHousingPriceService/attr/getIndvdHousingPriceAttr",
+  LAND: "https://apis.data.go.kr/1611000/nsdi/IndvdLandPriceService/attr/getIndvdLandPriceAttr",
+} as const;
+
+// ──────────────────────────────────────────────
 // 법정동코드 → LAWD_CD (시군구 5자리) 매핑
 // ──────────────────────────────────────────────
 const LAWD_CD: Record<string, string> = {
@@ -127,17 +154,17 @@ async function fetchByPnu(
 
   switch (propertyType) {
     case "apt":
-      apiUrl = "https://apis.data.go.kr/1611000/nsdi/ApartHousingPriceService/attr/getApartHousingPriceAttr";
-      priceField = "pblntfPc";
+      apiUrl = DATA_GO_KR_PRICE_API.APT;
+      priceField = PRICE_FIELD.APT;
       break;
     case "house":
-      apiUrl = "https://apis.data.go.kr/1611000/nsdi/IndvdHousingPriceService/attr/getIndvdHousingPriceAttr";
-      priceField = "pblntfPc";
+      apiUrl = DATA_GO_KR_PRICE_API.HOUSE;
+      priceField = PRICE_FIELD.HOUSE;
       break;
     case "land":
     default:
-      apiUrl = "https://apis.data.go.kr/1611000/nsdi/IndvdLandPriceService/attr/getIndvdLandPriceAttr";
-      priceField = "pblntfPclnd";
+      apiUrl = DATA_GO_KR_PRICE_API.LAND;
+      priceField = PRICE_FIELD.LAND;
       break;
   }
 
@@ -549,3 +576,436 @@ export async function handleVehicleLookup(req: Request, res: Response) {
     source: "internal_db",
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// [Phase B-1/B-2] data.go.kr 공시가격 3종 프록시 + PNU 변환 유틸
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * data.go.kr NSDI 공시가격 API 공통 호출 헬퍼.
+ * PNU 19자리 + 기준연도(YYYY)로 조회.
+ * 응답은 JSON(또는 XML) — NSDI는 보통 JSON 지원.
+ */
+/**
+ * VWORLD 국가중점데이터 API 로 공시가격 조회.
+ * 응답 포맷: NSDI 표준 — { apartHousingPrices|indvdHousingPrices|indvdLandPrices: { field: [...] } }
+ * 주의: Referer 헤더 필수 (VWORLD 인증키 등록 URL 과 일치).
+ */
+async function fetchOfficialPriceByPnu(opts: {
+  apiUrl: string;
+  priceField: string;
+  vworldKey: string;
+  pnu: string;
+  stdrYear: string;
+  referer?: string;
+}): Promise<{
+  rawPrice: number;
+  pnu: string;
+  stdrYear: string;
+  address: string;
+  standardDate: string;
+  raw: any;
+} | null> {
+  const params = new URLSearchParams({
+    key: opts.vworldKey,
+    pnu: opts.pnu,
+    stdrYear: opts.stdrYear,
+    format: "json",
+    numOfRows: "10",
+    pageNo: "1",
+  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const r = await fetch(`${opts.apiUrl}?${params}`, {
+      signal: controller.signal,
+      headers: { Referer: opts.referer ?? VWORLD_REFERER },
+    });
+    clearTimeout(timeout);
+    if (!r.ok) return null;
+
+    const data = (await r.json()) as any;
+    const fields =
+      data?.indvdLandPrices?.field ??
+      data?.apartHousingPrices?.field ??
+      data?.indvdHousingPrices?.field ??
+      data?.field ??
+      [];
+    const first = Array.isArray(fields) ? fields[0] : fields;
+    if (!first) return null;
+
+    const rawPrice = Number(first[opts.priceField] ?? 0);
+    if (!rawPrice) return null;
+
+    return {
+      rawPrice,
+      pnu: opts.pnu,
+      stdrYear: opts.stdrYear,
+      address: String(first.ldCodeNm ?? first.sggCdNm ?? first.bjdongNm ?? ""),
+      standardDate: String(first.lastUpdtDt ?? first.pblntfDe ?? first.stdrYear ?? opts.stdrYear),
+      raw: first,
+    };
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
+/**
+ * POST /public/apt-price
+ * body: { pnu: string, stdrYear?: string, address?: string }
+ * 공동주택(아파트) 공시가격 조회 — data.go.kr NSDI
+ */
+export async function handleAptOfficialPrice(req: Request, res: Response) {
+  try {
+    const { pnu, stdrYear, address } = (req.body ?? {}) as {
+      pnu?: string;
+      stdrYear?: string;
+      address?: string;
+    };
+    const vworldKey = process.env.VWORLD_API_KEY ?? "";
+    if (!vworldKey) {
+      res.status(500).json({ error: "VWORLD_API_KEY 미설정" });
+      return;
+    }
+
+    // PNU 가 없고 주소만 있으면 변환 시도
+    let targetPnu = (pnu ?? "").trim();
+    if (!targetPnu && address) {
+      const converted = await addressToPnu(address);
+      if (converted) targetPnu = converted;
+    }
+    if (!targetPnu || targetPnu.length !== 19) {
+      res.json({
+        rawPrice: 0, liquidation75: 0, source: "no_pnu" as const,
+        message: "PNU(19자리)를 확인할 수 없습니다. 주소를 구체적으로 입력하거나 PNU를 직접 입력해주세요.",
+      });
+      return;
+    }
+
+    const year = (stdrYear && /^\d{4}$/.test(stdrYear))
+      ? stdrYear
+      : String(new Date().getFullYear());
+
+    const result = await fetchOfficialPriceByPnu({
+      apiUrl: VWORLD_PRICE_API.APT,
+      priceField: PRICE_FIELD.APT,
+      vworldKey,
+      pnu: targetPnu,
+      stdrYear: year,
+    });
+
+    if (!result) {
+      res.json({
+        rawPrice: 0, pnu: targetPnu, stdrYear: year, liquidation75: 0,
+        source: "no_data" as const,
+        message: "해당 PNU/연도의 공시가격 데이터가 없습니다.",
+      });
+      return;
+    }
+
+    res.json({
+      rawPrice: result.rawPrice,
+      address: result.address || address || "",
+      pnu: result.pnu,
+      stdrYear: result.stdrYear,
+      standardDate: result.standardDate,
+      propertyType: "apt",
+      liquidation75: Math.floor(result.rawPrice * 0.75),
+      source: "vworld" as const,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message ?? "공시가격 조회 실패" });
+  }
+}
+
+/**
+ * POST /public/house-price
+ * body: { pnu: string, stdrYear?: string, address?: string }
+ * 개별단독주택 공시가격
+ */
+export async function handleHouseOfficialPrice(req: Request, res: Response) {
+  try {
+    const { pnu, stdrYear, address } = (req.body ?? {}) as {
+      pnu?: string;
+      stdrYear?: string;
+      address?: string;
+    };
+    const vworldKey = process.env.VWORLD_API_KEY ?? "";
+    if (!vworldKey) {
+      res.status(500).json({ error: "VWORLD_API_KEY 미설정" });
+      return;
+    }
+
+    let targetPnu = (pnu ?? "").trim();
+    if (!targetPnu && address) {
+      const converted = await addressToPnu(address);
+      if (converted) targetPnu = converted;
+    }
+    if (!targetPnu || targetPnu.length !== 19) {
+      res.json({
+        rawPrice: 0, liquidation75: 0, source: "no_pnu" as const,
+        message: "PNU(19자리)를 확인할 수 없습니다.",
+      });
+      return;
+    }
+
+    const year = (stdrYear && /^\d{4}$/.test(stdrYear))
+      ? stdrYear
+      : String(new Date().getFullYear());
+
+    const result = await fetchOfficialPriceByPnu({
+      apiUrl: VWORLD_PRICE_API.HOUSE,
+      priceField: PRICE_FIELD.HOUSE,
+      vworldKey,
+      pnu: targetPnu,
+      stdrYear: year,
+    });
+
+    if (!result) {
+      res.json({
+        rawPrice: 0, pnu: targetPnu, stdrYear: year, liquidation75: 0,
+        source: "no_data" as const,
+        message: "해당 PNU/연도의 개별주택 공시가격 데이터가 없습니다.",
+      });
+      return;
+    }
+
+    res.json({
+      rawPrice: result.rawPrice,
+      address: result.address || address || "",
+      pnu: result.pnu,
+      stdrYear: result.stdrYear,
+      standardDate: result.standardDate,
+      propertyType: "house",
+      liquidation75: Math.floor(result.rawPrice * 0.75),
+      source: "vworld" as const,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message ?? "개별주택 공시가격 조회 실패" });
+  }
+}
+
+/**
+ * POST /public/land-price
+ * body: { pnu: string, stdrYear?: string, address?: string, area?: number }
+ * 개별공시지가 — 원/㎡ 단위이므로 area 가 있으면 총액도 함께 반환
+ */
+export async function handleLandOfficialPrice(req: Request, res: Response) {
+  try {
+    const { pnu, stdrYear, address, area } = (req.body ?? {}) as {
+      pnu?: string;
+      stdrYear?: string;
+      address?: string;
+      area?: number;
+    };
+    const vworldKey = process.env.VWORLD_API_KEY ?? "";
+    if (!vworldKey) {
+      res.status(500).json({ error: "VWORLD_API_KEY 미설정" });
+      return;
+    }
+
+    let targetPnu = (pnu ?? "").trim();
+    if (!targetPnu && address) {
+      const converted = await addressToPnu(address);
+      if (converted) targetPnu = converted;
+    }
+    if (!targetPnu || targetPnu.length !== 19) {
+      res.json({
+        rawPrice: 0, liquidation75: 0, source: "no_pnu" as const,
+        message: "PNU(19자리)를 확인할 수 없습니다.",
+      });
+      return;
+    }
+
+    const year = (stdrYear && /^\d{4}$/.test(stdrYear))
+      ? stdrYear
+      : String(new Date().getFullYear());
+
+    const result = await fetchOfficialPriceByPnu({
+      apiUrl: VWORLD_PRICE_API.LAND,
+      priceField: PRICE_FIELD.LAND,
+      vworldKey,
+      pnu: targetPnu,
+      stdrYear: year,
+    });
+
+    if (!result) {
+      res.json({
+        rawPrice: 0, pnu: targetPnu, stdrYear: year, liquidation75: 0,
+        source: "no_data" as const,
+        message: "해당 PNU/연도의 개별공시지가 데이터가 없습니다.",
+      });
+      return;
+    }
+
+    // 개별공시지가는 단가(원/㎡) — area가 있으면 총액 계산
+    const unitPrice = result.rawPrice;
+    const totalPrice = area && area > 0 ? unitPrice * area : unitPrice;
+
+    res.json({
+      rawPrice: totalPrice,
+      unitPrice,
+      area: area ?? 0,
+      address: result.address || address || "",
+      pnu: result.pnu,
+      stdrYear: result.stdrYear,
+      standardDate: result.standardDate,
+      propertyType: "land",
+      liquidation75: Math.floor(totalPrice * 0.75),
+      source: "vworld" as const,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message ?? "개별공시지가 조회 실패" });
+  }
+}
+
+// ──────────────────────────────────────────────
+// [Phase B-2] 주소 → PNU(19자리) 변환
+//   PNU 구조: {법정동코드 10자리} + {필지구분 1자리} + {본번 4자리} + {부번 4자리}
+//   - 필지구분: 1=일반토지, 2=산
+//   - 본번/부번: 지번. 예) "123-45" → 본번 0123, 부번 0045
+//
+//  옵션 1: 브이월드 지오코딩 API (VWORLD_API_KEY 필요, 더 정확)
+//  옵션 2: 행안부 도로명주소 API (business.juso.go.kr) fallback
+//
+//  실패 시 null 리턴 — 호출자가 fallback 처리.
+// ──────────────────────────────────────────────
+
+/** 지번 문자열 "123-45" 또는 "산 12" 등을 파싱 */
+function parseJibun(jibun: string): { mountain: boolean; bun: string; ji: string } {
+  const trimmed = jibun.trim();
+  const mountain = /^산/.test(trimmed) || trimmed.includes("산 ");
+  const cleaned = trimmed.replace(/^산\s*/, "").replace(/\s+/g, "");
+  const m = cleaned.match(/^(\d+)(?:-(\d+))?/);
+  if (!m) return { mountain, bun: "0000", ji: "0000" };
+  const bun = m[1].padStart(4, "0");
+  const ji = (m[2] ?? "0").padStart(4, "0");
+  return { mountain, bun, ji };
+}
+
+/**
+ * 주소 문자열 → PNU(19자리) 변환.
+ * 실패 시 null.
+ */
+export async function addressToPnu(address: string): Promise<string | null> {
+  if (!address || address.trim().length < 5) return null;
+
+  // 1) 브이월드 지오코딩 API (우선 시도)
+  const vworldKey = process.env.VWORLD_API_KEY ?? "";
+  if (vworldKey) {
+    const pnu = await addressToPnuViaVworld(address, vworldKey);
+    if (pnu) return pnu;
+  }
+
+  // 2) 도로명주소 API (fallback)
+  const jusoKey = process.env.JUSO_API_KEY ?? "";
+  if (jusoKey) {
+    const pnu = await addressToPnuViaJuso(address, jusoKey);
+    if (pnu) return pnu;
+  }
+
+  return null;
+}
+
+/** 브이월드 지오코딩 API */
+async function addressToPnuViaVworld(address: string, apiKey: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    // 지번주소(PARCEL) 기준 조회 — PNU 추출용
+    const params = new URLSearchParams({
+      service: "address",
+      request: "getcoord",
+      version: "2.0",
+      crs: "epsg:4326",
+      address,
+      refine: "true",
+      simple: "false",
+      format: "json",
+      type: "PARCEL",
+      key: apiKey,
+    });
+
+    const r = await fetch(`https://api.vworld.kr/req/address?${params}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!r.ok) return null;
+
+    const data = (await r.json()) as any;
+    const resp = data?.response;
+    if (resp?.status !== "OK") return null;
+
+    // structure 에 법정동코드/지번 포함
+    const struct = resp?.refined?.structure ?? {};
+    const level4L = String(struct.level4L ?? "");         // 법정동 이름 (참고용)
+    const level4LC = String(struct.level4LC ?? "");       // 최근 VWORLD 는 19자리 PNU 를 직접 리턴
+    const detail = String(struct.detail ?? "");
+    const level5 = String(struct.level5 ?? "");           // 지번 "123-45"
+    void level4L;
+
+    // 시나리오 A: VWORLD 가 19자리 PNU 를 직접 제공 (최근 응답 형식)
+    if (level4LC.length === 19) return level4LC;
+
+    // 시나리오 B: 구버전 — 10자리 법정동코드 + 지번 조립
+    if (level4LC.length === 10) {
+      const jibun = level5 || detail;
+      if (!jibun) return null;
+      const { mountain, bun, ji } = parseJibun(jibun);
+      const filter = mountain ? "2" : "1";
+      const pnu = `${level4LC}${filter}${bun}${ji}`;
+      if (pnu.length === 19) return pnu;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** 도로명주소 API (행안부) — 법정동코드 추출 후 지번 파싱으로 PNU 조립 */
+async function addressToPnuViaJuso(address: string, apiKey: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    const params = new URLSearchParams({
+      confmKey: apiKey,
+      currentPage: "1",
+      countPerPage: "1",
+      keyword: address,
+      resultType: "json",
+    });
+
+    const r = await fetch(`https://business.juso.go.kr/addrlink/addrLinkApi.do?${params}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!r.ok) return null;
+
+    const data = (await r.json()) as any;
+    const juso = data?.results?.juso?.[0];
+    if (!juso) return null;
+
+    const admCd = String(juso.admCd ?? "");      // 행정구역코드 10자리 (법정동코드 아님 — 근사)
+    const lnbrMnnm = String(juso.lnbrMnnm ?? "0");  // 지번 본번
+    const lnbrSlno = String(juso.lnbrSlno ?? "0");  // 지번 부번
+    const mtYn = String(juso.mtYn ?? "N");          // 산 여부
+
+    if (admCd.length !== 10) return null;
+
+    const filter = mtYn === "Y" ? "2" : "1";
+    const bun = lnbrMnnm.padStart(4, "0");
+    const ji = lnbrSlno.padStart(4, "0");
+    const pnu = `${admCd}${filter}${bun}${ji}`;
+    if (pnu.length !== 19) return null;
+    return pnu;
+  } catch {
+    return null;
+  }
+}
+

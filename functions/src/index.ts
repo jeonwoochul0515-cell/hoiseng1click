@@ -2,9 +2,9 @@ import * as admin from "firebase-admin";
 import { onRequest } from "firebase-functions/v2/https";
 import express from "express";
 import { handleCodefCollect, handleIntakeCodefCollect, handleStatementData, handleSimpleAuthStart, handleSimpleAuthComplete, handleCodefTestConnection, diagnoseCodefAuth } from "./codefProxy";
-import { handlePropertyLookup, handleVehicleLookup } from "./publicDataProxy";
+import { handlePropertyLookup, handleVehicleLookup, handleAptOfficialPrice, handleHouseOfficialPrice, handleLandOfficialPrice } from "./publicDataProxy";
 import { handleDocGenerate } from "./docGenerator";
-import { handleIncomeProof, handleWithholdingTax, handleBusinessRegistration, handleHealthInsurance, handleHealthInsurancePremium, handleNationalPension, handlePublicDataCollect, handleResidentRegistration, handleResidentAbstract, handleFamilyRelation, handlePropertyRegistry, handleTaxPaymentCert, handleWageStatement, handleVatCert, handleFinancialStatement, handleLocalTaxAssessment, handleLocalTaxPayment, handleVehicleRegistration, handleLocalTaxCert, handleNationalTaxCert, handleFourInsurance } from "./codefPublic";
+import { handleIncomeProof, handleWithholdingTax, handleBusinessRegistration, handleHealthInsurance, handleHealthInsurancePremium, handleNationalPension, handlePublicDataCollect, handleResidentRegistration, handleResidentAbstract, handleFamilyRelation, handlePropertyRegistry, handleTaxPaymentCert, handleWageStatement, handleVatCert, handleFinancialStatement, handleLocalTaxAssessment, handleLocalTaxPayment, handleVehicleRegistration, handleLocalTaxCert, handleNationalTaxCert, handleFourInsurance, handleCaseSearch, handleTaxInvoice } from "./codefPublic";
 import { handleCardApprovals, handleCardBills, handleBankTransactions, handleStockAccounts, handleStockAssets, handleStockTransactions, handleExtendedFinanceCollect } from "./codefFinance";
 import { handleLandRegister, handleBuildingRegister, handleBuildingArea } from "./publicDataRegisters";
 import { handleStatementDataV2 } from "./statementHelpers";
@@ -106,6 +106,12 @@ app.post("/codef/simple-auth/complete", handleSimpleAuthComplete);
 app.post("/codef/statement-data", handleStatementData);
 app.get("/public/property", handlePropertyLookup);
 app.get("/public/vehicle", handleVehicleLookup);
+
+// [Phase B-1] data.go.kr 공시가격 3종 (CODEF 유료 API 대체)
+app.post("/public/apt-price", handleAptOfficialPrice);
+app.post("/public/house-price", handleHouseOfficialPrice);
+app.post("/public/land-price", handleLandOfficialPrice);
+
 app.post("/doc/generate", handleDocGenerate);
 
 // 공공기관 CODEF
@@ -165,6 +171,10 @@ app.post("/public/vehicle-registration", handleVehicleRegistration);
 app.post("/public/local-tax-cert", handleLocalTaxCert);
 app.post("/public/national-tax-cert", handleNationalTaxCert);
 app.post("/public/four-insurance", handleFourInsurance);
+
+// ── 신규 (CODEF 변경신청): 대법원 나의사건검색 / 홈택스 전자세금계산서 ──
+app.post("/public/case-search", handleCaseSearch);
+app.post("/public/tax-invoice", handleTaxInvoice);
 
 // ── SSN 암호화/복호화 (주민등록번호 보호) ──
 app.post("/crypto/encrypt-ssn", (req, res) => {

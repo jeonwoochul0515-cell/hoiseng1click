@@ -262,6 +262,66 @@ export const workerApi = {
 
   // ── 상세 신고서 v2 (개선판) ──
 
+  // ── 신규 (CODEF 변경신청 대기): 대법원 나의사건검색 / 홈택스 전자세금계산서 ──
+
+  // 대법원 나의사건검색 — 진행중 사건 조회
+  searchMyCases(connectedId: string, identity?: string, userName?: string, authType?: string) {
+    return request<{
+      success: boolean;
+      data: {
+        cases: Array<{
+          caseNumber: string;
+          court: string;
+          caseType: '회생' | '파산' | '민사' | '가사' | '형사' | '기타';
+          status: string;
+          filingDate: string;
+          lastAction?: string;
+        }>;
+        raw: unknown;
+      };
+    }>('/public/case-search', {
+      method: 'POST',
+      body: JSON.stringify({ connectedId, identity, userName, authType }),
+    });
+  },
+
+  // 홈택스 전자세금계산서 (매출/매입)
+  getTaxInvoices(
+    connectedId: string,
+    identity: string | undefined,
+    userName: string | undefined,
+    businessNumber: string,
+    startDate: string,
+    endDate: string,
+    type: 'sales' | 'purchase',
+  ) {
+    return request<{
+      success: boolean;
+      data: {
+        type: 'sales' | 'purchase';
+        invoices: Array<{
+          date: string;
+          invoiceNo: string;
+          supplyAmount: number;
+          vatAmount: number;
+          totalAmount: number;
+          counterparty: string;
+          counterpartyBizNum: string;
+          approvalNo: string;
+          type: 'sales' | 'purchase';
+        }>;
+        monthlyTotal: Record<string, { supplyAmount: number; vatAmount: number; totalAmount: number; count: number }>;
+        totalSupply: number;
+        totalVat: number;
+        totalAmount: number;
+        count: number;
+      };
+    }>('/public/tax-invoice', {
+      method: 'POST',
+      body: JSON.stringify({ connectedId, identity, userName, businessNumber, startDate, endDate, type }),
+    });
+  },
+
   getStatementDataV2(connectedId: string) {
     return request<{
       newDebts: Array<{ date: string; creditor: string; type: string; amount: number; rate: number }>;

@@ -1,4 +1,89 @@
 import type { Request, Response } from "express";
+import { addressToPnu } from "./publicDataProxy";
+
+// ---------------------------------------------------------------------------
+// [Phase B-3] VWORLD 국가중점데이터 API (CODEF reb-estate-* 대체)
+// 응답 포맷은 data.go.kr NSDI 와 동일. 호출 시 Referer 헤더 필수.
+// ---------------------------------------------------------------------------
+const VWORLD_PRICE_API = {
+  APT: "https://api.vworld.kr/ned/data/getApartHousingPriceAttr",
+  HOUSE: "https://api.vworld.kr/ned/data/getIndvdHousingPriceAttr",
+  LAND: "https://api.vworld.kr/ned/data/getIndvdLandPriceAttr",
+} as const;
+const VWORLD_REFERER = "https://hoiseng1click.web.app";
+
+/**
+ * VWORLD 국가중점데이터 API 로 공시가격 조회. CODEF 의존성 제거.
+ * PNU + 기준연도(YYYY) 입력 → { rawPrice, stdrYear, standardDate, buildingName }
+ */
+async function fetchPublicDataPrice(opts: {
+  type: "apt" | "house" | "land";
+  pnu: string;
+  stdrYear?: string;
+}): Promise<{
+  rawPrice: number;
+  area: number;
+  stdrYear: string;
+  standardDate: string;
+  buildingName: string;
+} | null> {
+  const vworldKey = process.env.VWORLD_API_KEY ?? "";
+  if (!vworldKey) return null;
+
+  const apiUrl =
+    opts.type === "apt" ? VWORLD_PRICE_API.APT :
+    opts.type === "house" ? VWORLD_PRICE_API.HOUSE :
+    VWORLD_PRICE_API.LAND;
+  const priceField = opts.type === "land" ? "pblntfPclnd" : "pblntfPc";
+
+  const year = (opts.stdrYear && /^\d{4}$/.test(opts.stdrYear))
+    ? opts.stdrYear
+    : String(new Date().getFullYear());
+
+  const params = new URLSearchParams({
+    key: vworldKey,
+    pnu: opts.pnu,
+    stdrYear: year,
+    format: "json",
+    numOfRows: "10",
+    pageNo: "1",
+  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(`${apiUrl}?${params}`, {
+      signal: controller.signal,
+      headers: { Referer: VWORLD_REFERER },
+    });
+    clearTimeout(timeout);
+    if (!r.ok) return null;
+
+    const data = (await r.json()) as any;
+    const fields =
+      data?.indvdLandPrices?.field ??
+      data?.apartHousingPrices?.field ??
+      data?.indvdHousingPrices?.field ??
+      data?.field ??
+      [];
+    const first = Array.isArray(fields) ? fields[0] : fields;
+    if (!first) return null;
+
+    const rawPrice = Number(first[priceField] ?? 0);
+    if (!rawPrice) return null;
+
+    return {
+      rawPrice,
+      area: Number(first.prvuseAr ?? first.area ?? first.excluUseAr ?? 0),
+      stdrYear: year,
+      standardDate: String(first.lastUpdtDt ?? first.pblntfDe ?? year),
+      buildingName: String(first.aphusNm ?? first.bdNm ?? first.aptBldNm ?? first.ldCodeNm ?? ""),
+    };
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // CODEF OAuth & 호출 헬퍼
@@ -146,97 +231,97 @@ export async function handleVehicleInfo(req: Request, res: Response) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 2. 부동산 공시가격 조회 (CODEF 경유)
+// 2. 부동산 공시가격 조회 (data.go.kr NSDI — CODEF 유료 API 대체)
+//    - CODEF 토큰·Connected ID 불필요 (인증키 기반 공공 API)
+//    - 프론트엔드 호출 시그니처 유지, 내부 구현만 교체
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * POST /codef/property-price
- * body: { address: string, propertyType?: 'apt'|'house'|'land', dong?: string, ho?: string }
+ * body: { address: string, propertyType?: 'apt'|'house'|'land', dong?: string, ho?: string, pnu?: string, stdrYear?: string }
  *
- * CODEF 부동산 공시가격 알리미 API를 통해 공시가격 조회
+ * data.go.kr 공시가격 API 를 통해 공시가격 조회 (기존 CODEF reb-estate-* 대체).
+ * 응답 포맷은 기존과 동일하게 유지 — 프론트 수정 불필요.
  */
 export async function handlePropertyPrice(req: Request, res: Response) {
   try {
-    const { address, propertyType, dong, ho } = req.body as {
+    const { address, propertyType, dong, ho, pnu, stdrYear } = req.body as {
       address: string;
       propertyType?: "apt" | "house" | "land";
       dong?: string;
       ho?: string;
+      pnu?: string;
+      stdrYear?: string;
     };
 
-    if (!address) {
-      res.status(400).json({ error: "주소가 필요합니다" });
+    if (!address && !pnu) {
+      res.status(400).json({ error: "주소 또는 PNU가 필요합니다" });
       return;
     }
 
-    const token = await getToken();
     const type = propertyType ?? "apt";
 
-    let endpoint: string;
-    let reqBody: object;
-
-    switch (type) {
-      case "apt":
-        // 공동주택(아파트) 공시가격
-        endpoint = "/v1/kr/public/pp/reb-estate-apartment-price";
-        reqBody = {
-          organization: "0001",
-          address,
-          dong: dong ?? "",
-          ho: ho ?? "",
-        };
-        break;
-      case "house":
-        // 개별주택 공시가격
-        endpoint = "/v1/kr/public/pp/reb-estate-individual-housing-price";
-        reqBody = {
-          organization: "0001",
-          address,
-        };
-        break;
-      case "land":
-      default:
-        // 개별공시지가
-        endpoint = "/v1/kr/public/pp/reb-estate-individual-land-price";
-        reqBody = {
-          organization: "0001",
-          address,
-        };
-        break;
+    // PNU 확보: 직접 입력 > 주소 변환
+    let targetPnu = (pnu ?? "").trim();
+    if (!targetPnu && address) {
+      const converted = await addressToPnu(address);
+      if (converted) targetPnu = converted;
     }
 
-    const result = await callCodef(token, endpoint, reqBody) as any;
-
-    const data = result?.data ?? {};
-    const rawPrice = Number(
-      data.resOfficialPrice ?? data.resPblntfPrice ?? data.resPrice ?? 0,
-    );
-    const area = Number(data.resArea ?? data.resExclusiveArea ?? 0);
-    const stdDate = data.resStandardDate ?? data.resBaseDate ?? "";
-
-    if (rawPrice <= 0) {
-      // CODEF에서 결과 없으면 에러 대신 빈 결과
+    if (!targetPnu || targetPnu.length !== 19) {
       res.json({
-        address,
+        address: address ?? "",
         propertyType: type,
         rawPrice: 0,
+        area: 0,
         liquidation75: 0,
+        standardDate: "",
+        buildingName: "",
+        dongHo: dong && ho ? `${dong}동 ${ho}호` : "",
+        source: "codef_no_data",
+        message: "PNU(19자리)를 확인할 수 없습니다. 주소를 구체적으로 입력하거나 브이월드 API 키를 설정해주세요.",
+      });
+      return;
+    }
+
+    const result = await fetchPublicDataPrice({
+      type,
+      pnu: targetPnu,
+      stdrYear,
+    });
+
+    if (!result || result.rawPrice <= 0) {
+      res.json({
+        address: address ?? "",
+        propertyType: type,
+        rawPrice: 0,
+        area: 0,
+        liquidation75: 0,
+        standardDate: "",
+        buildingName: "",
+        dongHo: dong && ho ? `${dong}동 ${ho}호` : "",
         source: "codef_no_data",
         message: "해당 주소의 공시가격 정보를 찾을 수 없습니다. 수동 입력해주세요.",
       });
       return;
     }
 
+    // 개별공시지가는 원/㎡ — area 정보가 있으면 총액 계산 (없으면 단가 그대로)
+    const rawPrice = result.rawPrice;
+
     res.json({
-      address,
+      address: address ?? "",
       propertyType: type,
       rawPrice,
-      area,
+      area: result.area,
       liquidation75: Math.floor(rawPrice * 0.75),
-      standardDate: stdDate,
-      buildingName: data.resBuildingName ?? data.resAptName ?? "",
-      dongHo: data.resDong && data.resHo ? `${data.resDong}동 ${data.resHo}호` : "",
-      source: "codef",
+      standardDate: result.standardDate,
+      buildingName: result.buildingName,
+      dongHo: dong && ho ? `${dong}동 ${ho}호` : "",
+      pnu: targetPnu,
+      stdrYear: result.stdrYear,
+      // 기존 'codef' source 라벨 유지 (프론트 PropertyLookup 의 sourceLabel 매핑 호환)
+      source: "codef" as const,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message ?? "부동산 공시가격 조회 실패" });
@@ -302,37 +387,43 @@ export async function handleAssetLookup(req: Request, res: Response) {
       }
     });
 
-    // 부동산 조회 병렬 실행
+    // 부동산 조회 병렬 실행 — data.go.kr 공시가격 API 사용 (CODEF reb-estate-* 대체)
     const propertyPromises = (properties ?? []).map(async (p) => {
-      const type = p.propertyType ?? "apt";
-      let endpoint: string;
-      let reqBody: object;
-      switch (type) {
-        case "apt":
-          endpoint = "/v1/kr/public/pp/reb-estate-apartment-price";
-          reqBody = { organization: "0001", address: p.address, dong: p.dong ?? "", ho: p.ho ?? "" };
-          break;
-        case "house":
-          endpoint = "/v1/kr/public/pp/reb-estate-individual-housing-price";
-          reqBody = { organization: "0001", address: p.address };
-          break;
-        default:
-          endpoint = "/v1/kr/public/pp/reb-estate-individual-land-price";
-          reqBody = { organization: "0001", address: p.address };
-          break;
-      }
+      const type = (p.propertyType ?? "apt") as "apt" | "house" | "land";
 
       try {
-        const result = await callCodef(token, endpoint, reqBody) as any;
-        const data = result?.data ?? {};
-        const rawPrice = Number(data.resOfficialPrice ?? data.resPblntfPrice ?? data.resPrice ?? 0);
+        // 주소 → PNU 변환
+        const pnu = await addressToPnu(p.address);
+        if (!pnu) {
+          return {
+            address: p.address,
+            propertyType: type,
+            rawPrice: 0,
+            liquidation75: 0,
+            buildingName: "",
+            source: "codef_no_data" as const,
+          };
+        }
+
+        const result = await fetchPublicDataPrice({ type, pnu });
+        if (!result) {
+          return {
+            address: p.address,
+            propertyType: type,
+            rawPrice: 0,
+            liquidation75: 0,
+            buildingName: "",
+            source: "codef_no_data" as const,
+          };
+        }
+
         return {
           address: p.address,
           propertyType: type,
-          rawPrice,
-          liquidation75: Math.floor(rawPrice * 0.75),
-          buildingName: data.resBuildingName ?? data.resAptName ?? "",
-          source: rawPrice > 0 ? "codef" as const : "codef_no_data" as const,
+          rawPrice: result.rawPrice,
+          liquidation75: Math.floor(result.rawPrice * 0.75),
+          buildingName: result.buildingName,
+          source: result.rawPrice > 0 ? "codef" as const : "codef_no_data" as const,
         };
       } catch (err: any) {
         return { address: p.address, error: err.message, source: "error" as const };
