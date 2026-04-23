@@ -40,6 +40,7 @@ const officeNavItems: NavItem[] = [
 
 const individualNavItems: NavItem[] = [
   { icon: Home, label: '내 현황', to: '/my' },
+  { icon: Users, label: '자료 수집', to: '/my/collection' },
   { icon: FileText, label: '서류 생성', to: '/my/docs' },
   { icon: Monitor, label: '전자소송 제출', to: '/my/ecfs-helper' },
   { icon: MapPin, label: '법원 접수 가이드', to: '/my/court-guide' },

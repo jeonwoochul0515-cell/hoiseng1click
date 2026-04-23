@@ -72,7 +72,7 @@ export default function ConsentStep({ clientName, clientId }: ConsentStepProps) 
         ))}
       </div>
 
-      {/* Credit PDF Upload (동의 완료 후 표시) */}
+      {/* Credit PDF Upload — B2B(사무소)만 표시. B2C 는 업로드 단계 없이 바로 진행. */}
       {allChecked && clientId && office && (
         <CreditPdfUpload
           clientId={clientId}
@@ -82,7 +82,19 @@ export default function ConsentStep({ clientName, clientId }: ConsentStepProps) 
         />
       )}
 
-      {/* Next Button (PDF 미사용 시) */}
+      {/* 다음 단계 버튼 — B2C 이거나 clientId/office 없을 때 */}
+      {allChecked && !(clientId && office) && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setStep(2)}
+            className="rounded-lg bg-[var(--color-brand-gold)] px-8 py-3 font-semibold text-sm text-black hover:brightness-110 transition-all"
+          >
+            다음 단계로 →
+          </button>
+        </div>
+      )}
+
+      {/* 동의 미완료 안내 */}
       {!allChecked && (
         <div className="flex justify-end">
           <button

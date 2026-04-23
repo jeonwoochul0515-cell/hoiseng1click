@@ -5,7 +5,7 @@ import DocumentCanvas from '@/components/docgen/DocumentCanvas';
 import DocumentRenderer from '@/components/docgen/DocumentRenderer';
 import DocDownloadButton from '@/components/documents/DocDownloadButton';
 import { useDocGenerator } from '@/hooks/useDocGenerator';
-import { useClient } from '@/hooks/useCollection';
+import { useCurrentClient } from '@/hooks/useCurrentClient';
 import { buildDocTemplate, docgenToBackendType } from '@/data/docTemplates';
 import { SOURCE_CATALOG } from '@/data/sourceCatalog';
 import { generateCreditorCsv, generateAssetCsv, downloadCsv } from '@/utils/ecfsCsv';
@@ -25,8 +25,8 @@ export default function DocGeneratePage() {
   const hubPath = location.pathname.startsWith('/docs-gen') ? '/docs-gen' : '/my/docs';
   const backLink = clientId ? `${hubPath}?clientId=${clientId}` : hubPath;
 
-  // B2B: 실 의뢰인 로드 (officeId 없거나 clientId 없으면 비활성 → data=null → 데모 fallback)
-  const clientQuery = useClient(clientId ?? '');
+  // B2B/B2C 어댑터 — officeId·clientId 없고 B2C 인증도 없으면 비활성 → data=null → 데모 fallback
+  const clientQuery = useCurrentClient(clientId ?? undefined);
   const client: Client | null = clientQuery.data ?? null;
 
   const isValid = docType && VALID_TYPES.includes(docType as DocType);

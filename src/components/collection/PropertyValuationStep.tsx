@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { doc, getDoc, updateDoc, setDoc, Timestamp } from 'firebase/firestore';
 import {
   Plus,
   Trash2,
@@ -10,8 +9,7 @@ import {
   Search,
   Building2,
 } from 'lucide-react';
-import { db } from '@/firebase';
-import { useAuthStore } from '@/store/authStore';
+import { useCurrentClient, useUpdateCurrentClient } from '@/hooks/useCurrentClient';
 import { workerApi } from '@/api/worker';
 import { toast } from '@/utils/toast';
 import type { Client, Asset } from '@/types/client';
@@ -88,49 +86,28 @@ function isValidPnu(pnu: string) {
 // ── 컴포넌트 ──
 
 export default function PropertyValuationStep({ clientId, onNext, onBack }: PropertyValuationStepProps) {
-  const office = useAuthStore((s) => s.office);
-  const individual = useAuthStore((s) => s.individual);
+  // 현재 의뢰인 로드 — B2B(clientId) / B2C(본인 UID) 자동 분기
+  const clientQuery = useCurrentClient(clientId);
+  const client: Client | null = clientQuery.data ?? null;
+  const loading = clientQuery.isLoading;
+  const updateMutation = useUpdateCurrentClient(clientId);
 
-  const [client, setClient] = useState<Client | null>(null);
-  const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<PropertyCard[]>([newCard()]);
+  const [addressPrefilled, setAddressPrefilled] = useState(false);
 
-  const isIndividualPage = !!individual;
-
-  // Load client
+  // 의뢰인 주소가 있으면 첫 번째 카드에 미리 채움 (1회만)
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        if (isIndividualPage && individual) {
-          const snap = await getDoc(doc(db, 'individuals', individual.id, 'cases', clientId ?? 'default'));
-          if (!cancelled && snap.exists()) {
-            const data = snap.data() as Client;
-            setClient(data);
-            // 의뢰인 주소가 있으면 첫 번째 카드에 미리 채움
-            if (data.address) {
-              setCards([{ ...newCard(), address: data.address }]);
-            }
-          }
-        } else if (office && clientId) {
-          const snap = await getDoc(doc(db, 'offices', office.id, 'clients', clientId));
-          if (!cancelled && snap.exists()) {
-            const data = snap.data() as Client;
-            setClient(data);
-            if (data.address) {
-              setCards([{ ...newCard(), address: data.address }]);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('의뢰인 로드 실패:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (addressPrefilled) return;
+    if (!client) return;
+    if (client.address) {
+      setCards((prev) => {
+        const first = prev[0];
+        if (!first || first.address) return prev;
+        return [{ ...first, address: client.address }, ...prev.slice(1)];
+      });
     }
-    load();
-    return () => { cancelled = true; };
-  }, [office, individual, clientId, isIndividualPage]);
+    setAddressPrefilled(true);
+  }, [client, addressPrefilled]);
 
   const updateCard = useCallback((localId: string, patch: Partial<PropertyCard>) => {
     setCards((prev) => prev.map((c) => (c.localId === localId ? { ...c, ...patch } : c)));
@@ -138,20 +115,11 @@ export default function PropertyValuationStep({ clientId, onNext, onBack }: Prop
 
   const mergeClient = useCallback(async (patch: Partial<Client>) => {
     try {
-      const payload: Record<string, unknown> = { ...patch, updatedAt: Timestamp.now() };
-      if (isIndividualPage && individual) {
-        const caseRef = doc(db, 'individuals', individual.id, 'cases', clientId ?? 'default');
-        const existing = await getDoc(caseRef);
-        if (existing.exists()) await updateDoc(caseRef, payload);
-        else await setDoc(caseRef, { ...payload, createdAt: Timestamp.now() });
-      } else if (office && clientId) {
-        await updateDoc(doc(db, 'offices', office.id, 'clients', clientId), payload);
-      }
-      setClient((prev) => (prev ? ({ ...prev, ...patch } as Client) : prev));
+      await updateMutation.mutateAsync(patch);
     } catch (err) {
       console.error('Firestore merge 실패:', err);
     }
-  }, [office, individual, clientId, isIndividualPage]);
+  }, [updateMutation]);
 
   // 주소 → PNU 변환
   const resolvePnu = useCallback(async (localId: string, address: string) => {

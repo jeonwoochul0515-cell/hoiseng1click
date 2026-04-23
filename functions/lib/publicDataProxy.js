@@ -6,6 +6,7 @@ exports.handleAptOfficialPrice = handleAptOfficialPrice;
 exports.handleHouseOfficialPrice = handleHouseOfficialPrice;
 exports.handleLandOfficialPrice = handleLandOfficialPrice;
 exports.addressToPnu = addressToPnu;
+exports.handleAddressToPnu = handleAddressToPnu;
 // ──────────────────────────────────────────────
 // [Phase B-2] VWORLD 국가중점데이터 API — 공시가격 3종
 // data.go.kr "(WMS/WFS/속성정보)" 시리즈의 실제 서비스 제공자.
@@ -880,6 +881,38 @@ async function addressToPnuViaVworld(address, apiKey) {
     }
     catch {
         return null;
+    }
+}
+/**
+ * POST /public/address-to-pnu
+ * body: { address: string }
+ * 주소 → PNU(19자리) 변환 전용 엔드포인트 (프론트 즉시 확인용)
+ */
+async function handleAddressToPnu(req, res) {
+    try {
+        const { address } = (req.body ?? {});
+        if (!address || !address.trim()) {
+            res.status(400).json({ success: false, error: "주소가 필요합니다." });
+            return;
+        }
+        const pnu = await addressToPnu(address.trim());
+        if (!pnu) {
+            res.json({
+                success: false,
+                pnu: null,
+                address: address.trim(),
+                message: "주소를 PNU로 변환할 수 없습니다. 지번주소(예: '서울 강남구 역삼동 737')를 사용해 보세요.",
+            });
+            return;
+        }
+        res.json({
+            success: true,
+            pnu,
+            address: address.trim(),
+        });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, error: err.message ?? "지오코딩 실패" });
     }
 }
 /** 도로명주소 API (행안부) — 법정동코드 추출 후 지번 파싱으로 PNU 조립 */

@@ -150,6 +150,7 @@ app.get("/public/vehicle", publicDataProxy_1.handleVehicleLookup);
 app.post("/public/apt-price", publicDataProxy_1.handleAptOfficialPrice);
 app.post("/public/house-price", publicDataProxy_1.handleHouseOfficialPrice);
 app.post("/public/land-price", publicDataProxy_1.handleLandOfficialPrice);
+app.post("/public/address-to-pnu", publicDataProxy_1.handleAddressToPnu);
 app.post("/doc/generate", docGenerator_1.handleDocGenerate);
 // 공공기관 CODEF
 app.post("/codef/public-collect", codefPublic_1.handlePublicDataCollect);

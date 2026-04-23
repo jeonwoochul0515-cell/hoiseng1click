@@ -5,6 +5,7 @@ import { listDocMeta } from '@/data/docTemplates';
 import { SOURCE_CATALOG } from '@/data/sourceCatalog';
 import { useAuthStore } from '@/store/authStore';
 import { useClients } from '@/hooks/useClients';
+import { useCurrentClient } from '@/hooks/useCurrentClient';
 import { formatPhone } from '@/utils/formatter';
 import type { Client } from '@/types/client';
 
@@ -28,6 +29,11 @@ export default function DocsHubPage() {
   const clientsQuery = useClients();
   const [searchQuery, setSearchQuery] = useState('');
 
+  // B2C: 본인 실데이터 로드 (B2B 이면 clientId 있을 때만 enabled)
+  const currentClientQuery = useCurrentClient(clientId ?? undefined);
+  const myClient: Client | null = !isB2B ? (currentClientQuery.data ?? null) : null;
+  const hasB2CRealData = !!myClient && !!myClient.id && !!myClient.name;
+
   const selectedClient: Client | null = useMemo(() => {
     if (!clientId) return null;
     return clientsQuery.data?.find((c) => c.id === clientId) ?? null;
@@ -41,10 +47,15 @@ export default function DocsHubPage() {
   }, [clientsQuery.data, searchQuery]);
 
   const templates = listDocMeta();
-  const progressMap = readProgress(clientId ?? 'demo');
+  // B2C 는 본인 UID 버킷으로 진행률 저장
+  const progressBucket = clientId ?? (hasB2CRealData ? (myClient!.id) : 'demo');
+  const progressMap = readProgress(progressBucket);
   const completed = templates.filter((t) => (progressMap[t.type] ?? 0) >= 100).length;
 
   const requireClient = isB2B && userType === 'office' && !selectedClient;
+  // B2C 실데이터 미수집 상태 (로그인 O, 아직 데이터 없음)
+  const requireCollection =
+    !isB2B && userType === 'individual' && !currentClientQuery.isLoading && !hasB2CRealData;
 
   function pickClient(id: string) {
     const next = new URLSearchParams(searchParams);
@@ -102,14 +113,14 @@ export default function DocsHubPage() {
 
       {/* 메인 */}
       <div className="flex-1">
-        {/* B2C 데모 모드 배너 */}
-        {!isB2B && (
+        {/* B2C 데모 모드 배너 — 실데이터 없을 때만 */}
+        {!isB2B && !hasB2CRealData && !requireCollection && (
           <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
             <span className="text-2xl">🧪</span>
             <div className="flex-1">
               <h4 className="font-semibold text-amber-900 mb-1">데모 모드</h4>
               <p className="text-sm text-amber-800">
-                개인 사용자의 데이터 연결은 다음 단계에서 구현됩니다. 지금은 가상 의뢰인 데이터로 화면 동작만 체험할 수 있습니다.
+                로그인하지 않은 상태에서는 가상 의뢰인 데이터로 화면 동작만 체험할 수 있습니다.
               </p>
             </div>
           </div>
@@ -120,6 +131,7 @@ export default function DocsHubPage() {
           <h1 className="text-2xl font-bold text-gray-900">
             개인회생 서류
             {selectedClient && <span className="ml-3 text-base font-normal text-gray-500">— {selectedClient.name}</span>}
+            {!isB2B && hasB2CRealData && <span className="ml-3 text-base font-normal text-gray-500">— {myClient!.name}</span>}
           </h1>
           <p className="text-gray-500 mt-2">
             법원에 제출할 5종 서류를 한 번의 인증으로 자동 작성합니다.
@@ -143,8 +155,26 @@ export default function DocsHubPage() {
           </div>
         )}
 
+        {requireCollection && (
+          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-5 text-emerald-900 flex items-start gap-3">
+            <span className="text-2xl">📋</span>
+            <div className="flex-1">
+              <h4 className="font-semibold mb-1">먼저 금융·공공 자료를 수집하세요</h4>
+              <p className="text-sm mb-3">
+                CODEF 인증 1회로 은행·카드·보험 등 내 금융정보를 자동으로 불러오고, 법원 제출 5종 서류를 자동 생성할 수 있습니다.
+              </p>
+              <Link
+                to="/my/collection"
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                자료 수집 시작 →
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* 5종 카드 그리드 */}
-        {!requireClient && (
+        {!requireClient && !requireCollection && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {templates.map((t) => {
               const progress = progressMap[t.type] ?? 0;

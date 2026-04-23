@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { doc, getDoc, updateDoc, setDoc, Timestamp } from 'firebase/firestore';
 import {
   CheckCircle2,
   XCircle,
@@ -9,9 +8,9 @@ import {
   RefreshCw,
   Play,
 } from 'lucide-react';
-import { auth, db } from '@/firebase';
-import { useAuthStore } from '@/store/authStore';
+import { auth } from '@/firebase';
 import { useCollectionStore } from '@/store/collectionStore';
+import { useCurrentClient, useUpdateCurrentClient } from '@/hooks/useCurrentClient';
 import { workerApi } from '@/api/worker';
 import { toast } from '@/utils/toast';
 import type {
@@ -101,12 +100,14 @@ function genId() {
 // ── 컴포넌트 ──
 
 export default function PublicCollectStep({ clientId, onNext, onBack }: PublicCollectStepProps) {
-  const office = useAuthStore((s) => s.office);
-  const individual = useAuthStore((s) => s.individual);
   const { connectedId, userName, birthDate } = useCollectionStore();
 
-  const [client, setClient] = useState<Client | null>(null);
-  const [loading, setLoading] = useState(true);
+  // 현재 의뢰인 로드 — B2B(clientId) / B2C(본인 UID) 자동 분기
+  const clientQuery = useCurrentClient(clientId);
+  const client: Client | null = clientQuery.data ?? null;
+  const loading = clientQuery.isLoading;
+  const updateMutation = useUpdateCurrentClient(clientId);
+
   const [tasks, setTasks] = useState<Record<TaskId, TaskState>>({
     familyRelation: { status: 'idle' },
     vehicleRegistration: { status: 'idle' },
@@ -120,47 +121,14 @@ export default function PublicCollectStep({ clientId, onNext, onBack }: PublicCo
 
   const startedRef = useRef(false);
 
-  const isIndividualPage = !!individual;
-
-  // Load client
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        if (isIndividualPage && individual) {
-          const snap = await getDoc(doc(db, 'individuals', individual.id, 'cases', clientId ?? 'default'));
-          if (!cancelled && snap.exists()) setClient(snap.data() as Client);
-        } else if (office && clientId) {
-          const snap = await getDoc(doc(db, 'offices', office.id, 'clients', clientId));
-          if (!cancelled && snap.exists()) setClient(snap.data() as Client);
-        }
-      } catch (err) {
-        console.error('의뢰인 로드 실패:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [office, individual, clientId, isIndividualPage]);
-
-  // Firestore merge helper
+  // Firestore merge helper — B2B/B2C 자동 분기 (Wave 2 어댑터)
   const mergeClient = useCallback(async (patch: Partial<Client>) => {
     try {
-      const payload: Record<string, unknown> = { ...patch, updatedAt: Timestamp.now() };
-      if (isIndividualPage && individual) {
-        const caseRef = doc(db, 'individuals', individual.id, 'cases', clientId ?? 'default');
-        const existing = await getDoc(caseRef);
-        if (existing.exists()) await updateDoc(caseRef, payload);
-        else await setDoc(caseRef, { ...payload, createdAt: Timestamp.now() });
-      } else if (office && clientId) {
-        await updateDoc(doc(db, 'offices', office.id, 'clients', clientId), payload);
-      }
-      setClient((prev) => (prev ? ({ ...prev, ...patch } as Client) : prev));
+      await updateMutation.mutateAsync(patch);
     } catch (err) {
       console.error('Firestore merge 실패:', err);
     }
-  }, [office, individual, clientId, isIndividualPage]);
+  }, [updateMutation]);
 
   function setTaskState(id: TaskId, state: TaskState) {
     setTasks((prev) => ({ ...prev, [id]: state }));

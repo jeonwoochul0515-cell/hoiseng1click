@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase';
 import { useAuthStore } from '@/store/authStore';
 import { useCollectionStore } from '@/store/collectionStore';
+import { useCurrentClient, useUpdateCurrentClient } from '@/hooks/useCurrentClient';
 import ConsentStep from '@/components/collection/ConsentStep';
 import AuthStep from '@/components/collection/AuthStep';
 import CollectStep from '@/components/collection/CollectStep';
@@ -12,7 +13,6 @@ import ChecklistStep from '@/components/collection/ChecklistStep';
 import SupplementStep from '@/components/collection/SupplementStep';
 import PublicCollectStep from '@/components/collection/PublicCollectStep';
 import PropertyValuationStep from '@/components/collection/PropertyValuationStep';
-import type { Client } from '@/types/client';
 
 /** 렌더 중 setState 방지를 위한 리다이렉트 컴포넌트 */
 function StepRedirect({ setStep }: { setStep: (n: number) => void }) {
@@ -34,113 +34,75 @@ export default function CollectionPage() {
   const location = useLocation();
   const office = useAuthStore((s) => s.office);
   const individual = useAuthStore((s) => s.individual);
-  const userType = useAuthStore((s) => s.userType);
   const { step, result, reset, connectedId, authStatus, setStep } = useCollectionStore();
-  const [client, setClient] = useState<Client | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  // 개인 모드 판별
-  const isIndividualPage = location.pathname.startsWith('/my');
-  const clientId = isIndividualPage ? 'default' : paramClientId;
+  // 개인 모드 판별: /my/* 경로에서는 clientId 가 undefined 가 될 수 있음.
+  const isIndividualPage = location.pathname.startsWith('/my/');
+  const clientId = paramClientId; // B2B 는 값 존재, B2C 는 undefined → 어댑터가 user.uid 로 fallback
+  // 하위 컴포넌트 중 B2B 전용 (CollectStep, ResultStep) 에 전달할 clientId.
+  // B2C 에서는 user.uid 를 넘겨 기존 시그니처(string)를 유지.
+  const childClientId: string = clientId ?? individual?.id ?? 'default';
 
-  // Load client from Firestore
+  // B2B/B2C 자동 분기 로드
+  const clientQuery = useCurrentClient(clientId);
+  const client = clientQuery.data ?? null;
+  // 쿼리가 비활성(enabled=false)이면 isLoading 은 true 로 남으므로 fetchStatus 도 확인
+  const loading = clientQuery.isLoading && clientQuery.fetchStatus !== 'idle';
+  const updateCurrent = useUpdateCurrentClient(clientId);
+
+  // 세션/스토어 초기화 + connectedId·name·phone 반영
   useEffect(() => {
     reset();
+  }, [clientId, isIndividualPage, reset]);
 
-    if (isIndividualPage && individual) {
-      // 개인 모드: individuals/{uid}/cases/default
-      async function loadIndividualCase() {
-        try {
-          const snap = await getDoc(doc(db, 'individuals', individual!.id, 'cases', 'default'));
-          if (snap.exists()) {
-            const data = snap.data() as Client;
-            setClient(data);
-            if (data.connectedId) {
-              useCollectionStore.getState().setConnectedId(data.connectedId);
-            }
-          } else {
-            // 케이스가 없으면 개인 정보로 초기화
-            setClient({ name: individual!.name, phone: individual!.phone } as Client);
-          }
-          if (individual!.name) useCollectionStore.getState().setUserName(individual!.name);
-          if (individual!.phone) useCollectionStore.getState().setPhoneNo(individual!.phone);
-        } catch (err) {
-          console.error('케이스 로드 실패:', err);
-        } finally {
-          setLoading(false);
-        }
-      }
-      loadIndividualCase();
+  useEffect(() => {
+    if (client) {
+      if (client.connectedId) useCollectionStore.getState().setConnectedId(client.connectedId);
+      if (client.name) useCollectionStore.getState().setUserName(client.name);
+      if (client.phone) useCollectionStore.getState().setPhoneNo(client.phone);
       return;
     }
-
-    if (!paramClientId || !office) return;
-
-    async function loadClient() {
-      try {
-        const snap = await getDoc(doc(db, 'offices', office!.id, 'clients', paramClientId!));
-        if (snap.exists()) {
-          const data = snap.data() as Client;
-          setClient(data);
-          if (data.connectedId) {
-            useCollectionStore.getState().setConnectedId(data.connectedId);
-          }
-          if (data.name) {
-            useCollectionStore.getState().setUserName(data.name);
-          }
-          if (data.phone) {
-            useCollectionStore.getState().setPhoneNo(data.phone);
-          }
-        }
-      } catch (err) {
-        console.error('의뢰인 정보 로드 실패:', err);
-      } finally {
-        setLoading(false);
-      }
+    // B2C 최초 진입: 케이스 문서 없을 수 있으니 Individual 기본정보 반영
+    if (isIndividualPage && individual) {
+      if (individual.name) useCollectionStore.getState().setUserName(individual.name);
+      if (individual.phone) useCollectionStore.getState().setPhoneNo(individual.phone);
     }
-
-    loadClient();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramClientId, office, individual, isIndividualPage]);
+  }, [client, isIndividualPage, individual]);
 
   // Save results to Firestore when collection is complete
   useEffect(() => {
-    if (!result || !clientId) return;
+    if (!result) return;
+    if (!isIndividualPage && !clientId) return;
 
     async function saveResults() {
       try {
-        const saveData = {
-          debts: result!.debts,
-          assets: result!.assets,
-          collectionDone: true,
-          status: 'drafting',
-          connectedId: result!.connectedId,
-          updatedAt: Timestamp.now(),
-        };
-
         if (isIndividualPage && individual) {
-          // 개인 모드: individuals/{uid}/cases/default
-          const caseRef = doc(db, 'individuals', individual.id, 'cases', 'default');
-          const existingSnap = await getDoc(caseRef);
-          if (existingSnap.exists()) {
-            const existing = existingSnap.data();
-            const existingDebts = (existing?.debts ?? []).filter((d: any) => d.source !== 'codef');
-            const existingAssets = (existing?.assets ?? []).filter((a: any) => a.source !== 'codef');
-            saveData.debts = [...existingDebts, ...result!.debts];
-            saveData.assets = [...existingAssets, ...result!.assets];
-            await updateDoc(caseRef, saveData);
-          } else {
-            await setDoc(caseRef, { ...saveData, name: individual.name, phone: individual.phone, createdAt: Timestamp.now() });
-          }
-        } else if (office) {
-          // 사무소 모드
-          const existingSnap = await getDoc(doc(db, 'offices', office.id, 'clients', clientId!));
+          // 개인 모드: individuals/{uid} (어댑터 경로) — 기존 데이터와 병합
+          const existingDebts = (client?.debts ?? []).filter((d: any) => d.source !== 'codef');
+          const existingAssets = (client?.assets ?? []).filter((a: any) => a.source !== 'codef');
+          await updateCurrent.mutateAsync({
+            debts: [...existingDebts, ...result!.debts],
+            assets: [...existingAssets, ...result!.assets],
+            collectionDone: true,
+            status: 'drafting',
+            connectedId: result!.connectedId,
+            name: client?.name || individual.name,
+            phone: client?.phone || individual.phone,
+          });
+        } else if (office && clientId) {
+          // 사무소 모드 — 기존 경로 유지 (B2B 동작 보존)
+          const existingSnap = await getDoc(doc(db, 'offices', office.id, 'clients', clientId));
           const existing = existingSnap.data();
           const existingDebts = (existing?.debts ?? []).filter((d: any) => d.source !== 'codef');
           const existingAssets = (existing?.assets ?? []).filter((a: any) => a.source !== 'codef');
-          saveData.debts = [...existingDebts, ...result!.debts];
-          saveData.assets = [...existingAssets, ...result!.assets];
-          await updateDoc(doc(db, 'offices', office.id, 'clients', clientId!), saveData);
+          await updateDoc(doc(db, 'offices', office.id, 'clients', clientId), {
+            debts: [...existingDebts, ...result!.debts],
+            assets: [...existingAssets, ...result!.assets],
+            collectionDone: true,
+            status: 'drafting',
+            connectedId: result!.connectedId,
+            updatedAt: Timestamp.now(),
+          });
         }
       } catch (err) {
         console.error('수집 결과 저장 실패:', err);
@@ -148,6 +110,7 @@ export default function CollectionPage() {
     }
 
     saveResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, clientId, office, individual, isIndividualPage]);
 
   if (loading) {
@@ -230,7 +193,7 @@ export default function CollectionPage() {
         {step === 1 && <ConsentStep clientName={client?.name ?? '(알 수 없음)'} clientId={clientId} />}
         {step === 2 && (
           connectedId && authStatus === 'done'
-            ? <CollectStep clientId={clientId} />
+            ? <CollectStep clientId={childClientId} />
             : <AuthStep />
         )}
         {step === 3 && (
@@ -262,7 +225,7 @@ export default function CollectionPage() {
             onNext={() => setStep(6)}
           />
         )}
-        {step === 6 && <ResultStep clientId={clientId} />}
+        {step === 6 && <ResultStep clientId={childClientId} />}
       </div>
     </div>
   );
