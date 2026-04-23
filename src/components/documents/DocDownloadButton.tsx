@@ -23,20 +23,18 @@ export default function DocDownloadButton({
   disabled = false,
 }: DocDownloadButtonProps) {
   const [loading, setLoading] = useState(false);
-  const hasPro = useAuthStore((s) => s.hasPro);
   const office = useAuthStore((s) => s.office);
-  const openUpgradeModal = useUiStore((s) => s.openUpgradeModal);
+  const user = useAuthStore((s) => s.user);
 
-  const isLocked = format === 'hwpx' && !hasPro();
+  // HWPX 락 해제 — 모든 사용자 허용 (결제 시스템 연동 후 재도입 검토)
+  const isLocked = false;
 
   const handleClick = async () => {
     if (loading) return;
-    if (isLocked) {
-      openUpgradeModal();
-      return;
-    }
-    if (!office?.id) {
-      toast.error('사무소 정보를 불러올 수 없습니다. 다시 로그인해주세요.');
+    // B2C(개인) 도 다운로드 가능하도록 officeId 없으면 user.uid 로 fallback
+    const officeId = office?.id ?? user?.uid ?? '';
+    if (!officeId) {
+      toast.error('로그인 정보를 불러올 수 없습니다. 다시 로그인해주세요.');
       return;
     }
 
@@ -44,7 +42,7 @@ export default function DocDownloadButton({
       setLoading(true);
       const result = await workerApi.generateDoc({
         clientId: client.id,
-        officeId: office.id,
+        officeId,
         docType: String(docType),
         format,
         clientData: client,

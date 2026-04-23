@@ -972,20 +972,8 @@ export async function handleDocGenerate(req: Request, res: Response) {
       format: "docx" | "hwpx"; clientData: any;
     };
 
-    // 플랜 확인: Auth 클레임 → Firestore office → starter 폴백
-    const user = (req as any).user as { uid: string; plan?: string } | undefined;
-    let plan = user?.plan ?? "starter";
-    if (plan === "starter" && body.officeId) {
-      const officeSnap = await admin.firestore().collection("offices").doc(body.officeId).get();
-      if (officeSnap.exists) {
-        const officeData = officeSnap.data();
-        plan = officeData?.plan ?? "starter";
-      }
-    }
-    if (body.format === "hwpx" && plan === "starter") {
-      res.status(403).json({ error: "HWPX는 PRO 이상 플랜에서 사용 가능합니다." });
-      return;
-    }
+    // 플랜 제한 해제 — 모든 사용자 DOCX/HWPX 허용.
+    // 결제 시스템 연동 후 HWPX 유료화 재도입 시 이 자리에 다시 플랜 체크 추가.
 
     // SSN 복호화: ssnEncrypted가 있으면 복호화하여 ssn 필드에 넣기
     const clientData = body.clientData;
