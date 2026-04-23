@@ -113,24 +113,29 @@ export default function CollectionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, clientId, office, individual, isIndividualPage]);
 
+  // B2C 감지: /my/* 경로이거나 individual 로그인 상태
+  const userType = useAuthStore((s) => s.userType);
+  const isB2C = isIndividualPage || userType === 'individual';
+  const themeAttr = isB2C ? 'individual' : 'office';
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="h-8 w-8 border-2 border-[var(--color-brand-gold)] border-t-transparent rounded-full animate-spin" />
+      <div data-theme={themeAttr} className="flex items-center justify-center min-h-[60vh]">
+        <div className="h-8 w-8 border-2 border-[var(--theme-primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!clientId && !isIndividualPage) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] text-gray-500">
+      <div data-theme={themeAttr} className="flex items-center justify-center min-h-[60vh] text-gray-500">
         의뢰인 ID가 없습니다.
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+    <div data-theme={themeAttr} className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       {/* Page Header */}
       <div className="mx-auto max-w-3xl mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
@@ -158,7 +163,7 @@ export default function CollectionPage() {
                 <div
                   className={`flex items-center justify-center h-10 w-10 rounded-full text-sm font-bold transition-colors ${
                     step >= s.num
-                      ? 'bg-[var(--color-brand-gold)] text-[var(--color-brand-navy)]'
+                      ? 'bg-[var(--theme-primary)] text-[var(--theme-on-primary)]'
                       : 'bg-gray-100 text-gray-500 border border-gray-200'
                   }`}
                 >
@@ -166,7 +171,7 @@ export default function CollectionPage() {
                 </div>
                 <span
                   className={`mt-2 text-xs font-medium ${
-                    step >= s.num ? 'text-[var(--color-brand-gold)]' : 'text-gray-500'
+                    step >= s.num ? 'text-[var(--theme-primary)]' : 'text-gray-500'
                   }`}
                 >
                   {s.label}
@@ -178,7 +183,7 @@ export default function CollectionPage() {
                 <div className="flex-1 mx-3 mt-[-1.25rem]">
                   <div
                     className={`h-0.5 rounded transition-colors ${
-                      step > s.num ? 'bg-[var(--color-brand-gold)]' : 'bg-gray-200'
+                      step > s.num ? 'bg-[var(--theme-primary)]' : 'bg-gray-200'
                     }`}
                   />
                 </div>

@@ -25,6 +25,10 @@ export default function DocsHubPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const clientId = searchParams.get('clientId');
 
+  // B2C 감지: /my/docs 경로이거나 individual 로그인 상태 → teal 테마
+  const isB2C = !isB2B || userType === 'individual';
+  const themeAttr = isB2C ? 'individual' : 'office';
+
   // B2B 전용: 의뢰인 목록 로드
   const clientsQuery = useClients();
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,7 +68,7 @@ export default function DocsHubPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+    <div data-theme={themeAttr} className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
       {/* B2B: 의뢰인 선택 패널 */}
       {isB2B && (
         <aside className="w-full md:w-[280px] md:shrink-0">
@@ -77,13 +81,13 @@ export default function DocsHubPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="이름 또는 연락처 검색"
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-[var(--theme-primary)] focus:ring-1 focus:ring-[var(--theme-primary)]"
               />
             </div>
             <div className="max-h-[60vh] overflow-y-auto">
               {clientsQuery.isLoading ? (
                 <div className="py-8 flex justify-center">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--theme-primary)] border-t-transparent" />
                 </div>
               ) : filteredClients.length === 0 ? (
                 <div className="py-8 flex flex-col items-center text-gray-400 text-xs">
@@ -97,7 +101,7 @@ export default function DocsHubPage() {
                     onClick={() => pickClient(c.id)}
                     className={`mb-1 w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
                       clientId === c.id
-                        ? 'bg-brand-gold/15 text-brand-gold'
+                        ? 'bg-[var(--theme-primary)]/15 text-[var(--theme-primary)]'
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -237,7 +241,7 @@ export default function DocsHubPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-400">{t.subtitle}</span>
-                      <span className="text-sm font-medium text-brand-gold group-hover:translate-x-1 transition-transform">
+                      <span className="text-sm font-medium text-[var(--theme-primary)] group-hover:translate-x-1 transition-transform">
                         {isDone ? '다시 보기' : isStarted ? '계속' : '만들기'} →
                       </span>
                     </div>

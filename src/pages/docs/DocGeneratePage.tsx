@@ -6,6 +6,7 @@ import DocumentRenderer from '@/components/docgen/DocumentRenderer';
 import DocDownloadButton from '@/components/documents/DocDownloadButton';
 import { useDocGenerator } from '@/hooks/useDocGenerator';
 import { useCurrentClient } from '@/hooks/useCurrentClient';
+import { useAuthStore } from '@/store/authStore';
 import { buildDocTemplate, docgenToBackendType } from '@/data/docTemplates';
 import { SOURCE_CATALOG } from '@/data/sourceCatalog';
 import { generateCreditorCsv, generateAssetCsv, downloadCsv } from '@/utils/ecfsCsv';
@@ -29,6 +30,11 @@ export default function DocGeneratePage() {
   const clientQuery = useCurrentClient(clientId ?? undefined);
   const client: Client | null = clientQuery.data ?? null;
 
+  // B2C 감지 — /my/docs 경로이거나 individual 사용자
+  const userType = useAuthStore((s) => s.userType);
+  const isB2C = !location.pathname.startsWith('/docs-gen') || userType === 'individual';
+  const themeAttr = isB2C ? 'individual' : 'office';
+
   const isValid = docType && VALID_TYPES.includes(docType as DocType);
   const template = useMemo(() => {
     if (!isValid) return null;
@@ -37,9 +43,9 @@ export default function DocGeneratePage() {
 
   if (!isValid || !template) {
     return (
-      <div className="p-8 text-center">
+      <div data-theme={themeAttr} className="p-8 text-center">
         <p className="text-gray-500 mb-4">알 수 없는 서류입니다.</p>
-        <Link to={hubPath} className="text-brand-gold hover:underline">← 서류 목록으로</Link>
+        <Link to={hubPath} className="text-[var(--theme-primary)] hover:underline">← 서류 목록으로</Link>
       </div>
     );
   }
@@ -48,6 +54,7 @@ export default function DocGeneratePage() {
     <DocGenerateInner
       template={template}
       client={client}
+      themeAttr={themeAttr}
       onBack={() => navigate(backLink)}
     />
   );
@@ -56,10 +63,11 @@ export default function DocGeneratePage() {
 interface InnerProps {
   template: ReturnType<typeof buildDocTemplate>;
   client: Client | null;
+  themeAttr: 'individual' | 'office';
   onBack: () => void;
 }
 
-function DocGenerateInner({ template, client, onBack }: InnerProps) {
+function DocGenerateInner({ template, client, themeAttr, onBack }: InnerProps) {
   const navigate = useNavigate();
   const gen = useDocGenerator({ template });
 
@@ -92,7 +100,7 @@ function DocGenerateInner({ template, client, onBack }: InnerProps) {
   const canDownload = !!client && client.id !== 'demo';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] -m-6">
+    <div data-theme={themeAttr} className="flex flex-col h-[calc(100vh-80px)] -m-6">
       {/* 상단 내비게이션 */}
       <div className="flex items-center gap-4 px-6 py-3 border-b border-gray-200 bg-white">
         <button

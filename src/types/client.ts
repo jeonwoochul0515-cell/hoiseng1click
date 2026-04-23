@@ -260,6 +260,7 @@ export interface Client {
   assets: Asset[];
   memo: string;
   intakeSubmissionId?: string;
+  businessNumber?: string;       // 사업자등록번호 (자영업자 의뢰인 전자세금계산서 조회용)
   fee?: number;
   feeInstallment?: boolean;
   feeInstallmentMonths?: number;

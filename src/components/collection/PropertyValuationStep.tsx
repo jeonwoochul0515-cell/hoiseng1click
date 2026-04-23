@@ -316,7 +316,7 @@ export default function PropertyValuationStep({ clientId, onNext, onBack }: Prop
                     }
                   }}
                   placeholder="예: 서울 강남구 역삼동 737"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-brand-gold)] focus:ring-1 focus:ring-[var(--color-brand-gold)] outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--theme-primary)] focus:ring-1 focus:ring-[var(--theme-primary)] outline-none"
                 />
               </div>
 
@@ -343,7 +343,7 @@ export default function PropertyValuationStep({ clientId, onNext, onBack }: Prop
                       updateCard(card.localId, { pnu: val, pnuConfirmed: isValidPnu(val) });
                     }}
                     placeholder="19자리 숫자"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-[var(--color-brand-gold)] focus:ring-1 focus:ring-[var(--color-brand-gold)] outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-[var(--theme-primary)] focus:ring-1 focus:ring-[var(--theme-primary)] outline-none"
                   />
                 ) : (
                   <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export default function PropertyValuationStep({ clientId, onNext, onBack }: Prop
                       key={opt.value}
                       className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm cursor-pointer transition-colors ${
                         card.type === opt.value
-                          ? 'border-[var(--color-brand-gold)] bg-amber-50 text-amber-800'
+                          ? 'border-[var(--theme-primary)] bg-[var(--theme-primary-soft)] text-[var(--theme-primary)]'
                           : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
                     >
@@ -418,7 +418,7 @@ export default function PropertyValuationStep({ clientId, onNext, onBack }: Prop
                     value={card.area ?? ''}
                     onChange={(e) => updateCard(card.localId, { area: e.target.value ? Number(e.target.value) : undefined })}
                     placeholder="예: 200"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-brand-gold)] focus:ring-1 focus:ring-[var(--color-brand-gold)] outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--theme-primary)] focus:ring-1 focus:ring-[var(--theme-primary)] outline-none"
                   />
                 </div>
               )}
@@ -429,7 +429,7 @@ export default function PropertyValuationStep({ clientId, onNext, onBack }: Prop
                   type="button"
                   onClick={() => fetchPrice(card.localId)}
                   disabled={!card.pnuConfirmed || !isValidPnu(card.pnu) || card.priceLoading}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-brand-gold)] px-4 py-2 text-sm font-semibold text-[var(--color-brand-navy)] hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-sm font-semibold text-[var(--theme-on-primary)] hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {card.priceLoading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
                   공시가격 조회

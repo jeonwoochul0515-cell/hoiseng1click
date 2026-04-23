@@ -913,8 +913,7 @@ const DOC_TYPES = ["debt_list", "asset_list", "income_list", "application", "rep
 async function handleDocGenerate(req, res) {
     try {
         const body = req.body;
-        // 플랜 제한 해제 — 모든 사용자 DOCX/HWPX 허용.
-        // 결제 시스템 연동 후 HWPX 유료화 재도입 시 이 자리에 다시 플랜 체크 추가.
+        // DOCX/HWPX 영구 무료 — 플랜 제한 없음.
         // SSN 복호화: ssnEncrypted가 있으면 복호화하여 ssn 필드에 넣기
         const clientData = body.clientData;
         if (clientData?.ssnEncrypted) {

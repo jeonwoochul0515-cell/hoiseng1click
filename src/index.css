@@ -24,6 +24,32 @@
   --color-bg-sidebar: #1E293B;
 }
 
+/* ────────────────────────────────────────────────────────────────
+ * B2B/B2C 테마 변수 그룹
+ * 기본값은 B2B (회생원클릭 — brand-gold 계열)
+ * [data-theme="individual"] 스코프 안에서 B2C (회생클릭 — 틸 기반) 로 오버라이드.
+ * 컴포넌트는 var(--theme-*) 을 참조해서 자동 분기되도록 쓰면 됨.
+ * ──────────────────────────────────────────────────────────────── */
+:root {
+  --theme-primary: #C9A84C;          /* brand-gold */
+  --theme-primary-hover: #b8973e;
+  --theme-primary-soft: #FEF3C7;     /* amber-50 계열 */
+  --theme-on-primary: #0D1B2A;       /* brand-navy (골드 위 텍스트) */
+  --theme-accent: #C9A84C;           /* B2B 는 accent == primary */
+  --theme-accent-hover: #b8973e;
+  --theme-ring: rgba(201, 168, 76, 0.35);
+}
+
+[data-theme="individual"] {
+  --theme-primary: #48B5A0;          /* teal — 회생클릭 primary */
+  --theme-primary-hover: #3aa08d;
+  --theme-primary-soft: #E6F5F1;     /* 연한 틸 배경 */
+  --theme-on-primary: #FFFFFF;       /* 틸 위에는 흰 글자가 가독성 좋음 */
+  --theme-accent: #E8836B;           /* soft coral — CTA */
+  --theme-accent-hover: #d9745d;
+  --theme-ring: rgba(72, 181, 160, 0.35);
+}
+
 body {
   background-color: var(--color-bg-main);
   color: #111827;

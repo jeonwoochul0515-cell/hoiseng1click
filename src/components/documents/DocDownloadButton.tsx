@@ -26,7 +26,7 @@ export default function DocDownloadButton({
   const office = useAuthStore((s) => s.office);
   const user = useAuthStore((s) => s.user);
 
-  // HWPX 락 해제 — 모든 사용자 허용 (결제 시스템 연동 후 재도입 검토)
+  // HWPX 영구 무료 정책 — 모든 사용자 허용
   const isLocked = false;
 
   const handleClick = async () => {

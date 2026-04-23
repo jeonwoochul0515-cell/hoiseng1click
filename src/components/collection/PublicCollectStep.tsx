@@ -491,7 +491,7 @@ export default function PublicCollectStep({ clientId, onNext, onBack }: PublicCo
             type="button"
             onClick={runAll}
             disabled={running}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-brand-gold)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-brand-gold)] hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--theme-primary)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--theme-primary)] hover:bg-[var(--theme-primary-soft)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
             {running ? '진행 중' : '전체 시작'}
