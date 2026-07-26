@@ -54,7 +54,7 @@ async function handleAiDocReview(req, res) {
         const client = new sdk_1.default({ apiKey });
         const userContent = `다음 개인회생 신청 서류를 검증하고 JSON 리포트만 반환하세요:\n\n${payload}`;
         const message = await client.messages.create({
-            model: "claude-opus-4-7",
+            model: "claude-opus-5",
             max_tokens: 2048,
             system: REVIEW_SYSTEM_PROMPT,
             messages: [{ role: "user", content: userContent }],
@@ -78,7 +78,7 @@ async function handleAiDocReview(req, res) {
             issues: Array.isArray(parsed.issues) ? parsed.issues.slice(0, 50) : [],
             submittable: parsed.submittable === true,
             summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 500) : "",
-            model: "claude-opus-4-7",
+            model: "claude-opus-5",
             generatedAt: new Date().toISOString(),
         };
         res.json(report);

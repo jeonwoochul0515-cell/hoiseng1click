@@ -114,7 +114,7 @@ async function runOcr(imageBase64: string, mimeType: string, docType: string): P
   const prompt = DOC_TYPE_PROMPTS[docType] || DOC_TYPE_PROMPTS.general;
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-5",
     max_tokens: 2000,
     messages: [{
       role: "user",
